@@ -41,11 +41,12 @@
   <ItemGroup>
     <Compile Include="DefaultLineMapper.cs" />
     <Compile Include="DelimitedLineTokenizer.cs" />
+    <Compile Include="Extensions\FlatFileItemReaderExt.cs" />
     <Compile Include="FieldSet.cs" />
     <Compile Include="FlatFileItemReader.cs" />
     <Compile Include="FlatFileParseException.cs" />
     <Compile Include="IFieldSetMapper.cs" />
-    <Compile Include="IFileService.cs" />
+    <Compile Include="Services\IFileService.cs" />
     <Compile Include="ILineMapper.cs" />
     <Compile Include="ILineTokenizer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

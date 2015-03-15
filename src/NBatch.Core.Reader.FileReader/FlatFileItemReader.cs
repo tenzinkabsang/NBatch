@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NBatch.Core.ItemReader;
+using NBatch.Core.Reader.FileReader.Services;
 
 namespace NBatch.Core.Reader.FileReader
 {
