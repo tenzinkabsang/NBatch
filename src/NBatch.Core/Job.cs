@@ -7,9 +7,14 @@ namespace NBatch.Core
     public sealed class Job
     {
         private readonly IJobRepository _jobRepository;
-        private readonly IList<IStep> _steps; 
+        private readonly IList<IStep> _steps;
 
-        public Job(IJobRepository jobRepository)
+        public Job()
+            : this(new JobRepository())
+        {
+        }
+
+        internal Job(IJobRepository jobRepository)
         {
             _jobRepository = jobRepository;
             _steps = new List<IStep>();

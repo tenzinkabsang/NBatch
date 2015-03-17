@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Moq;
+﻿using Moq;
 using NBatch.Core;
-using NBatch.Core.ItemReader;
 using NBatch.Core.Reader.FileReader;
 using NBatch.Core.Repositories;
 using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NBatch.UnitTests
 {
@@ -22,7 +21,7 @@ namespace NBatch.UnitTests
         }
 
         [TestCase(1, 1)]
-        //[TestCase(10, 10)]
+        [TestCase(10, 10)]
         public void WriterShouldBeCalledWithTheSpecifiedChunkSize(int chunkSize, int itemCount)
         {
             var step1 = FakeStep<string, string>.Create("step1");

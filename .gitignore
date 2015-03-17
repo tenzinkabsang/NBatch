@@ -60,6 +60,7 @@ packages/
 *.nupkg
 
 #ncrunch
+_NCrunch_*/
 *ncrunch*
 *crunch*.local.xml
 

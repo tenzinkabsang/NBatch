@@ -6,19 +6,4 @@ namespace NBatch.Core.Reader.FileReader.Services
     {
         IEnumerable<string> ReadLines(int startIndex, int chunkSize);
     }
-
-    sealed class FileService : IFileService
-    {
-        private readonly string _resourceUrl;
-
-        public FileService(string resourceUrl)
-        {
-            _resourceUrl = resourceUrl;
-        }
-
-        public IEnumerable<string> ReadLines(int startIndex, int chunkSize)
-        {
-            throw new System.NotImplementedException();
-        }
-    }
 }

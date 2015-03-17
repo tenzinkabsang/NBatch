@@ -46,6 +46,7 @@
     <Compile Include="FlatFileItemReader.cs" />
     <Compile Include="FlatFileParseException.cs" />
     <Compile Include="IFieldSetMapper.cs" />
+    <Compile Include="Services\FileService.cs" />
     <Compile Include="Services\IFileService.cs" />
     <Compile Include="ILineMapper.cs" />
     <Compile Include="ILineTokenizer.cs" />

@@ -50,6 +50,7 @@
     <Compile Include="ItemWriter\IWriter.cs" />
     <Compile Include="Job.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Repositories\JobRepository.cs" />
     <Compile Include="SkipContext.cs" />
     <Compile Include="SkipPolicy.cs" />
     <Compile Include="Step.cs" />

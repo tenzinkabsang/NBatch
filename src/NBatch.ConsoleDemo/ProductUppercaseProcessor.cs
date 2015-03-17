@@ -25,10 +25,10 @@ namespace NBatch.ConsoleDemo
         {
             return new Product
             {
-                Id = fieldSet.GetInt("productId"),
-                Name = fieldSet.GetString("name"),
-                Description = fieldSet.GetString("description"),
-                Price = fieldSet.GetDecimal("price")
+                Id = fieldSet.GetInt("ProductId"),
+                Name = fieldSet.GetString("Name"),
+                Description = fieldSet.GetString("Description"),
+                Price = fieldSet.GetDecimal("Price")
             };
         }
     }
