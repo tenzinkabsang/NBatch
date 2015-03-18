@@ -1,4 +1,5 @@
-﻿using Moq;
+﻿using System;
+using Moq;
 using NBatch.Core;
 using NBatch.Core.Repositories;
 using NUnit.Framework;
@@ -10,6 +11,16 @@ namespace NBatch.UnitTests
     [TestFixture]
     class JobTests
     {
+        [Test]
+        public void StepsMustHaveUniqueNames()
+        {
+            var step1 = FakeStep<string, string>.Create("step1");
+            var step2 = FakeStep<string, string>.Create("step1");
+            var jobRepo = new Mock<IJobRepository>();
+
+            Assert.Throws<InvalidStepNameException>(() => new Job(jobRepo.Object).AddStep(step1).AddStep(step2));
+        }
+
         [Test]
         public void JobCanContainMultipleSteps()
         {
@@ -29,7 +40,8 @@ namespace NBatch.UnitTests
                 .AddStep(step2)
                 .Start();
 
-            jobRepo.Verify(j => j.GetStartIndex(), Times.Exactly(2));
+            jobRepo.Verify(j => j.GetStartIndex("step1"), Times.Once);
+            jobRepo.Verify(j => j.GetStartIndex("step2"), Times.Once);
             VerifyMocks(step1, "STEP1: item read", "STEP1: item processed");
             VerifyMocks(step2, "STEP2: item read", "STEP2: item processed");
         }

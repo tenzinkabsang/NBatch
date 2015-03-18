@@ -6,12 +6,12 @@ using NBatch.Core.Reader.FileReader.Services;
 
 namespace NBatch.Core.Reader.FileReader
 {
-    sealed class FlatFileItemReader<TInput>:IReader<TInput>
+    sealed class FlatFileItemReader<TInput> : IReader<TInput>
     {
         private readonly ILineMapper<TInput> _lineMapper;
         private readonly IFileService _fileService;
 
-        public FlatFileItemReader(ILineMapper<TInput> lineMapper, IFileService fileService )
+        public FlatFileItemReader(ILineMapper<TInput> lineMapper, IFileService fileService)
         {
             _lineMapper = lineMapper;
             _fileService = fileService;

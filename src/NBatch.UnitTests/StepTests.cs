@@ -30,7 +30,7 @@ namespace NBatch.UnitTests
             step1.MockReader.Setup(r => r.Read(0, chunkSize)).Returns(Enumerable.Range(0, chunkSize).Select(s => "item read"));
             step1.MockProcessor.Setup(p => p.Process(It.IsAny<string>())).Returns("processed");
 
-            step1.Process(_jobRepo.Object);
+            step1.Process(0, _jobRepo.Object);
 
             step1.MockWriter.Verify(w => w.Write(It.Is<IEnumerable<string>>(items => items.Count() == itemCount)));
         }
@@ -44,7 +44,7 @@ namespace NBatch.UnitTests
 
             step.MockReader.Setup(r => r.Read(0, 1)).Throws<FlatFileParseException>();
 
-            step.Process(_jobRepo.Object);
+            step.Process(0, _jobRepo.Object);
 
             _jobRepo.Verify(j => j.GetExceptionCount());
             _jobRepo.Verify(j => j.IncrementExceptionCount());
@@ -58,7 +58,7 @@ namespace NBatch.UnitTests
 
             step.MockReader.Setup(r => r.Read(It.IsAny<int>(), It.IsAny<int>())).Throws<FlatFileParseException>();
 
-            Assert.Throws<FlatFileParseException>(() => step.Process(_jobRepo.Object));
+            Assert.Throws<FlatFileParseException>(() => step.Process(0, _jobRepo.Object));
             _jobRepo.Verify(r => r.GetExceptionCount(), Times.Never());
         }
     }

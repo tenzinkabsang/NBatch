@@ -9,17 +9,17 @@ namespace NBatch.Core
         public int SkipLimit { get; set; }
         private Type[] _skippableExceptions;
 
-        public bool IsSatisfiedBy(IJobRepository jobRepository, SkipContext skipContext)
+        public bool IsSatisfiedBy(IStepRepository stepRepository, SkipContext skipContext)
         {
             if (SkipLimit == 0)
                 return false;
 
-            int exceptionCount = jobRepository.GetExceptionCount();
+            int exceptionCount = stepRepository.GetExceptionCount();
             if (exceptionCount > SkipLimit || !_skippableExceptions.Contains(skipContext.GetExceptionType()))
                 return false;
 
-            jobRepository.IncrementExceptionCount();
-            jobRepository.SaveExceptionDetails(skipContext);
+            stepRepository.IncrementExceptionCount();
+            stepRepository.SaveExceptionDetails(skipContext);
             return true;
         }
 

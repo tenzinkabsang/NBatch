@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="DefaultLineMapper.cs" />
     <Compile Include="DelimitedLineTokenizer.cs" />
+    <Compile Include="Ensure.cs" />
     <Compile Include="Extensions\FlatFileItemReaderExt.cs" />
     <Compile Include="FieldSet.cs" />
     <Compile Include="FlatFileItemReader.cs" />

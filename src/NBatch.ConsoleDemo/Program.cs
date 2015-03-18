@@ -2,6 +2,8 @@
 using NBatch.Core.Reader.FileReader;
 using NBatch.Core.Reader.FileReader.Extensions;
 using System;
+using System.Reflection;
+using NBatch.Core.Repositories;
 
 namespace NBatch.ConsoleDemo
 {
@@ -9,11 +11,12 @@ namespace NBatch.ConsoleDemo
     {
         static void Main(string[] args)
         {
-            const string url = @"sample.txt";
+            string sourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
 
+            // Step to process the file
             IStep processFileStep = new Step<Product, Product>("processFileStep")
                 .UseFlatFileItemReader(
-                    resourceUrl: url,
+                    resourceUrl: sourceUrl,
                     fieldMapper: new ProductMapper(),
                     linesToSkip: 1,
                     headers: new[] { "ProductId", "Name", "Description", "Price" })
@@ -23,11 +26,15 @@ namespace NBatch.ConsoleDemo
                 .SetProcessor(new ProductUppercaseProcessor())
                 .SetWriter(new ConsoleWriter<Product>());
 
-            bool result = new Job()
+            // Step to clean-up the file after previous step is done processing it
+            IStep cleanUpStep = new CleanupStep(sourceUrl, @"Files\\Processed");
+
+            new Job()
                 .AddStep(processFileStep)
+                .AddStep(cleanUpStep)
                 .Start();
 
-            Console.WriteLine("Done with result: {0}", result);
+            Console.WriteLine("Finished job");
         }
     }
 }

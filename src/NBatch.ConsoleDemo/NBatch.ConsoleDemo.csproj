@@ -47,7 +47,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CleanupStep.cs" />
     <Compile Include="ConsoleWriter.cs" />
+    <Compile Include="PathUtil.cs" />
     <Compile Include="Product.cs" />
     <Compile Include="ProductUppercaseProcessor.cs" />
     <Compile Include="Program.cs" />
@@ -68,9 +70,12 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="sample.txt">
+    <Content Include="Files\NewItems\sample.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Files\Processed\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

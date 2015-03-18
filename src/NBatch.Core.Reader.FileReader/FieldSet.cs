@@ -72,9 +72,4 @@ namespace NBatch.Core.Reader.FileReader
                 throw new KeyNotFoundException("No value with the given name exists");
         }
     }
-
-    public static class Ensure
-    {
-
-    }
 }

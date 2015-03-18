@@ -9,7 +9,7 @@ namespace NBatch.Core.Repositories
         private readonly IList<int> _dbIndexes = new List<int> {0};
         private int _exceptionCount = 0;
 
-        public int GetStartIndex()
+        public int GetStartIndex(string stepName)
         {
             return _dbIndexes.Last();
         }

@@ -42,6 +42,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Ensure.cs" />
+    <Compile Include="InvalidStepNameException.cs" />
     <Compile Include="Repositories\IJobRepository.cs" />
     <Compile Include="ItemProcessor\DefaultProcessor.cs" />
     <Compile Include="ItemProcessor\IProcessor.cs" />
@@ -50,6 +52,7 @@
     <Compile Include="ItemWriter\IWriter.cs" />
     <Compile Include="Job.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Repositories\IStepRepository.cs" />
     <Compile Include="Repositories\JobRepository.cs" />
     <Compile Include="SkipContext.cs" />
     <Compile Include="SkipPolicy.cs" />

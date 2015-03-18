@@ -24,9 +24,8 @@ namespace NBatch.Core
             _skipPolicy = new SkipPolicy();
         }
 
-        public bool Process(IJobRepository jobRepository)
+        public bool Process(int startIndex, IStepRepository stepRepository)
         {
-            int startIndex = jobRepository.GetStartIndex();
             int headerIndexValue = startIndex + _chunkSize;
             bool success = true;
             IList<TInput> items = Enumerable.Empty<TInput>().ToList();
@@ -48,13 +47,13 @@ namespace NBatch.Core
                 }
                 catch (Exception ex)
                 {
-                    if (!_skipPolicy.IsSatisfiedBy(jobRepository, new SkipContext(startIndex, ex)))
+                    if (!_skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(startIndex, ex)))
                         throw;
                 }
                 finally
                 {
                     startIndex += _chunkSize;
-                    jobRepository.SaveIndex(startIndex);
+                    stepRepository.SaveIndex(startIndex);
                 }
 
             } while (items.Any() || FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(startIndex, headerIndexValue));
