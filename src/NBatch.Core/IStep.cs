@@ -1,5 +1,4 @@
-﻿using System.IO;
-using NBatch.Core.Repositories;
+﻿using NBatch.Core.Repositories;
 
 namespace NBatch.Core
 {
@@ -8,5 +7,4 @@ namespace NBatch.Core
         string Name { get; }
         bool Process(int startIndex, IStepRepository stepRepository);
     }
-
 }

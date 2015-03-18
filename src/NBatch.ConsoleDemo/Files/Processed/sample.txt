@@ -8,3 +8,4 @@
 7777,C++ In-Depth,Everything related to C++, 799.99
 8888,Scala Programming,Beautiful functional, 899.99
 9999,Reactive Extensions,Asynchrony at its best, 999.99
+9999,Reactive Extensions,Asynchrony at its best, 999.99

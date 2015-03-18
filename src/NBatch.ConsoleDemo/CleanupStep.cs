@@ -1,11 +1,14 @@
-﻿using System;
-using NBatch.Core;
+﻿using NBatch.Core;
 using NBatch.Core.Repositories;
+using System;
 using System.IO;
-using System.Reflection;
 
 namespace NBatch.ConsoleDemo
 {
+    /// <summary>
+    /// Copies the file from the source location into the destination path.
+    /// Not deleting the source file for this demo.
+    /// </summary>
     class CleanupStep : IStep
     {
         private readonly string _source;

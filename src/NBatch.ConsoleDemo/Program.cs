@@ -2,8 +2,6 @@
 using NBatch.Core.Reader.FileReader;
 using NBatch.Core.Reader.FileReader.Extensions;
 using System;
-using System.Reflection;
-using NBatch.Core.Repositories;
 
 namespace NBatch.ConsoleDemo
 {
