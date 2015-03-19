@@ -4,7 +4,7 @@ using NBatch.Core.Repositories;
 
 namespace NBatch.Core
 {
-    public sealed class SkipPolicy
+    sealed class SkipPolicy
     {
         public int SkipLimit { get; set; }
         private Type[] _skippableExceptions;
@@ -15,7 +15,7 @@ namespace NBatch.Core
                 return false;
 
             int exceptionCount = stepRepository.GetExceptionCount();
-            if (exceptionCount > SkipLimit || !_skippableExceptions.Contains(skipContext.GetExceptionType()))
+            if (exceptionCount >= SkipLimit || !_skippableExceptions.Contains(skipContext.GetExceptionType()))
                 return false;
 
             stepRepository.IncrementExceptionCount();

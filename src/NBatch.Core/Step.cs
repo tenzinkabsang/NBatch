@@ -28,11 +28,14 @@ namespace NBatch.Core
         {
             int headerIndexValue = startIndex + _chunkSize;
             bool success = true;
+            bool skip;
             IList<TInput> items = Enumerable.Empty<TInput>().ToList();
             do
             {
                 try
                 {
+                    skip = false;
+
                     // IReader
                     items = Reader.Read(startIndex, _chunkSize).ToList();
 
@@ -47,8 +50,8 @@ namespace NBatch.Core
                 }
                 catch (Exception ex)
                 {
-                    if (!_skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(startIndex, ex)))
-                        throw;
+                    skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(startIndex, ex));
+                    if (!skip) throw;
                 }
                 finally
                 {
@@ -56,7 +59,7 @@ namespace NBatch.Core
                     stepRepository.SaveIndex(startIndex);
                 }
 
-            } while (items.Any() || FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(startIndex, headerIndexValue));
+            } while (items.Any() || skip || FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(startIndex, headerIndexValue));
 
             return success;
         }

@@ -19,7 +19,7 @@ namespace NBatch.ConsoleDemo
                     linesToSkip: 1,
                     headers: new[] { "ProductId", "Name", "Description", "Price" })
                 .WithChunkSize(5)
-                .SkipLimit(10)
+                .SkipLimit(2)
                 .SkippableExceptions(typeof(FlatFileParseException))
                 .SetProcessor(new ProductUppercaseProcessor())
                 .SetWriter(new ConsoleWriter<Product>());
