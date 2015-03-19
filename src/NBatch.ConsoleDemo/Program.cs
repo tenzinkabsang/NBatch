@@ -25,7 +25,7 @@ namespace NBatch.ConsoleDemo
                 .SetWriter(new ConsoleWriter<Product>());
 
             // Step to clean-up the file after previous step is done processing it
-            IStep cleanUpStep = new CleanupStep(sourceUrl, @"Files\\Processed");
+            IStep cleanUpStep = new CleanupStep(sourceUrl, @"Files\Processed");
 
             new Job()
                 .AddStep(processFileStep)

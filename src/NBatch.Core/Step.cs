@@ -27,6 +27,7 @@ namespace NBatch.Core
         public bool Process(int startIndex, IStepRepository stepRepository)
         {
             int headerIndexValue = startIndex + _chunkSize;
+            int index = startIndex;
             bool success = true;
             bool skip;
             IList<TInput> items = Enumerable.Empty<TInput>().ToList();
@@ -37,7 +38,7 @@ namespace NBatch.Core
                     skip = false;
 
                     // IReader
-                    items = Reader.Read(startIndex, _chunkSize).ToList();
+                    items = Reader.Read(index, _chunkSize).ToList();
 
                     // IProcessor
                     TOutput[] processed = items.Select(item => Processor.Process(item))
@@ -50,16 +51,16 @@ namespace NBatch.Core
                 }
                 catch (Exception ex)
                 {
-                    skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(startIndex, ex));
+                    skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(Name, index, ex));
                     if (!skip) throw;
                 }
                 finally
                 {
-                    startIndex += _chunkSize;
-                    stepRepository.SaveIndex(startIndex);
+                    index += _chunkSize;
+                    stepRepository.SaveIndex(Name, index);
                 }
 
-            } while (items.Any() || skip || FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(startIndex, headerIndexValue));
+            } while (items.Any() || skip || FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(index, headerIndexValue));
 
             return success;
         }

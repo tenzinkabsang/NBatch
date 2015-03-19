@@ -6,6 +6,13 @@ namespace NBatch.Core.Reader.FileReader.Extensions
     public static class FlatFileItemReaderExt
     {
         public static Step<TInput, TOutput> UseFlatFileItemReader<TInput, TOutput>(this Step<TInput, TOutput> step,
+            string resourceUrl, IFieldSetMapper<TInput> fieldMapper, char token = DelimitedLineTokenizer.DEFAULT_TOKEN)
+        {
+            IReader<TInput> flatFileItemReader = CreateFlatFileReader(resourceUrl, fieldMapper, new DelimitedLineTokenizer(token));
+            return step.SetReader(flatFileItemReader);
+        }
+
+        public static Step<TInput, TOutput> UseFlatFileItemReader<TInput, TOutput>(this Step<TInput, TOutput> step,
             string resourceUrl, IFieldSetMapper<TInput> fieldMapper, int linesToSkip, string[] headers, char token = DelimitedLineTokenizer.DEFAULT_TOKEN)
         {
             IReader<TInput> flatFileItemReader = CreateFlatFileReader(resourceUrl, fieldMapper, new DelimitedLineTokenizer(headers, token));

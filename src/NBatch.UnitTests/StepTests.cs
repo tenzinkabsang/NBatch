@@ -46,9 +46,24 @@ namespace NBatch.UnitTests
 
             step.Process(0, _jobRepo.Object);
 
-            _jobRepo.Verify(j => j.GetExceptionCount());
-            _jobRepo.Verify(j => j.IncrementExceptionCount());
-            _jobRepo.Verify(j => j.SaveExceptionDetails(It.IsAny<SkipContext>()));
+            _jobRepo.Verify(j => j.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.StepName == "step1")));
+            _jobRepo.Verify(j => j.IncrementExceptionCount(It.IsAny<SkipContext>(), It.IsAny<int>()));
+        }
+
+        [Test]
+        public void WhenSkipLimitIsReachedThrowException()
+        {
+            // Using an in-memory job repository in order to increment exception count
+            var inMemoryJobRepo = new InMemoryJobRepository();
+
+            var step = FakeStep<string, string>.Create("step1");
+            step.WithChunkSize(10);
+            step.SkipLimit(5)
+                .SkippableExceptions(typeof (Exception));
+
+            step.MockReader.Setup(r => r.Read(It.IsAny<int>(), It.IsAny<int>())).Throws<FlatFileParseException>();
+
+            Assert.Throws<FlatFileParseException>(() => step.Process(0, inMemoryJobRepo));
         }
 
         [Test]
@@ -59,7 +74,7 @@ namespace NBatch.UnitTests
             step.MockReader.Setup(r => r.Read(It.IsAny<int>(), It.IsAny<int>())).Throws<FlatFileParseException>();
 
             Assert.Throws<FlatFileParseException>(() => step.Process(0, _jobRepo.Object));
-            _jobRepo.Verify(r => r.GetExceptionCount(), Times.Never());
+            _jobRepo.Verify(r => r.GetExceptionCount(It.IsAny<SkipContext>()), Times.Never());
         }
     }
 }

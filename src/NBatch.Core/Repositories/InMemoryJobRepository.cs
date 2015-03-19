@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace NBatch.Core.Repositories
 {
-    sealed class JobRepository : IJobRepository
+    sealed class InMemoryJobRepository : IJobRepository
     {
         private readonly IList<int> _dbIndexes = new List<int> {0};
         private int _exceptionCount = 0;
@@ -14,23 +14,19 @@ namespace NBatch.Core.Repositories
             return _dbIndexes.Last();
         }
 
-        public void SaveIndex(int index)
+        public void SaveIndex(string stepName, int index)
         {
             _dbIndexes.Add(index);
         }
 
-        public int GetExceptionCount()
+        public int GetExceptionCount(SkipContext context)
         {
             return _exceptionCount;
         }
 
-        public void IncrementExceptionCount()
+        public void IncrementExceptionCount(SkipContext skipContext, int currentCount)
         {
             ++_exceptionCount;
-        }
-
-        public void SaveExceptionDetails(SkipContext skipContext)
-        {
             Console.WriteLine("Skippable exception on line: {0} - {1}", skipContext.LineNumber, skipContext.Exception.Message);
         }
     }

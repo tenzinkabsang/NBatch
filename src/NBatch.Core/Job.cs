@@ -12,8 +12,14 @@ namespace NBatch.Core
         private readonly IDictionary<string, IStep> _steps;
 
         public Job()
-            : this(new JobRepository())
+            : this(new InMemoryJobRepository())
         {
+        }
+
+        public Job(string jobName, string conn)
+            :this(new SqlJobRepository(jobName, conn))
+        {
+            
         }
 
         internal Job(IJobRepository repo)

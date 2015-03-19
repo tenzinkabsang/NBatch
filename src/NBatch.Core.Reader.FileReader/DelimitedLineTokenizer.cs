@@ -1,9 +1,16 @@
-﻿namespace NBatch.Core.Reader.FileReader
+﻿using System.Linq;
+
+namespace NBatch.Core.Reader.FileReader
 {
-    public class DelimitedLineTokenizer : ILineTokenizer
+    sealed class DelimitedLineTokenizer : ILineTokenizer
     {
         private readonly char _token;
         public const char DEFAULT_TOKEN = ',';
+        
+        public DelimitedLineTokenizer(char token = DEFAULT_TOKEN)
+            :this(Enumerable.Empty<string>().ToArray(), token)
+        {
+        }
 
         public DelimitedLineTokenizer(string[] names, char token = DEFAULT_TOKEN)
         {

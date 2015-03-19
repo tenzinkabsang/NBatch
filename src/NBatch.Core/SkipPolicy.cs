@@ -14,12 +14,11 @@ namespace NBatch.Core
             if (SkipLimit == 0)
                 return false;
 
-            int exceptionCount = stepRepository.GetExceptionCount();
+            int exceptionCount = stepRepository.GetExceptionCount(skipContext);
             if (exceptionCount >= SkipLimit || !_skippableExceptions.Contains(skipContext.GetExceptionType()))
                 return false;
 
-            stepRepository.IncrementExceptionCount();
-            stepRepository.SaveExceptionDetails(skipContext);
+            stepRepository.IncrementExceptionCount(skipContext, exceptionCount);
             return true;
         }
 

@@ -2,9 +2,8 @@
 {
     public interface IStepRepository
     {
-        void SaveIndex(int index);
-        int GetExceptionCount();
-        void IncrementExceptionCount();
-        void SaveExceptionDetails(SkipContext skipContext);
+        void SaveIndex(string stepName, int index);
+        int GetExceptionCount(SkipContext skipContext);
+        void IncrementExceptionCount(SkipContext skipContext, int currentCount);
     }
 }
