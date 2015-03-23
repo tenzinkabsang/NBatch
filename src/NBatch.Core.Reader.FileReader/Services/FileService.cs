@@ -12,7 +12,7 @@ namespace NBatch.Core.Reader.FileReader.Services
             _resourceUrl = resourceUrl;
         }
 
-        public IEnumerable<string> ReadLines(int startIndex, int chunkSize)
+        public IEnumerable<string> ReadLines(long startIndex, int chunkSize)
         {
             int rowCounter = -1;
             int chunkCounter = 0;
@@ -37,7 +37,7 @@ namespace NBatch.Core.Reader.FileReader.Services
             return ++chunkCounter > chunkSize;
         }
 
-        private static bool LineAlreadyProcessed(int startIndex, ref int rowCounter)
+        private static bool LineAlreadyProcessed(long startIndex, ref int rowCounter)
         {
             return ++rowCounter < startIndex;
         }

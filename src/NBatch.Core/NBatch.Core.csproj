@@ -34,6 +34,7 @@
       <HintPath>..\packages\Newtonsoft.Json.6.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -44,6 +45,7 @@
   <ItemGroup>
     <Compile Include="Ensure.cs" />
     <Compile Include="InvalidStepNameException.cs" />
+    <Compile Include="JobContext.cs" />
     <Compile Include="Repositories\IJobRepository.cs" />
     <Compile Include="ItemProcessor\DefaultProcessor.cs" />
     <Compile Include="ItemProcessor\IProcessor.cs" />

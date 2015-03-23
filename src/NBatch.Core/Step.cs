@@ -24,10 +24,10 @@ namespace NBatch.Core
             _skipPolicy = new SkipPolicy();
         }
 
-        public bool Process(int startIndex, IStepRepository stepRepository)
+        public bool Process(long startIndex, IStepRepository stepRepository)
         {
-            int headerIndexValue = startIndex + _chunkSize;
-            int index = startIndex;
+            long headerIndexValue = startIndex + _chunkSize;
+            long index = startIndex;
             bool success = true;
             bool skip;
             IList<TInput> items = Enumerable.Empty<TInput>().ToList();
@@ -65,7 +65,7 @@ namespace NBatch.Core
             return success;
         }
 
-        private static bool FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(int startIndex, int headerIndexValue)
+        private static bool FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(long startIndex, long headerIndexValue)
         {
             return startIndex == headerIndexValue;
         }

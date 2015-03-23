@@ -18,7 +18,7 @@ namespace NBatch.Core
             if (exceptionCount >= SkipLimit || !_skippableExceptions.Contains(skipContext.GetExceptionType()))
                 return false;
 
-            stepRepository.IncrementExceptionCount(skipContext, exceptionCount);
+            stepRepository.SaveExceptionInfo(skipContext, exceptionCount);
             return true;
         }
 

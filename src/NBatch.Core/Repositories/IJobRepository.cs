@@ -1,8 +1,11 @@
 ﻿
+using System.Collections.Generic;
+
 namespace NBatch.Core.Repositories
 {
     public interface IJobRepository : IStepRepository
     {
-        int GetStartIndex(string stepName);
+        long GetStartIndex(string stepName);
+        void CreateJobRecord(ICollection<string> stepNames);
     }
 }

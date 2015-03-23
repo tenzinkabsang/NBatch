@@ -6,15 +6,20 @@ namespace NBatch.Core.Repositories
 {
     sealed class InMemoryJobRepository : IJobRepository
     {
-        private readonly IList<int> _dbIndexes = new List<int> {0};
+        private readonly IList<long> _dbIndexes = new List<long> {0};
         private int _exceptionCount = 0;
 
-        public int GetStartIndex(string stepName)
+        public long GetStartIndex(string stepName)
         {
             return _dbIndexes.Last();
         }
 
-        public void SaveIndex(string stepName, int index)
+        public void CreateJobRecord(ICollection<string> stepNames)
+        {
+            
+        }
+
+        public void SaveIndex(string stepName, long index)
         {
             _dbIndexes.Add(index);
         }
@@ -24,7 +29,7 @@ namespace NBatch.Core.Repositories
             return _exceptionCount;
         }
 
-        public void IncrementExceptionCount(SkipContext skipContext, int currentCount)
+        public void SaveExceptionInfo(SkipContext skipContext, int currentCount)
         {
             ++_exceptionCount;
             Console.WriteLine("Skippable exception on line: {0} - {1}", skipContext.LineNumber, skipContext.Exception.Message);

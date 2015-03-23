@@ -5,6 +5,6 @@ namespace NBatch.Core
     public interface IStep
     {
         string Name { get; }
-        bool Process(int startIndex, IStepRepository stepRepository);
+        bool Process(long startIndex, IStepRepository stepRepository);
     }
 }

@@ -19,7 +19,6 @@ namespace NBatch.Core
         public Job(string jobName, string conn)
             :this(new SqlJobRepository(jobName, conn))
         {
-            
         }
 
         internal Job(IJobRepository repo)
@@ -37,14 +36,17 @@ namespace NBatch.Core
 
         public bool Start()
         {
+            _repo.CreateJobRecord(_steps.Keys);
             bool success = _steps.Values.Aggregate(true, (current, step) =>
                                                          {
                                                              Log.InfoFormat("Processing Step: {0}", step.Name);
 
-                                                             int startIndex = _repo.GetStartIndex(step.Name);
+                                                             long startIndex = _repo.GetStartIndex(step.Name);
                                                              return current & step.Process(startIndex, _repo);
                                                          });
             return success;
         }
     }
+
+
 }

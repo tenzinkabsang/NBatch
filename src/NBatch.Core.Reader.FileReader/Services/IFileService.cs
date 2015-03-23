@@ -4,6 +4,6 @@ namespace NBatch.Core.Reader.FileReader.Services
 {
     public interface IFileService
     {
-        IEnumerable<string> ReadLines(int startIndex, int chunkSize);
+        IEnumerable<string> ReadLines(long startIndex, int chunkSize);
     }
 }

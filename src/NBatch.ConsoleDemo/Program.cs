@@ -27,7 +27,7 @@ namespace NBatch.ConsoleDemo
             // Step to clean-up the file after previous step is done processing it
             IStep cleanUpStep = new CleanupStep(sourceUrl, @"Files\Processed");
 
-            new Job()
+            new Job("DemoJob", "NBatchDb")
                 .AddStep(processFileStep)
                 .AddStep(cleanUpStep)
                 .Start();

@@ -19,7 +19,7 @@ namespace NBatch.Core.Reader.FileReader
 
         public int LinesToSkip { get; set; }
 
-        public IEnumerable<TInput> Read(int startIndex, int chunkSize)
+        public IEnumerable<TInput> Read(long startIndex, int chunkSize)
         {
             try
             {
@@ -40,7 +40,7 @@ namespace NBatch.Core.Reader.FileReader
             }
         }
 
-        private static bool IsFirstLine(int startIndex)
+        private static bool IsFirstLine(long startIndex)
         {
             return startIndex == 0;
         }
