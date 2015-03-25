@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NBatch.Reader.UnitTests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NBatch.Common", "NBatch.Common\NBatch.Common.csproj", "{F3AA8718-2313-4CAE-AEA4-3A5B93862C33}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NBatch.Core.Writer.SqlWriter", "NBatch.Core.Writer.SqlWriter\NBatch.Core.Writer.SqlWriter.csproj", "{E9652AFF-1E8D-4C56-A99C-81876D555CA1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NBatch.Main", "NBatch.Main\NBatch.Main.csproj", "{371067D3-7D12-4175-B753-55D3FB3E14AE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +51,14 @@ Global
 		{F3AA8718-2313-4CAE-AEA4-3A5B93862C33}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3AA8718-2313-4CAE-AEA4-3A5B93862C33}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3AA8718-2313-4CAE-AEA4-3A5B93862C33}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9652AFF-1E8D-4C56-A99C-81876D555CA1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9652AFF-1E8D-4C56-A99C-81876D555CA1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9652AFF-1E8D-4C56-A99C-81876D555CA1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9652AFF-1E8D-4C56-A99C-81876D555CA1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{371067D3-7D12-4175-B753-55D3FB3E14AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{371067D3-7D12-4175-B753-55D3FB3E14AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{371067D3-7D12-4175-B753-55D3FB3E14AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{371067D3-7D12-4175-B753-55D3FB3E14AE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

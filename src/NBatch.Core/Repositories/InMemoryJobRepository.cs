@@ -19,9 +19,9 @@ namespace NBatch.Core.Repositories
             
         }
 
-        public void SaveIndex(string stepName, long index)
+        public void SaveStepContext(StepContext stepContext)
         {
-            _dbIndexes.Add(index);
+            _dbIndexes.Add(stepContext.StepIndex);
         }
 
         public int GetExceptionCount(SkipContext context)

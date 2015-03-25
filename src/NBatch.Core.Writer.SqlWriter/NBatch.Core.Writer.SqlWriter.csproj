@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{F3AA8718-2313-4CAE-AEA4-3A5B93862C33}</ProjectGuid>
+    <ProjectGuid>{E9652AFF-1E8D-4C56-A99C-81876D555CA1}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NBatch.Common</RootNamespace>
-    <AssemblyName>NBatch.Common</AssemblyName>
+    <RootNamespace>NBatch.Core.Writer.SqlWriter</RootNamespace>
+    <AssemblyName>NBatch.Core.Writer.SqlWriter</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -30,10 +30,11 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="log4net">
-      <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
+    <Reference Include="Dapper">
+      <HintPath>..\packages\Dapper.1.39\lib\net45\Dapper.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -42,11 +43,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Db.cs" />
-    <Compile Include="ILogger.cs" />
-    <Compile Include="LogAdapter.cs" />
-    <Compile Include="LogManager.cs" />
+    <Compile Include="SqlDbItemWriter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NBatch.Core\NBatch.Core.csproj">
+      <Project>{8226eb9e-eb4a-497c-b94d-5793176d76c0}</Project>
+      <Name>NBatch.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

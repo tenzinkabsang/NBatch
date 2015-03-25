@@ -16,8 +16,8 @@ namespace NBatch.Core
         {
         }
 
-        public Job(string jobName, string conn)
-            :this(new SqlJobRepository(jobName, conn))
+        public Job(string jobName, string connectionStringName)
+            :this(new SqlJobRepository(jobName, connectionStringName))
         {
         }
 

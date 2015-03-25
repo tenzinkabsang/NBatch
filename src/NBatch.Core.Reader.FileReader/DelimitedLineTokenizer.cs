@@ -8,14 +8,14 @@ namespace NBatch.Core.Reader.FileReader
         public const char DEFAULT_TOKEN = ',';
         
         public DelimitedLineTokenizer(char token = DEFAULT_TOKEN)
-            :this(Enumerable.Empty<string>().ToArray(), token)
+            :this(null, token)
         {
         }
 
-        public DelimitedLineTokenizer(string[] names, char token = DEFAULT_TOKEN)
+        public DelimitedLineTokenizer(string[] names, char? token)
         {
-            _token = token;
-            Headers = names;
+            Headers = names ?? Enumerable.Empty<string>().ToArray();
+            _token = token ?? DEFAULT_TOKEN;
         }
 
         public FieldSet Tokenize(string line)

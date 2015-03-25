@@ -60,6 +60,7 @@
     <Compile Include="SkipContext.cs" />
     <Compile Include="SkipPolicy.cs" />
     <Compile Include="Step.cs" />
+    <Compile Include="StepContext.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -44,6 +44,7 @@
     <Compile Include="Ensure.cs" />
     <Compile Include="Extensions\FlatFileItemReaderExt.cs" />
     <Compile Include="FieldSet.cs" />
+    <Compile Include="FlatFileItemBuilder.cs" />
     <Compile Include="FlatFileItemReader.cs" />
     <Compile Include="FlatFileParseException.cs" />
     <Compile Include="IFieldSetMapper.cs" />

@@ -8,7 +8,7 @@ using NBatch.Core.Repositories;
 
 namespace NBatch.Core
 {
-    public class Step<TInput, TOutput>: IStep
+    public class Step<TInput, TOutput> : IStep
     {
         private int _chunkSize = 10;
         private readonly SkipPolicy _skipPolicy;
@@ -17,57 +17,63 @@ namespace NBatch.Core
         public IWriter<TOutput> Writer { get; private set; }
         public IProcessor<TInput, TOutput> Processor { get; private set; }
 
+        private readonly StepContext _ctx;
         public Step(string name)
         {
             Name = name;
             Processor = new DefaultProcessor<TInput, TOutput>();
             _skipPolicy = new SkipPolicy();
+            _ctx = new StepContext(Name);
         }
 
         public bool Process(long startIndex, IStepRepository stepRepository)
         {
-            long headerIndexValue = startIndex + _chunkSize;
-            long index = startIndex;
+            _ctx.HeaderIndexValue = startIndex + _chunkSize;
+            _ctx.StepIndex = startIndex;
+
             bool success = true;
-            bool skip;
             IList<TInput> items = Enumerable.Empty<TInput>().ToList();
+            TOutput[] processed = Enumerable.Empty<TOutput>().ToArray();
             do
             {
                 try
                 {
-                    skip = false;
+                    _ctx.Skip = false;
 
                     // IReader
-                    items = Reader.Read(index, _chunkSize).ToList();
+                    items = Reader.Read(_ctx.StepIndex, _chunkSize).ToList();
 
                     // IProcessor
-                    TOutput[] processed = items.Select(item => Processor.Process(item))
+                    processed = items.Select(item => Processor.Process(item))
                         .Where(result => result != null)
                         .ToArray();
 
                     // IWriter
-                    if(processed.Any())
+                    if (processed.Any())
                         success &= Writer.Write(processed);
                 }
                 catch (Exception ex)
                 {
-                    skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(Name, index, ex));
-                    if (!skip) throw;
+                    _ctx.Skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(_ctx.StepName, _ctx.StepIndex, ex));
+                    if (!_ctx.Skip)
+                    {
+                        _ctx.ExceptionThrown = true;
+                        throw;
+                    }
                 }
                 finally
                 {
-                    index += _chunkSize;
-                    stepRepository.SaveIndex(Name, index);
+                    if (!_ctx.ExceptionThrown)
+                    {
+                        _ctx.StepIndex += _chunkSize;
+                        _ctx.NumberOfItemsProcessed = processed.Length;
+                        stepRepository.SaveStepContext(_ctx);
+                    }
                 }
 
-            } while (items.Any() || skip || FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(index, headerIndexValue));
+            } while (items.Any() || _ctx.ShouldSkip);
 
             return success;
-        }
-
-        private static bool FirstIterationWithLinesToSkipAndChunkSizeOfEqualValue(long startIndex, long headerIndexValue)
-        {
-            return startIndex == headerIndexValue;
         }
 
         public Step<TInput, TOutput> SkippableExceptions(params Type[] exceptions)

@@ -2,7 +2,7 @@ namespace NBatch.ConsoleDemo
 {
     public class Product
     {
-        public int Id { get; set; }
+        public int ProductId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public decimal Price { get; set; }
@@ -10,7 +10,7 @@ namespace NBatch.ConsoleDemo
         public override string ToString()
         {
             return string.Format("{0}, {1}, {2}, {3:c}",
-                Id, Name, Description, Price);
+                ProductId, Name, Description, Price);
         }
     }
 }

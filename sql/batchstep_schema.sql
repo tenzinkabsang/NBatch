@@ -11,6 +11,7 @@ CREATE TABLE [dbo].[BatchStep](
 	[Id] [bigint] IDENTITY(1,1) NOT NULL,
 	[StepName] [nvarchar](100) NOT NULL,
 	[StepIndex] [bigint] NOT NULL,
+	[NumberOfItemsProcessed] [int] NOT NULL,
 	[JobName] [varchar](100) NOT NULL,
 	[LastRun] [datetime] NOT NULL,
  CONSTRAINT [PK_BatchStep] PRIMARY KEY CLUSTERED 
@@ -19,9 +20,6 @@ CREATE TABLE [dbo].[BatchStep](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 
-GO
-
-SET ANSI_PADDING OFF
 GO
 
 ALTER TABLE [dbo].[BatchStep]  WITH CHECK ADD  CONSTRAINT [FK_BatchStep_BatchJob] FOREIGN KEY([JobName])

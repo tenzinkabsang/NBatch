@@ -1,28 +1,26 @@
 ﻿using NBatch.Core;
+using NBatch.Core.ItemReader;
+using NBatch.Core.ItemWriter;
 using NBatch.Core.Reader.FileReader;
-using NBatch.Core.Reader.FileReader.Extensions;
+using NBatch.Core.Writer.SqlWriter;
 using System;
 
 namespace NBatch.ConsoleDemo
 {
     class Program
     {
+        static string SourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
+
         static void Main(string[] args)
         {
             string sourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
 
             // Step to process the file
             IStep processFileStep = new Step<Product, Product>("processFileStep")
-                .UseFlatFileItemReader(
-                    resourceUrl: sourceUrl,
-                    fieldMapper: new ProductMapper(),
-                    linesToSkip: 1,
-                    headers: new[] { "ProductId", "Name", "Description", "Price" })
-                .WithChunkSize(5)
-                .SkipLimit(2)
-                .SkippableExceptions(typeof(FlatFileParseException))
+                .SetReader(FlatFileReader())
                 .SetProcessor(new ProductUppercaseProcessor())
-                .SetWriter(new ConsoleWriter<Product>());
+                .SetWriter(SqlWriter())
+                .WithChunkSize(2);
 
             // Step to clean-up the file after previous step is done processing it
             IStep cleanUpStep = new CleanupStep(sourceUrl, @"Files\Processed");
@@ -33,6 +31,20 @@ namespace NBatch.ConsoleDemo
                 .Start();
 
             Console.WriteLine("Finished job");
+        }
+
+        private static IReader<Product> FlatFileReader()
+        {
+            return new FlatFileItemBuilder<Product>(SourceUrl, new ProductMapper())
+                .WithHeaders(new[] {"ProductId", "Name", "Description", "Price"})
+                .LinesToSkip(1)
+                .Build();
+        }
+
+        private static IWriter<Product> SqlWriter()
+        {
+            return new SqlDbItemWriter<Product>("NBatchDb")
+                        .SetSql("INSERT INTO Product (ProductId, Name, Description, Price) VALUES (@ProductId, @Name, @Description, @Price);");
         }
     }
 }

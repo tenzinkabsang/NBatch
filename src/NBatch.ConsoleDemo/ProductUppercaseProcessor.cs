@@ -11,7 +11,7 @@ namespace NBatch.ConsoleDemo
         {
             return new Product
             {
-                Id = input.Id,
+                ProductId = input.ProductId,
                 Name = input.Name.ToUpper(),
                 Description = input.Description.ToUpper(),
                 Price = input.Price
@@ -25,7 +25,7 @@ namespace NBatch.ConsoleDemo
         {
             return new Product
             {
-                Id = fieldSet.GetInt("ProductId"),
+                ProductId = fieldSet.GetInt("ProductId"),
                 Name = fieldSet.GetString("Name"),
                 Description = fieldSet.GetString("Description"),
                 Price = fieldSet.GetDecimal("Price")

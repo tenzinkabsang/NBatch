@@ -36,7 +36,7 @@ namespace NBatch.UnitTests
         }
 
         [Test]
-        public void SkippableExceptionsShouldBeSkippedUntilSkipLimitIsReached()
+        public void SkippableExceptionsAreSkipped()
         {
             var step = FakeStep<string, string>.Create("step1");
             step.SkipLimit(1)
@@ -48,6 +48,21 @@ namespace NBatch.UnitTests
 
             _jobRepo.Verify(j => j.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.StepName == "step1")));
             _jobRepo.Verify(j => j.SaveExceptionInfo(It.IsAny<SkipContext>(), It.IsAny<int>()));
+        }
+
+        [Test]
+        public void StepIndexNotIncrementedWhenExceptionThrownAndSkipLimitReached()
+        {
+            var step = FakeStep<string, string>.Create("step1");
+            step.SkipLimit(1).SkippableExceptions(typeof (FlatFileParseException));
+
+            _jobRepo.Setup(r => r.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.LineNumber == 1))).Returns(1);
+
+            step.MockReader.Setup(r => r.Read(It.IsAny<long>(), It.IsAny<int>())).Throws<FlatFileParseException>();
+
+            Assert.Throws<FlatFileParseException>(() => step.Process(0, _jobRepo.Object));
+            
+            _jobRepo.Verify(r => r.SaveStepContext(It.IsAny<StepContext>()), Times.Once());
         }
 
         [Test]
