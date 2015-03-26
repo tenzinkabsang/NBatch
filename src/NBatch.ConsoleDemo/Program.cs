@@ -19,8 +19,7 @@ namespace NBatch.ConsoleDemo
             IStep processFileStep = new Step<Product, Product>("processFileStep")
                 .SetReader(FlatFileReader())
                 .SetProcessor(new ProductUppercaseProcessor())
-                .SetWriter(SqlWriter())
-                .WithChunkSize(2);
+                .SetWriter(SqlWriter());
 
             // Step to clean-up the file after previous step is done processing it
             IStep cleanUpStep = new CleanupStep(sourceUrl, @"Files\Processed");

@@ -45,8 +45,8 @@ namespace NBatch.Core
 
                     // IProcessor
                     processed = items.Select(item => Processor.Process(item))
-                        .Where(result => result != null)
-                        .ToArray();
+                                     .Where(result => result != null)
+                                     .ToArray();
 
                     // IWriter
                     if (processed.Any())
@@ -70,7 +70,6 @@ namespace NBatch.Core
                         stepRepository.SaveStepContext(_ctx);
                     }
                 }
-
             } while (items.Any() || _ctx.ShouldSkip);
 
             return success;
