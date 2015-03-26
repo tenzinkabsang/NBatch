@@ -11,7 +11,7 @@ NBatch is inspired by Spring Batch and carries over some of the high level conce
 
 ## Documentation
 
-For a Getting started guide, API docs, etc. see the [documentation page](/docs/gettingStarted/readme.md)!
+For a Getting started guide, API docs, etc. see the [documentation page](/doc/gettingStarted/readme.md)!
 
 ## Sample
 Read items from a file, and print it to the console.
