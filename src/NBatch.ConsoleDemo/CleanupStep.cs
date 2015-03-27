@@ -1,7 +1,7 @@
-﻿using NBatch.Core;
-using NBatch.Core.Repositories;
-using System;
+﻿using System;
 using System.IO;
+using NBatch.Main.Core;
+using NBatch.Main.Core.Repositories;
 
 namespace NBatch.ConsoleDemo
 {

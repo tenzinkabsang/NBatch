@@ -1,15 +1,13 @@
-﻿using NBatch.Core;
-using NBatch.Core.ItemReader;
-using NBatch.Core.ItemWriter;
-using NBatch.Core.Reader.FileReader;
-using NBatch.Core.Writer.SqlWriter;
-using System;
+﻿using System;
+using NBatch.Main.Core;
+using NBatch.Main.Readers.FileReaders;
+using NBatch.Main.Writers.SqlWriter;
 
 namespace NBatch.ConsoleDemo
 {
     class Program
     {
-        static string SourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
+        static readonly string SourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
 
         static void Main(string[] args)
         {
@@ -18,13 +16,14 @@ namespace NBatch.ConsoleDemo
                 .SetReader(FlatFileReader())
                 .SetProcessor(new ProductUppercaseProcessor())
                 .SetWriter(SqlWriter());
+                //.WithChunkSize(1);
 
             // Step to clean-up the file after previous step is done processing it
             IStep cleanUpStep = new CleanupStep(SourceUrl, @"Files\Processed");
 
             new Job("DemoJob", "NBatchDb")
                 .AddStep(processFileStep)
-                .AddStep(cleanUpStep)
+                //.AddStep(cleanUpStep)
                 .Start();
 
             Console.WriteLine("Finished job");

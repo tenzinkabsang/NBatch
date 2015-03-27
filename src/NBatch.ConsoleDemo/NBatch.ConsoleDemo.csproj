@@ -64,18 +64,6 @@
     <Content Include="Files\Processed\sample.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\NBatch.Core.Reader.FileReader\NBatch.Core.Reader.FileReader.csproj">
-      <Project>{e372b7e8-dd6a-42f6-a5d8-89a883371b4c}</Project>
-      <Name>NBatch.Core.Reader.FileReader</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\NBatch.Core.Writer.SqlWriter\NBatch.Core.Writer.SqlWriter.csproj">
-      <Project>{e9652aff-1e8d-4c56-a99c-81876d555ca1}</Project>
-      <Name>NBatch.Core.Writer.SqlWriter</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\NBatch.Core\NBatch.Core.csproj">
-      <Project>{8226eb9e-eb4a-497c-b94d-5793176d76c0}</Project>
-      <Name>NBatch.Core</Name>
-    </ProjectReference>
     <ProjectReference Include="..\NBatch.Main\NBatch.Main.csproj">
       <Project>{371067d3-7d12-4175-b753-55d3fb3e14ae}</Project>
       <Name>NBatch.Main</Name>

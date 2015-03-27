@@ -30,38 +30,55 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Dapper, Version=1.39.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Dapper.1.39\lib\net45\Dapper.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
     <Reference Include="System.Data" />
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Common\Db.cs" />
+    <Compile Include="Common\Extensions.cs" />
+    <Compile Include="Core\Ensure.cs" />
+    <Compile Include="Core\InvalidStepNameException.cs" />
+    <Compile Include="Core\IStep.cs" />
+    <Compile Include="Core\DefaultProcessor.cs" />
+    <Compile Include="Core\IProcessor.cs" />
+    <Compile Include="Core\IReader.cs" />
+    <Compile Include="Core\IWriter.cs" />
+    <Compile Include="Core\Job.cs" />
+    <Compile Include="Core\JobContext.cs" />
+    <Compile Include="Core\Repositories\IJobRepository.cs" />
+    <Compile Include="Core\Repositories\InMemoryJobRepository.cs" />
+    <Compile Include="Core\Repositories\IStepRepository.cs" />
+    <Compile Include="Core\Repositories\SqlJobRepository.cs" />
+    <Compile Include="Core\SkipContext.cs" />
+    <Compile Include="Core\SkipPolicy.cs" />
+    <Compile Include="Core\Step.cs" />
+    <Compile Include="Core\StepContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Readers\FileReaders\DefaultLineMapper.cs" />
+    <Compile Include="Readers\FileReaders\DelimitedLineTokenizer.cs" />
+    <Compile Include="Readers\FileReaders\Ensure.cs" />
+    <Compile Include="Readers\FileReaders\Extensions\FlatFileItemReaderExt.cs" />
+    <Compile Include="Readers\FileReaders\FieldSet.cs" />
+    <Compile Include="Readers\FileReaders\FlatFileItemBuilder.cs" />
+    <Compile Include="Readers\FileReaders\FlatFileItemReader.cs" />
+    <Compile Include="Readers\FileReaders\FlatFileParseException.cs" />
+    <Compile Include="Readers\FileReaders\IFieldSetMapper.cs" />
+    <Compile Include="Readers\FileReaders\ILineMapper.cs" />
+    <Compile Include="Readers\FileReaders\ILineTokenizer.cs" />
+    <Compile Include="Readers\FileReaders\Services\FileService.cs" />
+    <Compile Include="Readers\FileReaders\Services\IFileService.cs" />
+    <Compile Include="Writers\SqlWriter\SqlDbItemWriter.cs" />
   </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
-    <ProjectReference Include="..\NBatch.Common\NBatch.Common.csproj">
-      <Project>{f3aa8718-2313-4cae-aea4-3a5b93862c33}</Project>
-      <Name>NBatch.Common</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\NBatch.Core.Reader.FileReader\NBatch.Core.Reader.FileReader.csproj">
-      <Project>{e372b7e8-dd6a-42f6-a5d8-89a883371b4c}</Project>
-      <Name>NBatch.Core.Reader.FileReader</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\NBatch.Core.Writer.SqlWriter\NBatch.Core.Writer.SqlWriter.csproj">
-      <Project>{e9652aff-1e8d-4c56-a99c-81876d555ca1}</Project>
-      <Name>NBatch.Core.Writer.SqlWriter</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\NBatch.Core\NBatch.Core.csproj">
-      <Project>{8226eb9e-eb4a-497c-b94d-5793176d76c0}</Project>
-      <Name>NBatch.Core</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Readers\FileReaders\" />
-    <Folder Include="Writers\" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

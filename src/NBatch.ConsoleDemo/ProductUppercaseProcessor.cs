@@ -1,7 +1,5 @@
-using NBatch.Core;
-using NBatch.Core.ItemProcessor;
-using NBatch.Core.ItemReader;
-using NBatch.Core.Reader.FileReader;
+using NBatch.Main.Core;
+using NBatch.Main.Readers.FileReaders;
 
 namespace NBatch.ConsoleDemo
 {
