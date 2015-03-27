@@ -1,6 +1,6 @@
 ﻿namespace NBatch.Core
 {
-    public sealed class JobContext
+    sealed class JobContext
     {
         public string JobName { get; private set; }
         public long StartIndex { get; private set; }

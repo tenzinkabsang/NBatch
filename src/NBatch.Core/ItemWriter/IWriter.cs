@@ -2,8 +2,8 @@
 
 namespace NBatch.Core.ItemWriter
 {
-    public interface IWriter<in TInput>
+    public interface IWriter<in TItem>
     {
-        bool Write(IEnumerable<TInput> items);
+        bool Write(IEnumerable<TItem> items);
     }
 }

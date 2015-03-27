@@ -13,8 +13,6 @@ namespace NBatch.ConsoleDemo
 
         static void Main(string[] args)
         {
-            string sourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
-
             // Step to process the file
             IStep processFileStep = new Step<Product, Product>("processFileStep")
                 .SetReader(FlatFileReader())
@@ -22,7 +20,7 @@ namespace NBatch.ConsoleDemo
                 .SetWriter(SqlWriter());
 
             // Step to clean-up the file after previous step is done processing it
-            IStep cleanUpStep = new CleanupStep(sourceUrl, @"Files\Processed");
+            IStep cleanUpStep = new CleanupStep(SourceUrl, @"Files\Processed");
 
             new Job("DemoJob", "NBatchDb")
                 .AddStep(processFileStep)
