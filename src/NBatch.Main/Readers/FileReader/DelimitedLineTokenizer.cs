@@ -1,6 +1,6 @@
 ﻿using System.Linq;
 
-namespace NBatch.Main.Readers.FileReaders
+namespace NBatch.Main.Readers.FileReader
 {
     sealed class DelimitedLineTokenizer : ILineTokenizer
     {

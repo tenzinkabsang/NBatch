@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 
-namespace NBatch.Main.Readers.FileReaders.Services
+namespace NBatch.Main.Readers.FileReader.Services
 {
     sealed class FileService : IFileService
     {

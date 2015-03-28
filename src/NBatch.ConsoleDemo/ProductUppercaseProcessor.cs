@@ -1,5 +1,5 @@
 using NBatch.Main.Core;
-using NBatch.Main.Readers.FileReaders;
+using NBatch.Main.Readers.FileReader;
 
 namespace NBatch.ConsoleDemo
 {
@@ -12,6 +12,20 @@ namespace NBatch.ConsoleDemo
                 ProductId = input.ProductId,
                 Name = input.Name.ToUpper(),
                 Description = input.Description.ToUpper(),
+                Price = input.Price
+            };
+        }
+    }
+
+    public class ProductLowercaseProcessor : IProcessor<Product, Product>
+    {
+        public Product Process(Product input)
+        {
+            return new Product
+            {
+                ProductId = input.ProductId,
+                Name = input.Name.ToLower(),
+                Description = input.Description.ToLower(),
                 Price = input.Price
             };
         }

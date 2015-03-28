@@ -4,12 +4,12 @@ using System.Linq;
 
 namespace NBatch.Main.Core
 {
-    public static class Ensure
+    static class Ensure
     {
         public static void UniqueStepName(ICollection<string> steps, IStep newStep)
         {
             bool isUnique = steps.All(s => !s.Equals(newStep.Name, StringComparison.OrdinalIgnoreCase));
-            if(!isUnique)
+            if (!isUnique)
                 throw new InvalidStepNameException(newStep.Name);
         }
     }

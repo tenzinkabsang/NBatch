@@ -2,9 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using NBatch.Main.Core;
-using NBatch.Main.Readers.FileReaders.Services;
+using NBatch.Main.Readers.FileReader.Services;
 
-namespace NBatch.Main.Readers.FileReaders
+namespace NBatch.Main.Readers.FileReader
 {
     public sealed class FlatFileItemReader<TInput> : IReader<TInput>
     {

@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace NBatch.Main.Readers.FileReaders
+namespace NBatch.Main.Readers.FileReader
 {
     public sealed class FieldSet
     {

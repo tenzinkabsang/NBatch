@@ -1,8 +1,8 @@
-using NBatch.Main.Readers.FileReaders.Services;
+using NBatch.Main.Readers.FileReader.Services;
 
-namespace NBatch.Main.Readers.FileReaders
+namespace NBatch.Main.Readers.FileReader
 {
-    public class FlatFileItemBuilder<TItem>
+    public sealed class FlatFileItemBuilder<TItem>
     {
         private readonly string _resourceUrl;
         private readonly IFieldSetMapper<TItem> _fieldMapper;

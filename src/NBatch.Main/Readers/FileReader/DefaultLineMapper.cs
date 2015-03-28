@@ -1,4 +1,4 @@
-﻿namespace NBatch.Main.Readers.FileReaders
+﻿namespace NBatch.Main.Readers.FileReader
 {
     sealed class DefaultLineMapper<T>: ILineMapper<T>
     {

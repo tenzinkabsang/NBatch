@@ -1,28 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data.SqlClient;
-using System.Linq;
-using Dapper;
+﻿using Dapper;
+using NBatch.Main.Common;
 using NBatch.Main.Core;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NBatch.Main.Writers.SqlWriter
 {
-    public class SqlDbItemWriter<TItem> : IWriter<TItem>
+    public sealed class SqlDbItemWriter<TItem> : IWriter<TItem>
     {
-        private readonly string _conn;
         private string _sql;
+        private readonly IDb _db;
 
         public SqlDbItemWriter(string connectionStringName)
+            :this(new Db(connectionStringName))
         {
-            _conn = ConfigurationManager.ConnectionStrings[connectionStringName].ConnectionString;
         }
 
-        public bool Write(IEnumerable<TItem> items)
+        internal SqlDbItemWriter(IDb db)
         {
-            var itemsToInsert = items != null ? items.ToArray() : Enumerable.Empty<TItem>().ToArray();
-            int result = BulkInsertContacts(itemsToInsert);
-            return result == itemsToInsert.Length;
+            _db = db;
         }
 
         public SqlDbItemWriter<TItem> SetSql(string sql)
@@ -31,26 +27,13 @@ namespace NBatch.Main.Writers.SqlWriter
             return this;
         }
 
-        private int BulkInsertContacts(params TItem[] items)
+        public bool Write(IEnumerable<TItem> items)
         {
-            using (var conn = new SqlConnection(_conn))
-            {
-                conn.Open();
-                using (var tranx = conn.BeginTransaction())
-                {
-                    try
-                    {
-                        int result = conn.Execute(_sql, items, tranx);
-                        tranx.Commit();
-                        return result;
-                    }
-                    catch (Exception)
-                    {
-                        tranx.Rollback();
-                        throw;
-                    }
-                }
-            }
+            TItem[] itemsToInsert = items != null ? items.ToArray() : Enumerable.Empty<TItem>().ToArray();
+
+            int result = _db.ExecuteQuery((conn, tx) => conn.Execute(_sql, itemsToInsert, tx));
+
+            return result == itemsToInsert.Length;
         }
     }
 }

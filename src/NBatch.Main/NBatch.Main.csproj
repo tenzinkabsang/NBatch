@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="Common\Db.cs" />
     <Compile Include="Common\Extensions.cs" />
+    <Compile Include="Common\IDb.cs" />
     <Compile Include="Core\Ensure.cs" />
     <Compile Include="Core\InvalidStepNameException.cs" />
     <Compile Include="Core\IStep.cs" />
@@ -51,7 +52,6 @@
     <Compile Include="Core\IReader.cs" />
     <Compile Include="Core\IWriter.cs" />
     <Compile Include="Core\Job.cs" />
-    <Compile Include="Core\JobContext.cs" />
     <Compile Include="Core\Repositories\IJobRepository.cs" />
     <Compile Include="Core\Repositories\InMemoryJobRepository.cs" />
     <Compile Include="Core\Repositories\IStepRepository.cs" />
@@ -61,19 +61,19 @@
     <Compile Include="Core\Step.cs" />
     <Compile Include="Core\StepContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Readers\FileReaders\DefaultLineMapper.cs" />
-    <Compile Include="Readers\FileReaders\DelimitedLineTokenizer.cs" />
-    <Compile Include="Readers\FileReaders\Ensure.cs" />
-    <Compile Include="Readers\FileReaders\Extensions\FlatFileItemReaderExt.cs" />
-    <Compile Include="Readers\FileReaders\FieldSet.cs" />
-    <Compile Include="Readers\FileReaders\FlatFileItemBuilder.cs" />
-    <Compile Include="Readers\FileReaders\FlatFileItemReader.cs" />
-    <Compile Include="Readers\FileReaders\FlatFileParseException.cs" />
-    <Compile Include="Readers\FileReaders\IFieldSetMapper.cs" />
-    <Compile Include="Readers\FileReaders\ILineMapper.cs" />
-    <Compile Include="Readers\FileReaders\ILineTokenizer.cs" />
-    <Compile Include="Readers\FileReaders\Services\FileService.cs" />
-    <Compile Include="Readers\FileReaders\Services\IFileService.cs" />
+    <Compile Include="Readers\FileReader\DefaultLineMapper.cs" />
+    <Compile Include="Readers\FileReader\DelimitedLineTokenizer.cs" />
+    <Compile Include="Readers\FileReader\Extensions\FlatFileItemReaderExt.cs" />
+    <Compile Include="Readers\FileReader\FieldSet.cs" />
+    <Compile Include="Readers\FileReader\FlatFileItemBuilder.cs" />
+    <Compile Include="Readers\FileReader\FlatFileItemReader.cs" />
+    <Compile Include="Readers\FileReader\FlatFileParseException.cs" />
+    <Compile Include="Readers\FileReader\IFieldSetMapper.cs" />
+    <Compile Include="Readers\FileReader\ILineMapper.cs" />
+    <Compile Include="Readers\FileReader\ILineTokenizer.cs" />
+    <Compile Include="Readers\FileReader\Services\FileService.cs" />
+    <Compile Include="Readers\FileReader\Services\IFileService.cs" />
+    <Compile Include="Readers\SqlReader\SqlDbItemReader.cs" />
     <Compile Include="Writers\SqlWriter\SqlDbItemWriter.cs" />
   </ItemGroup>
   <ItemGroup />

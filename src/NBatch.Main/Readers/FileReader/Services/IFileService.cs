@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace NBatch.Main.Readers.FileReaders.Services
+namespace NBatch.Main.Readers.FileReader.Services
 {
     public interface IFileService
     {

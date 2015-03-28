@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using Moq;
-using NBatch.Main.Readers.FileReaders;
+using NBatch.Main.Readers.FileReader;
 using NUnit.Framework;
 
 namespace NBatch.Main.UnitTests.Readers.FileReaders

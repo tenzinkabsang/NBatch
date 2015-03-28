@@ -1,6 +1,7 @@
 ﻿using System;
 using NBatch.Main.Core;
-using NBatch.Main.Readers.FileReaders;
+using NBatch.Main.Readers.FileReader;
+using NBatch.Main.Readers.SqlReader;
 using NBatch.Main.Writers.SqlWriter;
 
 namespace NBatch.ConsoleDemo
@@ -11,36 +12,62 @@ namespace NBatch.ConsoleDemo
 
         static void Main(string[] args)
         {
+           
+            ExecuteJob1();
+
+            ExecuteJob2();
+
+            Console.WriteLine("Finished job");
+        }
+
+        private static void ExecuteJob1()
+        {
             // Step to process the file
             IStep processFileStep = new Step<Product, Product>("processFileStep")
                 .SetReader(FlatFileReader())
                 .SetProcessor(new ProductUppercaseProcessor())
-                .SetWriter(SqlWriter());
-                //.WithChunkSize(1);
+                .SetWriter(SqlWriter("Product"));
 
             // Step to clean-up the file after previous step is done processing it
             IStep cleanUpStep = new CleanupStep(SourceUrl, @"Files\Processed");
 
-            new Job("DemoJob", "NBatchDb")
+            new Job("Job1", "NBatchDb")
                 .AddStep(processFileStep)
                 //.AddStep(cleanUpStep)
                 .Start();
+        }
 
-            Console.WriteLine("Finished job");
+        private static void ExecuteJob2()
+        {
+            IStep processDb = new Step<Product, Product>("dbProcessor")
+                .SetReader(SqlReader())
+                .SetProcessor(new ProductLowercaseProcessor())
+                .SetWriter(SqlWriter("SaleProduct"))
+                .WithChunkSize(3);
+
+            new Job("DemoJob2", "NBatchDb")
+                .AddStep(processDb)
+                .Start();
         }
 
         private static IReader<Product> FlatFileReader()
         {
             return new FlatFileItemBuilder<Product>(SourceUrl, new ProductMapper())
-                .WithHeaders(new[] {"ProductId", "Name", "Description", "Price"})
+                .WithHeaders(new[] { "ProductId", "Name", "Description", "Price" })
                 .LinesToSkip(1)
                 .Build();
         }
 
-        private static IWriter<Product> SqlWriter()
+        private static IWriter<Product> SqlWriter(string table)
         {
             return new SqlDbItemWriter<Product>("NBatchDb")
-                        .SetSql("INSERT INTO Product (ProductId, Name, Description, Price) VALUES (@ProductId, @Name, @Description, @Price);");
+                        .SetSql(string.Format("INSERT INTO {0} (ProductId, Name, Description, Price) VALUES (@ProductId, @Name, @Description, @Price);", table));
+        }
+
+        private static IReader<Product> SqlReader()
+        {
+            return new SqlDbItemReader<Product>("NBatchDb")
+                .SetSql("Select * from Product order by ProductId");
         }
     }
 }

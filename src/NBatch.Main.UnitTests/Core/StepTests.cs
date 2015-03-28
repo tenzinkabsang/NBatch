@@ -4,7 +4,7 @@ using System.Linq;
 using Moq;
 using NBatch.Main.Core;
 using NBatch.Main.Core.Repositories;
-using NBatch.Main.Readers.FileReaders;
+using NBatch.Main.Readers.FileReader;
 using NUnit.Framework;
 
 namespace NBatch.Main.UnitTests.Core

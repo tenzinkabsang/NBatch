@@ -1,7 +1,7 @@
 ﻿using System.Linq;
 using Moq;
-using NBatch.Main.Readers.FileReaders;
-using NBatch.Main.Readers.FileReaders.Services;
+using NBatch.Main.Readers.FileReader;
+using NBatch.Main.Readers.FileReader.Services;
 using NUnit.Framework;
 
 namespace NBatch.Main.UnitTests.Readers.FileReaders

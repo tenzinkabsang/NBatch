@@ -1,6 +1,6 @@
 using System;
 
-namespace NBatch.Main.Readers.FileReaders
+namespace NBatch.Main.Readers.FileReader
 {
     public sealed class FlatFileParseException : Exception
     {
