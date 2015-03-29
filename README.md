@@ -14,13 +14,21 @@ NBatch is inspired by Spring Batch and carries over some of the high level conce
 For a Getting started guide, API docs, etc. see the [documentation page](/doc/gettingStarted/readme.md)!
 
 ## Sample
-Read items from a file, uppercase all values and save it to a database.
+Parse items from a file, uppercase all values and save it to a database.
+
+sample.csv
+```
+ProductId,	Name,				Description
+1111,		C# For Dummies,		The book you should avoid
+2222,		Design Patterns,	Just a template
+3333,		Java 8 In Depth,	Finally Lambdas
+```
 
 ```C#
 // Define a reader
 public static IReader<Product> FlatFileReader() 
 {
-   string sourceUrl = @"c:\sample.txt";
+   string sourceUrl = @"c:\sample.csv";
    return new FlatFileItemBuilder<Product>(sourceUrl, new ProductMapper())
 	      .WithHeaders(new[] {"Name", "Description" })
 	      .LinesToSkip(1)
