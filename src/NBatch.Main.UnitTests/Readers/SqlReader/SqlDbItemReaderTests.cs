@@ -11,7 +11,9 @@ namespace NBatch.Main.UnitTests.Readers.SqlReader
         {
             var fakeDb = new FakeDb();
 
-            var sqlReader = new SqlDbItemReader<string>(fakeDb);
+            var sqlReader = new SqlDbItemReader<string>(fakeDb)
+                .Query("query")
+                .OrderBy("foo");
 
             sqlReader.Read(0, 10);
 

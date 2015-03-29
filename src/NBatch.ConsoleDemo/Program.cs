@@ -67,7 +67,8 @@ namespace NBatch.ConsoleDemo
         private static IReader<Product> SqlReader()
         {
             return new SqlDbItemReader<Product>("NBatchDb")
-                .SetSql("Select * from Product order by ProductId");
+                .Query("Select * from Product")
+                .OrderBy("ProductId");
         }
     }
 }
