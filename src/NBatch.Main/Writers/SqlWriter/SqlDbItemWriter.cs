@@ -21,7 +21,7 @@ namespace NBatch.Main.Writers.SqlWriter
             _db = db;
         }
 
-        public SqlDbItemWriter<TItem> SetSql(string sql)
+        public SqlDbItemWriter<TItem> Query(string sql)
         {
             _sql = sql;
             return this;

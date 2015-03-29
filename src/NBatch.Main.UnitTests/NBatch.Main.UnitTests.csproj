@@ -53,6 +53,7 @@
     <Compile Include="Readers\FileReaders\FlatFileItemReaderTests.cs" />
     <Compile Include="FakeDb.cs" />
     <Compile Include="Readers\SqlReader\SqlDbItemReaderTests.cs" />
+    <Compile Include="Writers\FileWriter\FlatFileItemWriterTests.cs" />
     <Compile Include="Writers\SqlWriter\SqlDbItemWriterTests.cs" />
   </ItemGroup>
   <ItemGroup>

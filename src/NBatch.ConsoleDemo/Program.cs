@@ -61,7 +61,7 @@ namespace NBatch.ConsoleDemo
         private static IWriter<Product> SqlWriter(string table)
         {
             return new SqlDbItemWriter<Product>("NBatchDb")
-                        .SetSql(string.Format("INSERT INTO {0} (ProductId, Name, Description, Price) VALUES (@ProductId, @Name, @Description, @Price);", table));
+                        .Query(string.Format("INSERT INTO {0} (ProductId, Name, Description, Price) VALUES (@ProductId, @Name, @Description, @Price);", table));
         }
 
         private static IReader<Product> SqlReader()

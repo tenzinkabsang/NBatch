@@ -7,7 +7,7 @@ namespace NBatch.Main.UnitTests.Readers.SqlReader
     class SqlDbItemReaderTests
     {
         [Test]
-        public void WriteSomeAwesomeTest()
+        public void DbIsCalledForActualExecution()
         {
             var fakeDb = new FakeDb();
 
@@ -18,6 +18,13 @@ namespace NBatch.Main.UnitTests.Readers.SqlReader
             sqlReader.Read(0, 10);
 
             Assert.That(fakeDb.ExecuteCalled, Is.True);
+        }
+
+        [Test]
+        public void OrderByClauseMustBeSet()
+        {
+            var sqlReader = new SqlDbItemReader<string>(new FakeDb());
+            Assert.That(() => sqlReader.Read(0, 10), Throws.Exception.Message.Contains("order by clause"));
         }
     }
 }
