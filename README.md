@@ -14,23 +14,59 @@ NBatch is inspired by Spring Batch and carries over some of the high level conce
 For a Getting started guide, API docs, etc. see the [documentation page](/doc/gettingStarted/readme.md)!
 
 ## Sample
-Read items from a file, and print it to the console.
+Read items from a file, uppercase all values and save it to a database.
 
 ```C#
-static void Main(string[] args)
+// Define a reader
+public static IReader<Product> FlatFileReader() 
 {
-    string sourceUrl = @"c:\sample.txt";
-    
-    IStep processFileStep = new Step<Product, Product>("processFileStep")
-        .UseFlatFileItemReader(url: sourceUrl, fieldMapper: new ProductMapper())
-        .SetWriter(new ConsoleWriter<Product>());
+   string sourceUrl = @"c:\sample.txt";
+   return new FlatFileItemBuilder<Product>(sourceUrl, new ProductMapper())
+	      .WithHeaders(new[] {"Name", "Description" })
+	      .LinesToSkip(1)
+	      .Build();
+}
+```
+```C#
+// Define a writer
+public static IWriter<Product> SqlWriter()
+{
+    return new SqlDbItemWriter<Product>("myDB")
+              .SetSql("INSERT INTO Product (Name, Description) VALUES (@Name, @Description)");
+}
+```
 
-    new Job()
+```C#
+// Define an optional processor if you need to do any transformation
+// before sending it to the writer.
+public class ProductUppercaseProcessor : IProcessor<Product, Product>
+{
+    public Product Process(Product input)
+    {
+        return new Product
+			        {
+			            Name = input.Name.ToUpper(),
+			            Description = input.Description.ToUpper()
+			        };
+    }
+}
+```
+
+```C#
+public static void Main(string[] args)
+{
+	// Create a Step containing the reader, processor and writer.
+	IStep processFileStep = new Step<Product, Product>("step1")
+	        .SetReader(FlatFileReader())
+	        .SetProcessor(new ProductUppercaseProcessor())
+	        .SetWriter(SqlWriter());
+        
+    // Create a Job with the step and run.
+    new Job("myJob", "myDB")
         .AddStep(processFileStep)
         .Start();
 }
 ```
-
 
 ## Want to contribute?
 
@@ -40,4 +76,3 @@ static void Main(string[] args)
 3. Commit your changes: `git commit -am 'Add some feature'`
 4. Push to the branch: `git push origin my-new-feature`
 5. Submit a pull request :D
-
