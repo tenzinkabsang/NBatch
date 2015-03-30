@@ -1,10 +1,10 @@
 ﻿using NBatch.Main.Core;
 using System.Collections.Generic;
-using System.Text;
+using System.Linq;
 
 namespace NBatch.Main.Writers.FileWriter
 {
-    public sealed class FlatFileItemWriter<TItem> : IWriter<TItem>
+    public sealed class FlatFileItemWriter<TItem> : IWriter<TItem> where TItem : class
     {
         private readonly IPropertyValueSerializer _serializer;
         private readonly IFileWriterService _fileService;
@@ -20,7 +20,7 @@ namespace NBatch.Main.Writers.FileWriter
             _fileService = fileService;
         }
 
-        public FlatFileItemWriter<TItem> Token(char token)
+        public FlatFileItemWriter<TItem> WithToken(char token)
         {
             _serializer.Token = token;
             return this;
@@ -28,9 +28,13 @@ namespace NBatch.Main.Writers.FileWriter
 
         public bool Write(IEnumerable<TItem> items)
         {
-            StringBuilder values = _serializer.Serialize(items);
+            IEnumerable<string> values = _serializer.Serialize(items).ToList();
 
-            return _fileService.Write(values.ToString());
+            if (!values.Any()) 
+                return false;
+
+            _fileService.WriteFile(values);
+            return true;
         }
     }
 }

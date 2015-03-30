@@ -74,6 +74,7 @@
     <Compile Include="Readers\FileReader\Services\FileService.cs" />
     <Compile Include="Readers\FileReader\Services\IFileService.cs" />
     <Compile Include="Readers\SqlReader\SqlDbItemReader.cs" />
+    <Compile Include="Writers\FileWriter\FileWriterService.cs" />
     <Compile Include="Writers\FileWriter\FlatFileItemWriter.cs" />
     <Compile Include="Writers\FileWriter\IFileWriterService.cs" />
     <Compile Include="Writers\FileWriter\IPropertyValueSerializer.cs" />

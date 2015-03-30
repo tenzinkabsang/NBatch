@@ -11,7 +11,11 @@ namespace NBatch.ConsoleDemo
 
             value = value.Substring(0, value.IndexOf("bin", StringComparison.Ordinal));
 
-            return Path.Combine(value, @file);
+            string path = Path.Combine(value, @file);
+
+            Console.WriteLine(path);
+
+            return path;
         }
     }
 }

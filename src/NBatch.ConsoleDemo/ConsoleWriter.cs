@@ -1,7 +1,6 @@
+using NBatch.Main.Core;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using NBatch.Main.Core;
 
 namespace NBatch.ConsoleDemo
 {
@@ -9,8 +8,8 @@ namespace NBatch.ConsoleDemo
     {
         public bool Write(IEnumerable<TInput> items)
         {
-            items.ToList()
-                .ForEach(item => Console.WriteLine(item));
+            foreach (var item in items)
+                Console.WriteLine(item);
 
             return true;
         }

@@ -16,7 +16,7 @@ namespace NBatch.Main.Readers.FileReader.Services
         {
             int rowCounter = -1;
             int chunkCounter = 0;
-            using (var reader = File.OpenText(_resourceUrl))
+            using (StreamReader reader = File.OpenText(_resourceUrl))
             {
                 string input;
                 while ((input = reader.ReadLine()) != null)

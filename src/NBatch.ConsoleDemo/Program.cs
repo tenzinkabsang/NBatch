@@ -1,4 +1,5 @@
 ﻿using System;
+using NBatch.ConsoleDemo.Tests;
 using NBatch.Main.Core;
 using NBatch.Main.Readers.FileReader;
 using NBatch.Main.Readers.SqlReader;
@@ -8,14 +9,11 @@ namespace NBatch.ConsoleDemo
 {
     class Program
     {
-        static readonly string SourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
+        public static readonly string SourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
 
         static void Main(string[] args)
         {
-           
-            ExecuteJob1();
-
-            ExecuteJob2();
+            SqlReaderFileWriterTest.Run();
 
             Console.WriteLine("Finished job");
         }

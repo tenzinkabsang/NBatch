@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Moq;
 using NBatch.Main.Readers.FileReader.Services;
@@ -14,31 +15,33 @@ namespace NBatch.Main.UnitTests.Writers.FileWriter
         public void CallsPropertyValueSerializerToReadAllPropValues()
         {
             var propSerializer = new Mock<IPropertyValueSerializer>();
-            propSerializer.Setup(p => p.Serialize(It.IsAny<IEnumerable<object>>())).Returns(new StringBuilder());
             var fileService = new Mock<IFileWriterService>();
             
             var fileWriter = new FlatFileItemWriter<string>(propSerializer.Object, fileService.Object);
 
             var values = new[] { "one", "two" };
 
-            fileWriter.Write(values);
+            bool isSaved = fileWriter.Write(values);
 
+            Assert.IsFalse(isSaved);
             propSerializer.Verify(p => p.Serialize(values));
+            fileService.Verify(f => f.WriteFile(It.IsAny<IEnumerable<string>>()), Times.Never());
         }
 
         [Test]
         public void CallsFileServiceToWriterItemsToFile()
         {
-            var strBuilder = new StringBuilder("hello");
+            var values = new[] {"hello"};
             var propSerializer = new Mock<IPropertyValueSerializer>();
-            propSerializer.Setup(p => p.Serialize(It.IsAny<IEnumerable<object>>())).Returns(strBuilder);
+            propSerializer.Setup(p => p.Serialize(It.IsAny<IEnumerable<object>>())).Returns(values);
 
             var fileService = new Mock<IFileWriterService>();
             var fileWriter = new FlatFileItemWriter<string>(propSerializer.Object, fileService.Object);
 
-            fileWriter.Write(new[] { "one" });
+            bool isSaved = fileWriter.Write(new[] { "one" });
 
-            fileService.Verify(f => f.Write(strBuilder.ToString()));
+            Assert.IsTrue(isSaved);
+            fileService.Verify(f => f.WriteFile(values));
         }
     }
 }

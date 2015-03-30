@@ -1,11 +1,10 @@
 ﻿using System.Collections.Generic;
-using System.Text;
 
 namespace NBatch.Main.Writers.FileWriter
 {
     interface IPropertyValueSerializer
     {
-        StringBuilder Serialize<T>(IEnumerable<T> items);
+        IEnumerable<string> Serialize<T>(IEnumerable<T> items) where T : class;
         char Token { get; set; }
     }
 }
