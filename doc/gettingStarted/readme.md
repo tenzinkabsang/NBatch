@@ -19,11 +19,20 @@ A Job consists of steps and when executed will process each step sequentially. W
 A Step has three main parts one of which is optional.  
 
 - IReader<T\>: Used to read data from various sources (file, database, etc,.) and feeds it into the processor.  
+	```C#
+		public interface IReader<out TItem>
+	```
 	 
 
 - IProcessor<T, U>: Handles any intermediary processes before sending it to a writer. Uses a default implementation if no custom implementation is provided.  
+	```C#
+		public interface IProcessor<in TInput, out TOutput>
+	```  
 
 - Writer<U\>: Used to write/save the items passed in through the processor.  
+	```C#
+		public interface IWriter<in TItem>
+	```  
 
 A Step also supports logic for skipping certain types of `ERRORS` as well as the `NUMBER` of times each errors should be skipped before throwing an exception. 
 
