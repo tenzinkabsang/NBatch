@@ -1,4 +1,5 @@
-## NBatch
+## NBatch [![NuGet Version](http://img.shields.io/nuget/v/NBatch.svg?style=flat)](https://www.nuget.org/packages/Ninject/) [![NuGet Downloads](http://img.shields.io/nuget/dt/NBatch.svg?style=flat)](https://www.nuget.org/packages/Ninject/)
+
 	
 
 Batch Processing Framework For .NET

@@ -30,9 +30,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Dapper, Version=1.39.0.0, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="Dapper, Version=1.40.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Dapper.1.39\lib\net45\Dapper.dll</HintPath>
+      <HintPath>..\packages\Dapper.1.40\lib\net45\Dapper.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
@@ -81,7 +81,6 @@
     <Compile Include="Writers\FileWriter\PropertyValueSerializer.cs" />
     <Compile Include="Writers\SqlWriter\SqlDbItemWriter.cs" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>

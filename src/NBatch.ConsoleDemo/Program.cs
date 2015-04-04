@@ -1,9 +1,5 @@
-﻿using System;
-using NBatch.ConsoleDemo.Tests;
-using NBatch.Main.Core;
-using NBatch.Main.Readers.FileReader;
-using NBatch.Main.Readers.SqlReader;
-using NBatch.Main.Writers.SqlWriter;
+﻿using NBatch.ConsoleDemo.Tests;
+using System;
 
 namespace NBatch.ConsoleDemo
 {
@@ -11,62 +7,24 @@ namespace NBatch.ConsoleDemo
     {
         public static readonly string SourceUrl = PathUtil.GetPath(@"Files\NewItems\sample.txt");
 
+        // UNCOMMENT each lines below for testing.
+        // PLEASE ensure that the BatchJob and BatchStep database tables are reset after each run, because one of the features
+        // of NBatch is that it will not reprocess items that has already been processed :)
         static void Main(string[] args)
         {
-            SqlReaderFileWriterTest.Run();
+            FileReaderConsoleWriterTest.Run();
 
-            Console.WriteLine("Finished job");
-        }
+            //FileReaderFileWriterTest.Run();
 
-        private static void ExecuteJob1()
-        {
-            // Step to process the file
-            IStep processFileStep = new Step<Product, Product>("processFileStep")
-                .SetReader(FlatFileReader())
-                .SetProcessor(new ProductUppercaseProcessor())
-                .SetWriter(SqlWriter("Product"));
+            //FileReaderSqlWriterTest.Run();
 
-            // Step to clean-up the file after previous step is done processing it
-            IStep cleanUpStep = new CleanupStep(SourceUrl, @"Files\Processed");
+            //SqlReaderConsoleWriterTest.Run();
 
-            new Job("Job1", "NBatchDb")
-                .AddStep(processFileStep)
-                //.AddStep(cleanUpStep)
-                .Start();
-        }
+            //SqlReaderFileWriterTest.Run();
 
-        private static void ExecuteJob2()
-        {
-            IStep processDb = new Step<Product, Product>("dbProcessor")
-                .SetReader(SqlReader())
-                .SetProcessor(new ProductLowercaseProcessor())
-                .SetWriter(SqlWriter("SaleProduct"))
-                .WithChunkSize(3);
+            //SqlReaderSqlWriterTest.Run();
 
-            new Job("DemoJob2", "NBatchDb")
-                .AddStep(processDb)
-                .Start();
-        }
-
-        private static IReader<Product> FlatFileReader()
-        {
-            return new FlatFileItemBuilder<Product>(SourceUrl, new ProductMapper())
-                .WithHeaders(new[] { "ProductId", "Name", "Description", "Price" })
-                .LinesToSkip(1)
-                .Build();
-        }
-
-        private static IWriter<Product> SqlWriter(string table)
-        {
-            return new SqlDbItemWriter<Product>("NBatchDb")
-                        .Query(string.Format("INSERT INTO {0} (ProductId, Name, Description, Price) VALUES (@ProductId, @Name, @Description, @Price);", table));
-        }
-
-        private static IReader<Product> SqlReader()
-        {
-            return new SqlDbItemReader<Product>("NBatchDb")
-                .Query("Select * from Product")
-                .OrderBy("ProductId");
+            Console.WriteLine("Done!!");
         }
     }
 }

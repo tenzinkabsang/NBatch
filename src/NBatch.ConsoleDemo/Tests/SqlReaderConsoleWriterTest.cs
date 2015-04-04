@@ -16,7 +16,7 @@ namespace NBatch.ConsoleDemo.Tests
                 .SetWriter(new ConsoleWriter<Product>())
                 .WithChunkSize(3);
 
-            new Job("Job1", "JobDB")
+            new Job("Job4", "JobDB")
                 .AddStep(processDb)
                 .Start();
         }

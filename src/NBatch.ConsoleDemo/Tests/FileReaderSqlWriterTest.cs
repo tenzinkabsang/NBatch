@@ -16,7 +16,7 @@ namespace NBatch.ConsoleDemo.Tests
                 .SetProcessor(new ProductUppercaseProcessor())
                 .SetWriter(SqlWriter());
 
-            new Job("Job1", "JobDB")
+            new Job("Job3", "JobDB")
                 .AddStep(processFileStep)
                 .Start();
         }

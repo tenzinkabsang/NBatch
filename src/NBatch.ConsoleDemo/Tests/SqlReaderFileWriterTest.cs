@@ -20,7 +20,7 @@ namespace NBatch.ConsoleDemo.Tests
                 .SetWriter(FlatFileWriter())
                 .WithChunkSize(3);
 
-            new Job("Job1", "JobDB")
+            new Job("Job5", "JobDB")
                 .AddStep(processDb)
                 .Start();
         }
