@@ -4,11 +4,14 @@
 
 Batch Processing Framework For .NET
 
-_Batch processing_ is one of the most common things that every company needs, either handling transactions from a Queue or running as a nightly scheduled task. In any case, these batch jobs are handling mission critical tasks and thus has to be robust, self-recoverable and handle errors gracefully without shutting down the entire system.  For an application to be able to handle all of that, takes a lot of low-level plumbing code, all of which are infrastructural level concerns that should be abstracted away from developers.
+__NBatch__ simplifies your batch processing needs by providing a platform that supports common features needed for all mission critical tasks.  
 
-NBatch is built to allow developers to focus on what's really important by implementing only the business logic and simply plugging them into the framework, which handles the batch processing machinery, automatically giving them features to handle errors, self-recover, able to restart where it left off, etc,.
+Should your application stop if it encounters a badly formatted line, or should it skip that line and continue on? What about when you restart a failed batch job? NBatch handles
+all of these low-level infrastructural plumbing code and exposes configurable components that the user can set-up to cater for there particular app.
+NBatch internally tracks everything that happens within the framework and provides features to handle errors, self-recover, able to restart where it left off, etc,.
 
-NBatch is inspired by Spring Batch and carries over some of the high level concepts, but the implemention is unique to `.NET` and not a port of spring batch.
+NBatch is built to allow developers to focus on what's really important by implementing only the business logic and simply plugging them into the framework, which handles the batch processing machinery.
+
 
 ## Documentation
 
