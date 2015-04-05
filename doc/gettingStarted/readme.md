@@ -6,7 +6,7 @@
 ![alt Sequence diagram of Step](../img/single-step.png)
 
 ## Getting Started
-__NBatch__ can be installed via Nuget and consists of a single `.dll`. It should also create a folder named _sql_ containing scripts to create the necessary schemas for NBatch to work.
+__NBatch__ can be installed via Nuget and consists of a single `.dll`. It should also create a folder named _nbatch-table-schemas_ containing a script file to create the necessary schemas for NBatch to work.
 
 
 ###### Job
