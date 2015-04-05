@@ -1,10 +1,10 @@
 ## Examples
-- [Read from a file and write to a console](/filereader-consolewriter.md)  
-- [Read from a file and write to a database](/filereader-sqlwriter.md)
-- [Read from a file and write to a file](/filereader-filewriter.md)
-- [Read from a database and write to a console](/sqlreader-consolewriter.md)
-- [Read from a database and write to a file](/sqlreader-filewriter.md)
-- [Read from a database and write to a database](/sqlreader-sqlwriter.md)
+- [Read from a file and write to a console](filereader-consolewriter.md)  
+- [Read from a file and write to a database](filereader-sqlwriter.md)
+- [Read from a file and write to a file](filereader-filewriter.md)
+- [Read from a database and write to a console](sqlreader-consolewriter.md)
+- [Read from a database and write to a file](sqlreader-filewriter.md)
+- [Read from a database and write to a database](sqlreader-sqlwriter.md)
 
 ## Quick view of Job
 ![alt Job](../img/job.png)
