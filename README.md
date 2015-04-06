@@ -29,6 +29,21 @@ ProductId,	Name,				Description
 ```
 
 ```C#
+// FieldSet contains the headers you define below in FlatFileReader.
+public class ProductMapper : IFieldSetMapper<Product>
+{
+    public Product MapFieldSet(FieldSet fieldSet)
+    {
+        return new Product
+        {
+            Name = fieldSet.GetString("Name"),
+            Description = fieldSet.GetString("Description")
+        };
+    }
+}
+```
+
+```C#
 // Define a reader
 public static IReader<Product> FlatFileReader() 
 {
