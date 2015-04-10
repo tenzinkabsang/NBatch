@@ -49,6 +49,8 @@
   <ItemGroup>
     <Compile Include="CleanupStep.cs" />
     <Compile Include="ConsoleWriter.cs" />
+    <Compile Include="ProductLowercaseProcessor.cs" />
+    <Compile Include="ProductMapper.cs" />
     <Compile Include="Tests\FileReaderConsoleWriterTest.cs" />
     <Compile Include="PathUtil.cs" />
     <Compile Include="Product.cs" />

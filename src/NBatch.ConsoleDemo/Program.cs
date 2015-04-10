@@ -12,11 +12,11 @@ namespace NBatch.ConsoleDemo
         // of NBatch is that it will not reprocess items that has already been processed :)
         static void Main(string[] args)
         {
-            FileReaderConsoleWriterTest.Run();
+            //FileReaderConsoleWriterTest.Run();
 
             //FileReaderFileWriterTest.Run();
 
-            //FileReaderSqlWriterTest.Run();
+            FileReaderSqlWriterTest.Run();
 
             //SqlReaderConsoleWriterTest.Run();
 

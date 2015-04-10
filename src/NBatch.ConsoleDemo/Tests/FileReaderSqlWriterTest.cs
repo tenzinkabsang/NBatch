@@ -1,3 +1,4 @@
+using System;
 using NBatch.Main.Core;
 using NBatch.Main.Readers.FileReader;
 using NBatch.Main.Writers.SqlWriter;
@@ -14,7 +15,10 @@ namespace NBatch.ConsoleDemo.Tests
             IStep processFileStep = new Step<Product, Product>("processFileStep")
                 .SetReader(FlatFileReader())
                 .SetProcessor(new ProductUppercaseProcessor())
-                .SetWriter(SqlWriter());
+                .SetWriter(SqlWriter())
+                .SkippableExceptions(typeof(FlatFileParseException))
+                .SkipLimit(4)
+                .WithChunkSize(1);
 
             new Job("Job3", "JobDB")
                 .AddStep(processFileStep)

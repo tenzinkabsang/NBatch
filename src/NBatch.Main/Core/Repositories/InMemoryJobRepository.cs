@@ -32,7 +32,7 @@ namespace NBatch.Main.Core.Repositories
         public void SaveExceptionInfo(SkipContext skipContext, int currentCount)
         {
             ++_exceptionCount;
-            Console.WriteLine("Skippable exception on line: {0} - {1}", skipContext.LineNumber, skipContext.Exception.Message);
+            Console.WriteLine("Skippable exception on line: {0} - {1}", skipContext.RowNumber, skipContext.Exception.Message);
         }
     }
 }

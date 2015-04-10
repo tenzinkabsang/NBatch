@@ -56,7 +56,7 @@ namespace NBatch.Main.UnitTests.Core
             var step = FakeStep<string, string>.Create("step1");
             step.SkipLimit(1).SkippableExceptions(typeof (Exception));
 
-            _jobRepo.Setup(r => r.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.LineNumber == 1))).Returns(1);
+            _jobRepo.Setup(r => r.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.RowNumber == 2))).Returns(1);
 
             step.MockReader.Setup(r => r.Read(It.IsAny<long>(), It.IsAny<int>())).Returns(new[] {"line1"});
             step.MockProcessor.Setup(p => p.Process(It.IsAny<string>())).Throws<Exception>();

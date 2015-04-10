@@ -10,14 +10,14 @@ namespace NBatch.Main.Core
         private int _chunkSize = 10;
         private readonly SkipPolicy _skipPolicy;
         public string Name { get; private set; }
-        public IReader<TInput> Reader { get; private set; }
-        public IWriter<TOutput> Writer { get; private set; }
-        public IProcessor<TInput, TOutput> Processor { get; private set; }
+        private IReader<TInput> _reader;
+        private IWriter<TOutput> _writer;
+        private IProcessor<TInput, TOutput> _processor;
 
         public Step(string name)
         {
             Name = name;
-            Processor = new DefaultProcessor<TInput, TOutput>();
+            _processor = new DefaultProcessor<TInput, TOutput>();
             _skipPolicy = new SkipPolicy();
         }
 
@@ -34,16 +34,17 @@ namespace NBatch.Main.Core
 
                 try
                 {
-                    items = Reader.Read(ctx.StepIndex, _chunkSize).ToList();
+                    items = _reader.Read(ctx.StepIndex, _chunkSize).ToList();
 
-                    processed = items.Select(item => Processor.Process(item)).ToArray();
+                    processed = items.Select(item => _processor.Process(item)).ToArray();
 
                     if (processed.Any())
-                        success &= Writer.Write(processed);
+                        success &= _writer.Write(processed);
                 }
                 catch (Exception ex)
                 {
-                    skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(ctx.StepName, ctx.StepIndex, ex));
+                    skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(ctx.StepName, ctx.RowNumber, ex));
+                    //stepRepository.SaveStepContext(ctx);
                     if (!skip)
                     {
                         exceptionThrown = true;
@@ -83,19 +84,19 @@ namespace NBatch.Main.Core
 
         public Step<TInput, TOutput> SetReader(IReader<TInput> reader)
         {
-            Reader = reader;
+            _reader = reader;
             return this;
         }
 
         public Step<TInput, TOutput> SetProcessor(IProcessor<TInput, TOutput> processor)
         {
-            Processor = processor;
+            _processor = processor;
             return this;
         }
 
         public Step<TInput, TOutput> SetWriter(IWriter<TOutput> writer)
         {
-            Writer = writer;
+            _writer = writer;
             return this;
         }
     }

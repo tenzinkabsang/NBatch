@@ -4,14 +4,14 @@ namespace NBatch.Main.Core
 {
     public sealed class SkipContext
     {
-        public long LineNumber { get; private set; }
+        public long RowNumber { get; private set; }
         public string StepName { get; set; }
         public Exception Exception { get; private set; }
 
-        public SkipContext(string stepName, long lineNumber, Exception ex)
+        public SkipContext(string stepName, long rowNumber, Exception ex)
         {
             StepName = stepName;
-            LineNumber = lineNumber;
+            RowNumber = rowNumber;
             Exception = ex;
         }
 

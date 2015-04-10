@@ -100,14 +100,14 @@ namespace NBatch.Main.Core.Repositories
         public void SaveExceptionInfo(SkipContext skipContext, int exceptionCount)
         {
             const string insert =
-                "Insert into BatchStepException (StepName, LineNumber, ExceptionMsg, ExceptionDetails, JobName, CreateDate) " +
-                "Values (@StepName, @LineNumber, @ExMsg, @ExDetails, @JobName, @CreateDate)";
+                "Insert into BatchStepException (StepName, RowNumber, ExceptionMsg, ExceptionDetails, JobName, CreateDate) " +
+                "Values (@StepName, @RowNumber, @ExMsg, @ExDetails, @JobName, @CreateDate)";
 
             _db.ExecuteQuery(cmd =>
                              {
                                  cmd.CommandText = insert;
                                  cmd.Parameters.AddWithValue("@StepName", skipContext.StepName);
-                                 cmd.Parameters.AddWithValue("@LineNumber", skipContext.LineNumber);
+                                 cmd.Parameters.AddWithValue("@RowNumber", skipContext.RowNumber);
                                  cmd.Parameters.AddWithValue("@ExMsg", skipContext.Exception.Message);
                                  cmd.Parameters.AddWithValue("@ExDetails", skipContext.Exception.StackTrace);
                                  cmd.Parameters.AddWithValue("@JobName", _jobName);

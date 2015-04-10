@@ -39,7 +39,7 @@ GO
 CREATE TABLE BatchStepException(
 	Id bigint IDENTITY(1,1) NOT NULL,
 	StepName varchar(100) NOT NULL,
-	LineNumber int NOT NULL,
+	RowNumber int NOT NULL,
 	ExceptionMsg varchar(500) NULL,
 	ExceptionDetails varchar(1500) NULL,
 	JobName varchar(100) NOT NULL,

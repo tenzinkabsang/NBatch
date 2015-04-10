@@ -1,9 +1,7 @@
-using System;
-using System.IO;
 using NBatch.Main.Core;
 using NBatch.Main.Readers.SqlReader;
 using NBatch.Main.Writers.FileWriter;
-using NBatch.Main.Writers.SqlWriter;
+using System.IO;
 
 namespace NBatch.ConsoleDemo.Tests
 {
