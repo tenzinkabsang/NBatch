@@ -1,10 +1,10 @@
 ﻿ProductId,Name,Description,Price
 1111,C# For Dummies,The book you should avoid,800.00
 2222,Design Patterns,The worlds authority on software designs, 299.99
-3333,Java 8 In Depth,Finally Lambdas, GARBAGE, 399.99
-4444,Effective Java,The best java book, GARBAGE, 499.99
+3333,Java 8 In Depth,Finally Lambdas, 399.99
+4444,Effective Java,The best java book, 499.99
 5555,ASP.NET MVC 9,Not even Model View Controller, 599.99
 6666,Web API,Easy way to expose endpoints, 699.99
-7777,C++ In-Depth,Everything related to C++, GARBAGE, 799.99
+7777,C++ In-Depth,Everything related to C++, 799.99
 8888,Scala Programming,Beautiful functional, 899.99
 9999,Reactive Extensions,Asynchrony at its best, 999.99
