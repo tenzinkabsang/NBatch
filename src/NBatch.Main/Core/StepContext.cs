@@ -2,25 +2,28 @@ namespace NBatch.Main.Core
 {
     public sealed class StepContext
     {
-        private long _linesToSkip;
-        public string StepName { get; private set; }
-        public long StepIndex { get; private set; }
-        public int NumberOfItemsProcessed { get; private set; }
-        public bool Skip { get; private set; }
-        public bool IsInitialRun { get; private set; }
-        public int ChunkSize { get; private set; }
-        public int NumberOfItemsReceived { get; private set; }
+        public string StepName { get; set; }
+        public string JobName { get; set; }
+        public long StepIndex { get; set; }
+        public int NumberOfItemsProcessed { get; set; }
+        public bool Skip { get; set; }
+        public bool IsInitialRun { get; set; }
+        public int ChunkSize { get; set; }
+        public int NumberOfItemsReceived { get; set; }
 
-        public long RowNumber
+        public long NextStepIndex
         {
-            get { return StepIndex + _linesToSkip; }
+            get { return StepIndex + ChunkSize; }
         }
 
-        private StepContext(string stepName, bool isInitialRun, long startIndex, int chunkSize)
+        public StepContext() { /** Needed by ORM **/ }
+
+        private StepContext(string stepName, long stepIndex, int numOfItemsProcessed, bool isInitialRun, int chunkSize)
         {
             StepName = stepName;
+            StepIndex = stepIndex;
+            NumberOfItemsProcessed = numOfItemsProcessed;
             IsInitialRun = isInitialRun;
-            StepIndex = startIndex;
             ChunkSize = chunkSize;
         }
 
@@ -34,31 +37,30 @@ namespace NBatch.Main.Core
             }
         }
 
-        public static StepContext InitialRun(string stepName, long startIndex, int chunkSize)
+        public static StepContext InitialRun(StepContext ctx, int chunkSize)
         {
-            return new StepContext(stepName, true, startIndex, chunkSize);
+            long index = RetryPreviousIfFailed(ctx, chunkSize);
+            
+            return new StepContext(ctx.StepName, index, ctx.NumberOfItemsProcessed, true, chunkSize);
         }
 
         public static StepContext Increment(StepContext ctx, int numberOfItemsReceived, int numberOfItemsProcessed, bool skipped)
         {
             long nextIndex = ctx.StepIndex + ctx.ChunkSize;
-            long linesToSkipValue = CalculateLinesToSkipValue(nextIndex, numberOfItemsProcessed, ctx.ChunkSize, ctx._linesToSkip);
-            return new StepContext(ctx.StepName, false, nextIndex, ctx.ChunkSize)
+            return new StepContext(ctx.StepName, nextIndex, numberOfItemsProcessed, false, ctx.ChunkSize)
                    {
                        NumberOfItemsReceived = numberOfItemsReceived,
-                       NumberOfItemsProcessed = numberOfItemsProcessed,
                        Skip = skipped,
-                       _linesToSkip = linesToSkipValue
                    };
         }
 
-        private static long CalculateLinesToSkipValue(long stepIndex, int numOfItemsProcessed, int chunkSize, long linesToSkip)
+        private static long RetryPreviousIfFailed(StepContext ctx, int chunkSize)
         {
-            const int FIRST_ITERATION = 1;
-            if (stepIndex == FIRST_ITERATION)
-                return chunkSize - numOfItemsProcessed;
+            long index = ctx.StepIndex;
+            if (ctx.NumberOfItemsProcessed == 0 && (ctx.StepIndex - chunkSize) > 0)
+                index = ctx.StepIndex - chunkSize;
 
-            return linesToSkip;
+            return index;
         }
     }
 }

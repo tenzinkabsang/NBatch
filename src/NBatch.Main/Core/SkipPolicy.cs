@@ -1,6 +1,6 @@
 using System;
 using System.Linq;
-using IStepRepository = NBatch.Main.Core.Repositories.IStepRepository;
+using NBatch.Main.Core.Repositories;
 
 namespace NBatch.Main.Core
 {

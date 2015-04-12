@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
+using Dapper;
 
 namespace NBatch.Main.Core.Repositories
 {
@@ -26,7 +28,7 @@ namespace NBatch.Main.Core.Repositories
         {
             _db.ExecuteQuery(cmd =>
                              {
-                                 var currentTime = DateTime.Now;
+                                 var currentTime = DateTime.UtcNow;
                                  cmd.CommandText = "Update BatchJob set LastRun = @LastRun where JobName = @JobName";
                                  cmd.Parameters.AddWithValue("@JobName", _jobName);
                                  cmd.Parameters.AddWithValue("@LastRun", currentTime);
@@ -34,8 +36,7 @@ namespace NBatch.Main.Core.Repositories
                                  if (result != 0)
                                      return result;
 
-                                 cmd.CommandText = "Insert into BatchJob (JobName, CreateDate, LastRun) values (@JobName, @CreateDate, @LastRun)";
-                                 cmd.Parameters.AddWithValue("@CreateDate", currentTime);
+                                 cmd.CommandText = "Insert into BatchJob (JobName, LastRun) values (@JobName, @LastRun)";
                                  cmd.ExecuteNonQuery();
 
                                  return CreateInitialStepRecords(stepNames, cmd);
@@ -45,16 +46,13 @@ namespace NBatch.Main.Core.Repositories
         private int CreateInitialStepRecords(ICollection<string> stepNames, SqlCommand cmd)
         {
             cmd.Parameters.Clear();
-            var currentTime = DateTime.Now;
-
-            cmd.CommandText = "Insert into BatchStep (StepName, StepIndex, NumberOfItemsProcessed, JobName, LastRun) values " +
-                              "(@StepName, @StepIndex, @NumberOfItemsProcessed, @JobName, @LastRun)";
+            cmd.CommandText = "Insert into BatchStep (StepName, JobName, StepIndex, NumberOfItemsProcessed) values " +
+                                                    "(@StepName, @JobName, @StepIndex, @NumberOfItemsProcessed)";
 
             const int INITIAL_STATE = 0;
+            cmd.Parameters.AddWithValue("@JobName", _jobName);
             cmd.Parameters.AddWithValue("@StepIndex", INITIAL_STATE);
             cmd.Parameters.AddWithValue("@NumberOfItemsProcessed", INITIAL_STATE);
-            cmd.Parameters.AddWithValue("@JobName", _jobName);
-            cmd.Parameters.AddWithValue("@LastRun", currentTime);
             int rowsAffected = 0;
             foreach (var stepName in stepNames)
             {
@@ -65,53 +63,65 @@ namespace NBatch.Main.Core.Repositories
             }
             return rowsAffected;
         }
-
-        public void SaveStepContext(StepContext stepContext)
+        
+        public long InsertStep(string stepName, long stepIndex)
         {
             const string query =
-                "Insert into BatchStep (StepName, StepIndex, NumberOfItemsProcessed, JobName, LastRun) values " +
-                "(@StepName, @StepIndex, @NumberOfItemsProcessed, @JobName, @LastRun)";
+                "Insert into BatchStep (StepName, JobName, StepIndex, NumberOfItemsProcessed) values " +
+                                     "(@StepName, @JobName, @StepIndex, 0); SELECT SCOPE_IDENTITY();";
 
-            _db.ExecuteQuery(cmd =>
-                             {
-                                 cmd.CommandText = query;
-                                 cmd.Parameters.AddWithValue("@StepName", stepContext.StepName);
-                                 cmd.Parameters.AddWithValue("@StepIndex", stepContext.StepIndex);
-                                 cmd.Parameters.AddWithValue("@NumberOfItemsProcessed",
-                                     stepContext.NumberOfItemsProcessed);
-                                 cmd.Parameters.AddWithValue("@JobName", _jobName);
-                                 cmd.Parameters.AddWithValue("@LastRun", DateTime.Now);
-                                 return cmd.ExecuteNonQuery();
-                             });
-        }
-
-        public long GetStartIndex(string stepName)
-        {
             return _db.ExecuteQuery(cmd =>
                                     {
-                                        cmd.CommandText =
-                                            "Select Max(StepIndex) from BatchStep where StepName = @StepName and JobName = @JobName";
+                                        cmd.CommandText = query;
                                         cmd.Parameters.AddWithValue("@StepName", stepName);
+                                        cmd.Parameters.AddWithValue("@StepIndex", stepIndex);
                                         cmd.Parameters.AddWithValue("@JobName", _jobName);
-                                        return (long) cmd.ExecuteScalar();
+                                        object id = cmd.ExecuteScalar();
+                                        return long.Parse(id.ToString());
                                     });
+        }
+
+        public long UpdateStep(long stepId, int numberOfItemsProcessed, bool error, bool skipped)
+        {
+            const string query =
+                "Update BatchStep set NumberOfItemsProcessed = @NumberOfItemsProcessed, " +
+                "Error = @Error, Skipped = @Skipped Where Id = @StepId";
+
+            return _db.ExecuteQuery(cmd =>
+                                    {
+                                        cmd.CommandText = query;
+                                        cmd.Parameters.AddWithValue("@NumberOfItemsProcessed", numberOfItemsProcessed);
+                                        cmd.Parameters.AddWithValue("@Error", error);
+                                        cmd.Parameters.AddWithValue("@Skipped", skipped);
+                                        cmd.Parameters.AddWithValue("@StepId", stepId);
+                                        return cmd.ExecuteNonQuery();
+                                    });
+        }
+        
+        public StepContext GetStartIndex(string stepName)
+        {
+            const string query =
+                "Select top 1 Id, StepName, JobName, StepIndex, NumberOfItemsProcessed from BatchStep " +
+                "Where StepName = @StepName and JobName = @JobName " +
+                "Order By Id DESC";
+            return _db.ExecuteQuery((conn, trax) =>
+                        conn.Query<StepContext>(query, new {StepName = stepName, JobName = _jobName}, trax).FirstOrDefault());
         }
 
         public void SaveExceptionInfo(SkipContext skipContext, int exceptionCount)
         {
             const string insert =
-                "Insert into BatchStepException (StepName, RowNumber, ExceptionMsg, ExceptionDetails, JobName, CreateDate) " +
-                "Values (@StepName, @RowNumber, @ExMsg, @ExDetails, @JobName, @CreateDate)";
+                "Insert into BatchStepException (StepIndex, StepName, JobName, ExceptionMsg, ExceptionDetails) " +
+                                        "Values (@StepIndex, @StepName, @JobName, @ExMsg, @ExDetails)";
 
             _db.ExecuteQuery(cmd =>
                              {
                                  cmd.CommandText = insert;
+                                 cmd.Parameters.AddWithValue("@StepIndex", skipContext.StepIndex);
                                  cmd.Parameters.AddWithValue("@StepName", skipContext.StepName);
-                                 cmd.Parameters.AddWithValue("@RowNumber", skipContext.RowNumber);
+                                 cmd.Parameters.AddWithValue("@JobName", _jobName);
                                  cmd.Parameters.AddWithValue("@ExMsg", skipContext.Exception.Message);
                                  cmd.Parameters.AddWithValue("@ExDetails", skipContext.Exception.StackTrace);
-                                 cmd.Parameters.AddWithValue("@JobName", _jobName);
-                                 cmd.Parameters.AddWithValue("@CreateDate", DateTime.Now);
                                  return cmd.ExecuteNonQuery();
                              });
         }

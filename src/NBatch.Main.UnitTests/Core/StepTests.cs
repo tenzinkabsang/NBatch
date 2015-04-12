@@ -30,7 +30,7 @@ namespace NBatch.Main.UnitTests.Core
             step1.MockReader.Setup(r => r.Read(0, chunkSize)).Returns(Enumerable.Range(0, chunkSize).Select(s => "item read"));
             step1.MockProcessor.Setup(p => p.Process(It.IsAny<string>())).Returns("processed");
 
-            step1.Process(0, _jobRepo.Object);
+            step1.Process(new StepContext(), _jobRepo.Object);
 
             step1.MockWriter.Verify(w => w.Write(It.Is<IEnumerable<string>>(items => items.Count() == itemCount)));
         }
@@ -44,7 +44,8 @@ namespace NBatch.Main.UnitTests.Core
 
             step.MockReader.Setup(r => r.Read(0, 1)).Throws<FlatFileParseException>();
 
-            step.Process(0, _jobRepo.Object);
+            var stepContext = new StepContext {StepName = "step1"};
+            step.Process(stepContext, _jobRepo.Object);
 
             _jobRepo.Verify(j => j.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.StepName == "step1")));
             _jobRepo.Verify(j => j.SaveExceptionInfo(It.IsAny<SkipContext>(), It.IsAny<int>()));
@@ -56,28 +57,14 @@ namespace NBatch.Main.UnitTests.Core
             var step = FakeStep<string, string>.Create("step1");
             step.SkipLimit(1).SkippableExceptions(typeof (Exception));
 
-            _jobRepo.Setup(r => r.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.RowNumber == 2))).Returns(1);
+            _jobRepo.Setup(r => r.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.StepIndex == 2))).Returns(1);
 
             step.MockReader.Setup(r => r.Read(It.IsAny<long>(), It.IsAny<int>())).Returns(new[] {"line1"});
             step.MockProcessor.Setup(p => p.Process(It.IsAny<string>())).Throws<Exception>();
 
-            Assert.Throws<Exception>(() => step.Process(0, _jobRepo.Object));
-            
-            _jobRepo.Verify(r => r.SaveStepContext(It.IsAny<StepContext>()), Times.Once());
+            Assert.Throws<Exception>(() => step.Process(new StepContext(), _jobRepo.Object));
         }
-
-        [Test]
-        public void StepIndexNotIncrementedAndSavedWhenItemsIsEmpty()
-        {
-            var step = FakeStep<string, string>.Create("step1");
-
-            step.MockReader.Setup(r => r.Read(It.IsAny<long>(), It.IsAny<int>())).Returns(Enumerable.Empty<string>());
-
-            step.Process(1, _jobRepo.Object);
-
-            _jobRepo.Verify(r => r.SaveStepContext(It.IsAny<StepContext>()), Times.Never());
-        }
-
+        
         [Test]
         public void WhenSkipLimitIsReachedThrowException()
         {
@@ -91,7 +78,7 @@ namespace NBatch.Main.UnitTests.Core
 
             step.MockReader.Setup(r => r.Read(It.IsAny<long>(), It.IsAny<int>())).Throws<FlatFileParseException>();
 
-            Assert.Throws<FlatFileParseException>(() => step.Process(0, inMemoryJobRepo));
+            Assert.Throws<FlatFileParseException>(() => step.Process(new StepContext(), inMemoryJobRepo));
         }
 
         [Test]
@@ -101,7 +88,7 @@ namespace NBatch.Main.UnitTests.Core
 
             step.MockReader.Setup(r => r.Read(It.IsAny<long>(), It.IsAny<int>())).Throws<FlatFileParseException>();
 
-            Assert.Throws<FlatFileParseException>(() => step.Process(0, _jobRepo.Object));
+            Assert.Throws<FlatFileParseException>(() => step.Process(new StepContext(), _jobRepo.Object));
             _jobRepo.Verify(r => r.GetExceptionCount(It.IsAny<SkipContext>()), Times.Never());
         }
     }

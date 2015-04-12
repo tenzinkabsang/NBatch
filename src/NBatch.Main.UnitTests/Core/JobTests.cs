@@ -33,6 +33,7 @@ namespace NBatch.Main.UnitTests.Core
             step2.MockProcessor.Setup(p => p.Process(It.IsAny<string>())).Returns("STEP2: item processed");
 
             var jobRepo = new Mock<IJobRepository>();
+            jobRepo.Setup(j => j.GetStartIndex(It.IsAny<string>())).Returns(new StepContext());
 
             new Job(jobRepo.Object)
                 .AddStep(step1)

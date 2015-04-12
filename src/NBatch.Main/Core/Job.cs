@@ -32,8 +32,8 @@ namespace NBatch.Main.Core
             _repo.CreateJobRecord(_steps.Keys);
             bool success = _steps.Values.Aggregate(true, (current, step) =>
                                                          {
-                                                             long startIndex = _repo.GetStartIndex(step.Name);
-                                                             return current & step.Process(startIndex, _repo);
+                                                             StepContext stepContext = _repo.GetStartIndex(step.Name);
+                                                             return current & step.Process(stepContext, _repo);
                                                          });
             return success;
         }

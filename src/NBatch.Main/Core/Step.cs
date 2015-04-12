@@ -21,14 +21,17 @@ namespace NBatch.Main.Core
             _skipPolicy = new SkipPolicy();
         }
 
-        public bool Process(long startIndex, IStepRepository stepRepository)
+        public bool Process(StepContext stepContext, IStepRepository stepRepository)
         {
             bool success = true;
-            StepContext ctx = StepContext.InitialRun(Name, startIndex, _chunkSize);
+            StepContext ctx = StepContext.InitialRun(stepContext, _chunkSize);
             while (ctx.HasNext)
             {
+                long newStepId = stepRepository.InsertStep(ctx.StepName, ctx.NextStepIndex);
+
                 bool exceptionThrown = false;
                 bool skip = false;
+                bool error = false;
                 List<TInput> items = Enumerable.Empty<TInput>().ToList();
                 TOutput[] processed = Enumerable.Empty<TOutput>().ToArray();
 
@@ -43,8 +46,8 @@ namespace NBatch.Main.Core
                 }
                 catch (Exception ex)
                 {
-                    skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(ctx.StepName, ctx.RowNumber, ex));
-                    //stepRepository.SaveStepContext(ctx);
+                    error = true;
+                    skip = _skipPolicy.IsSatisfiedBy(stepRepository, new SkipContext(ctx.StepName, ctx.NextStepIndex, ex));
                     if (!skip)
                     {
                         exceptionThrown = true;
@@ -54,11 +57,9 @@ namespace NBatch.Main.Core
                 finally
                 {
                     if (!exceptionThrown)
-                    {
                         ctx = StepContext.Increment(ctx, items.Count, processed.Length, skip);
-                        if(ctx.NumberOfItemsReceived > 0)
-                            stepRepository.SaveStepContext(ctx);
-                    }
+
+                    stepRepository.UpdateStep(newStepId, processed.Length, error, skip);
                 }
             }
             return success;

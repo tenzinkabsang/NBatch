@@ -9,9 +9,10 @@ namespace NBatch.Main.Core.Repositories
         private readonly IList<long> _dbIndexes = new List<long> {0};
         private int _exceptionCount = 0;
 
-        public long GetStartIndex(string stepName)
+
+        public StepContext GetStartIndex(string stepName)
         {
-            return _dbIndexes.Last();
+            throw new NotImplementedException();
         }
 
         public void CreateJobRecord(ICollection<string> stepNames)
@@ -19,6 +20,16 @@ namespace NBatch.Main.Core.Repositories
             
         }
 
+        public long InsertStep(string stepName, long stepIndex)
+        {
+            return 0;
+        }
+
+        public long UpdateStep(long stepId, int numberOfItemsProcessed, bool error, bool skipped)
+        {
+            return 0;
+        }
+        
         public void SaveStepContext(StepContext stepContext)
         {
             _dbIndexes.Add(stepContext.StepIndex);
@@ -32,7 +43,7 @@ namespace NBatch.Main.Core.Repositories
         public void SaveExceptionInfo(SkipContext skipContext, int currentCount)
         {
             ++_exceptionCount;
-            Console.WriteLine("Skippable exception on line: {0} - {1}", skipContext.RowNumber, skipContext.Exception.Message);
+            Console.WriteLine("Skippable exception on line: {0} - {1}", skipContext.StepIndex, skipContext.Exception.Message);
         }
     }
 }

@@ -27,7 +27,7 @@ namespace NBatch.ConsoleDemo
             get { return "Cleanup"; }
         }
 
-        public bool Process(long startIndex, IStepRepository stepRepository)
+        public bool Process(StepContext stepContext, IStepRepository stepRepository)
         {
             // Create a new target folder, if necessary.
             if (!Directory.Exists(_targetPath))

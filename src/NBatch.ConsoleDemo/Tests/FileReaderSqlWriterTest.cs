@@ -17,7 +17,7 @@ namespace NBatch.ConsoleDemo.Tests
                 .SetProcessor(new ProductUppercaseProcessor())
                 .SetWriter(SqlWriter())
                 .SkippableExceptions(typeof(FlatFileParseException))
-                .SkipLimit(4)
+                .SkipLimit(3)
                 .WithChunkSize(1);
 
             new Job("Job3", "JobDB")
