@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>NBatch</id>
+        <version>1.0.1</version>
+        <title>Batch Processing Framework For .NET</title>
+        <authors>Tenzin Kabsang</authors>
+        <owners>Tenzin Kabsang</owners>
+        <licenseUrl>https://raw.githubusercontent.com/tenzinkabsang/NBatch/master/LICENSE</licenseUrl>
+        <projectUrl>https://github.com/tenzinkabsang/NBatch</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>A simple and robust batch processing framework for .NET</description>
+        <summary>A simple and robust batch processing framework for .NET</summary>
+        <language>en-US</language>
+        <tags>batch, job, tasks</tags>
+        <dependencies>
+            <dependency id="Dapper" version="1.40" />
+        </dependencies>
+    </metadata>
+</package>
