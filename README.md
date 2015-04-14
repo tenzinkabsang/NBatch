@@ -10,7 +10,7 @@ Should your application stop if it encounters a badly formatted line, or should 
 all of these low-level infrastructural plumbing code and exposes configurable components that the user can set-up to cater for there particular app.
 NBatch internally tracks everything that happens within the framework and provides features to handle errors, self-recover, able to restart where it left off, etc,.
 
-NBatch is built to allow developers to focus on what's really important by implementing only the business logic and simply plugging them into the framework, which handles the batch processing machinery.
+Developers can implement only the business logic and simply plug them into the framework, which handles the batch processing machinery, thus giving developers more time to focus on what's really important - their business logic.
 
 
 ## Documentation
