@@ -14,7 +14,7 @@ namespace NBatch.Main.Core
         {
         }
 
-        internal Job(IJobRepository repo)
+        public Job(IJobRepository repo)
         {
             _repo = repo;
             _steps = new Dictionary<string, IStep>();
