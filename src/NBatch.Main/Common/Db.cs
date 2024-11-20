@@ -1,64 +1,51 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Configuration;
 using System.Data;
-using System.Data.SqlClient;
+using System.Threading.Tasks;
 
-namespace NBatch.Main.Common
+namespace NBatch.Main.Common;
+
+internal sealed class Db(string conn) : IDb
 {
-    class Db : IDb
+    private readonly string _connStr = ConfigurationManager.ConnectionStrings[conn].ConnectionString;
+
+    public async Task<T> ExecuteQueryAsync<T>(Func<SqlCommand, Task<T>> operation)
     {
-        private readonly string _connStr;
-
-        public Db(string conn)
+        using var conn = new SqlConnection(_connStr);
+        conn.Open();
+        using var tranx = conn.BeginTransaction();
+        try
         {
-            _connStr = ConfigurationManager.ConnectionStrings[conn].ConnectionString;
+            SqlCommand command = conn.CreateCommand();
+            command.Transaction = tranx;
+
+            T result = await operation(command);
+            await tranx.CommitAsync();
+            return result;
         }
-
-        public T ExecuteQuery<T>(Func<SqlCommand, T> operation)
+        catch (Exception)
         {
-            using (var conn = new SqlConnection(_connStr))
-            {
-                conn.Open();
-                using (var tranx = conn.BeginTransaction())
-                {
-                    try
-                    {
-                        SqlCommand command = conn.CreateCommand();
-                        command.Transaction = tranx;
-
-                        T result = operation(command);
-                        tranx.Commit();
-                        return result;
-                    }
-                    catch (Exception)
-                    {
-                        tranx.Rollback();
-                        throw;
-                    }
-                }
-            }
+            await tranx.RollbackAsync();
+            throw;
         }
+    }
 
-        public T ExecuteQuery<T>(Func<IDbConnection, IDbTransaction, T> operation)
+    public async Task<T> ExecuteQueryAsync<T>(Func<IDbConnection, IDbTransaction, Task<T>> operation)
+    {
+        using var conn = new SqlConnection(_connStr);
+        conn.Open();
+        using var tranx = conn.BeginTransaction();
+        try
         {
-            using (var conn = new SqlConnection(_connStr))
-            {
-                conn.Open();
-                using (var tranx = conn.BeginTransaction())
-                {
-                    try
-                    {
-                        T result = operation(conn, tranx);
-                        tranx.Commit();
-                        return result;
-                    }
-                    catch (Exception)
-                    {
-                        tranx.Rollback();
-                        throw;
-                    }
-                }
-            }
+            T result = await operation(conn, tranx);
+            await tranx.CommitAsync();
+            return result;
+        }
+        catch (Exception)
+        {
+            await tranx.RollbackAsync();
+            throw;
         }
     }
 }

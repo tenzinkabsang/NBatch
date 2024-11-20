@@ -1,8 +1,7 @@
-﻿namespace NBatch.Main.Readers.FileReader
+﻿namespace NBatch.Main.Readers.FileReader;
+
+public interface ILineTokenizer
 {
-    public interface ILineTokenizer
-    {
-        FieldSet Tokenize(string line);
-        string[] Headers { get; }
-    }
+    FieldSet Tokenize(string line);
+    string[] Headers { get; }
 }

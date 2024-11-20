@@ -1,10 +1,9 @@
-namespace NBatch.Main.Core
+namespace NBatch.Main.Core;
+
+internal sealed class DefaultProcessor<TInput, TOutput>:IProcessor<TInput, TOutput>
 {
-    sealed class DefaultProcessor<TInput, TOutput>:IProcessor<TInput, TOutput>
+    public TOutput Process(TInput input)
     {
-        public TOutput Process(TInput input)
-        {
-            return (dynamic)input;
-        }
+        return (dynamic)input;
     }
 }

@@ -1,10 +1,11 @@
-﻿namespace NBatch.Main.Core.Repositories
+﻿using System.Threading.Tasks;
+
+namespace NBatch.Main.Core.Repositories;
+
+public interface IStepRepository
 {
-    public interface IStepRepository
-    {
-        long InsertStep(string stepName, long stepIndex);
-        long UpdateStep(long stepId, int numberOfItemsProcessed, bool error, bool skipped);
-        int GetExceptionCount(SkipContext skipContext);
-        void SaveExceptionInfo(SkipContext skipContext, int currentCount);
-    }
+    Task<long> InsertStepAsync(string stepName, long stepIndex);
+    Task<long> UpdateStepAsync(long stepId, int numberOfItemsProcessed, bool error, bool skipped);
+    Task<int> GetExceptionCountAsync(SkipContext skipContext);
+    Task SaveExceptionInfo(SkipContext skipContext, int currentCount);
 }

@@ -47,7 +47,7 @@ namespace NBatch.Main.UnitTests.Core
             var stepContext = new StepContext {StepName = "step1"};
             step.Process(stepContext, _jobRepo.Object);
 
-            _jobRepo.Verify(j => j.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.StepName == "step1")));
+            _jobRepo.Verify(j => j.GetExceptionCountAsync(It.Is<SkipContext>(ctx => ctx.StepName == "step1")));
             _jobRepo.Verify(j => j.SaveExceptionInfo(It.IsAny<SkipContext>(), It.IsAny<int>()));
         }
 
@@ -57,7 +57,7 @@ namespace NBatch.Main.UnitTests.Core
             var step = FakeStep<string, string>.Create("step1");
             step.SkipLimit(1).SkippableExceptions(typeof (Exception));
 
-            _jobRepo.Setup(r => r.GetExceptionCount(It.Is<SkipContext>(ctx => ctx.StepIndex == 2))).Returns(1);
+            _jobRepo.Setup(r => r.GetExceptionCountAsync(It.Is<SkipContext>(ctx => ctx.StepIndex == 2))).Returns(1);
 
             step.MockReader.Setup(r => r.Read(It.IsAny<long>(), It.IsAny<int>())).Returns(new[] {"line1"});
             step.MockProcessor.Setup(p => p.Process(It.IsAny<string>())).Throws<Exception>();
@@ -89,7 +89,7 @@ namespace NBatch.Main.UnitTests.Core
             step.MockReader.Setup(r => r.Read(It.IsAny<long>(), It.IsAny<int>())).Throws<FlatFileParseException>();
 
             Assert.Throws<FlatFileParseException>(() => step.Process(new StepContext(), _jobRepo.Object));
-            _jobRepo.Verify(r => r.GetExceptionCount(It.IsAny<SkipContext>()), Times.Never());
+            _jobRepo.Verify(r => r.GetExceptionCountAsync(It.IsAny<SkipContext>()), Times.Never());
         }
     }
 }

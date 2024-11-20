@@ -1,8 +1,7 @@
 ﻿
-namespace NBatch.Main.Core
+namespace NBatch.Main.Core;
+
+public interface IProcessor<in TInput, out TOutput>
 {
-    public interface IProcessor<in TInput, out TOutput>
-    {
-        TOutput Process(TInput input);
-    }
+    TOutput Process(TInput input);
 }

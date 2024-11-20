@@ -1,95 +1,21 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{371067D3-7D12-4175-B753-55D3FB3E14AE}</ProjectGuid>
+    <TargetFramework>net9.0</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NBatch.Main</RootNamespace>
-    <AssemblyName>NBatch.Main</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AssemblyTitle>NBatch.Main</AssemblyTitle>
+    <Product>NBatch.Main</Product>
+    <Copyright>Copyright ©  2015</Copyright>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Dapper, Version=1.40.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\Dapper.1.40\lib\net45\Dapper.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System" />
-    <Reference Include="System.Configuration" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Data" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Common\Db.cs" />
-    <Compile Include="Common\Extensions.cs" />
-    <Compile Include="Common\IDb.cs" />
-    <Compile Include="Core\Ensure.cs" />
-    <Compile Include="Core\InvalidStepNameException.cs" />
-    <Compile Include="Core\IStep.cs" />
-    <Compile Include="Core\DefaultProcessor.cs" />
-    <Compile Include="Core\IProcessor.cs" />
-    <Compile Include="Core\IReader.cs" />
-    <Compile Include="Core\IWriter.cs" />
-    <Compile Include="Core\Job.cs" />
-    <Compile Include="Core\Repositories\IJobRepository.cs" />
-    <Compile Include="Core\Repositories\InMemoryJobRepository.cs" />
-    <Compile Include="Core\Repositories\IStepRepository.cs" />
-    <Compile Include="Core\Repositories\SqlJobRepository.cs" />
-    <Compile Include="Core\SkipContext.cs" />
-    <Compile Include="Core\SkipPolicy.cs" />
-    <Compile Include="Core\Step.cs" />
-    <Compile Include="Core\StepContext.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Readers\FileReader\DefaultLineMapper.cs" />
-    <Compile Include="Readers\FileReader\DelimitedLineTokenizer.cs" />
-    <Compile Include="Readers\FileReader\Extensions\FlatFileItemReaderExt.cs" />
-    <Compile Include="Readers\FileReader\FieldSet.cs" />
-    <Compile Include="Readers\FileReader\FlatFileItemBuilder.cs" />
-    <Compile Include="Readers\FileReader\FlatFileItemReader.cs" />
-    <Compile Include="Readers\FileReader\FlatFileParseException.cs" />
-    <Compile Include="Readers\FileReader\IFieldSetMapper.cs" />
-    <Compile Include="Readers\FileReader\ILineMapper.cs" />
-    <Compile Include="Readers\FileReader\ILineTokenizer.cs" />
-    <Compile Include="Readers\FileReader\Services\FileService.cs" />
-    <Compile Include="Readers\FileReader\Services\IFileService.cs" />
-    <Compile Include="Readers\SqlReader\SqlDbItemReader.cs" />
-    <Compile Include="Writers\FileWriter\FileWriterService.cs" />
-    <Compile Include="Writers\FileWriter\FlatFileItemWriter.cs" />
-    <Compile Include="Writers\FileWriter\IFileWriterService.cs" />
-    <Compile Include="Writers\FileWriter\IPropertyValueSerializer.cs" />
-    <Compile Include="Writers\FileWriter\PropertyValueSerializer.cs" />
-    <Compile Include="Writers\SqlWriter\SqlDbItemWriter.cs" />
+    <PackageReference Include="Dapper" Version="2.1.35" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.9.0" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
-  </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
-       Other similar extension points exist, see Microsoft.Common.targets.
-  <Target Name="BeforeBuild">
-  </Target>
-  <Target Name="AfterBuild">
-  </Target>
-  -->
 </Project>

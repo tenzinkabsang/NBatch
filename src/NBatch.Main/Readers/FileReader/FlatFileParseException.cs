@@ -1,17 +1,16 @@
 using System;
 
-namespace NBatch.Main.Readers.FileReader
-{
-    public sealed class FlatFileParseException : Exception
-    {
-        public FlatFileParseException()
-            :base("Unable to parse file")
-        {
-        }
+namespace NBatch.Main.Readers.FileReader;
 
-        public FlatFileParseException(Exception innerException)
-            :base("Unable to parse file", innerException)
-        {   
-        }
+public sealed class FlatFileParseException : Exception
+{
+    public FlatFileParseException()
+        :base("Unable to parse file")
+    {
+    }
+
+    public FlatFileParseException(Exception innerException)
+        :base("Unable to parse file", innerException)
+    {   
     }
 }

@@ -1,25 +1,24 @@
-﻿namespace NBatch.Main.Readers.FileReader
+﻿namespace NBatch.Main.Readers.FileReader;
+
+sealed class DefaultLineMapper<T>: ILineMapper<T>
 {
-    sealed class DefaultLineMapper<T>: ILineMapper<T>
+    private readonly IFieldSetMapper<T> _mapper;
+    public ILineTokenizer Tokenizer { get; private set; }
+
+    public DefaultLineMapper(ILineTokenizer tokenizer, IFieldSetMapper<T> mapper)
     {
-        private readonly IFieldSetMapper<T> _mapper;
-        public ILineTokenizer Tokenizer { get; private set; }
+        _mapper = mapper;
+        Tokenizer = tokenizer;
+    }
 
-        public DefaultLineMapper(ILineTokenizer tokenizer, IFieldSetMapper<T> mapper)
-        {
-            _mapper = mapper;
-            Tokenizer = tokenizer;
-        }
+    public T MapToModel(string line)
+    {
+        // Call tokenizer to return a fieldset
+        FieldSet fieldSet = Tokenizer.Tokenize(line);
 
-        public T MapToModel(string line)
-        {
-            // Call tokenizer to return a fieldset
-            FieldSet fieldSet = Tokenizer.Tokenize(line);
+        // Call Mapper passing in the fieldset
+        T result = _mapper.MapFieldSet(fieldSet);
 
-            // Call Mapper passing in the fieldset
-            T result = _mapper.MapFieldSet(fieldSet);
-
-            return result;
-        }
+        return result;
     }
 }

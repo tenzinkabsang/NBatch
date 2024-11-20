@@ -1,9 +1,8 @@
 using System.Collections.Generic;
 
-namespace NBatch.Main.Readers.FileReader.Services
+namespace NBatch.Main.Readers.FileReader.Services;
+
+public interface IFileService
 {
-    public interface IFileService
-    {
-        IEnumerable<string> ReadLines(long startIndex, int chunkSize);
-    }
+    IEnumerable<string> ReadLines(long startIndex, int chunkSize);
 }

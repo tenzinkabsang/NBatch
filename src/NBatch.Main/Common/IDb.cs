@@ -1,12 +1,12 @@
-﻿using System;
+﻿using Microsoft.Data.SqlClient;
+using System;
 using System.Data;
-using System.Data.SqlClient;
+using System.Threading.Tasks;
 
-namespace NBatch.Main.Common
+namespace NBatch.Main.Common;
+
+internal interface IDb
 {
-    interface IDb
-    {
-        T ExecuteQuery<T>(Func<SqlCommand, T> operation);
-        T ExecuteQuery<T>(Func<IDbConnection, IDbTransaction, T> operation);
-    }
+    Task<T> ExecuteQueryAsync<T>(Func<SqlCommand, Task<T>> operation);
+    Task<T> ExecuteQueryAsync<T>(Func<IDbConnection, IDbTransaction, Task<T>> operation);
 }

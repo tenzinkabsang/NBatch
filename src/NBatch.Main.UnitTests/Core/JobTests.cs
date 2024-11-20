@@ -33,15 +33,15 @@ namespace NBatch.Main.UnitTests.Core
             step2.MockProcessor.Setup(p => p.Process(It.IsAny<string>())).Returns("STEP2: item processed");
 
             var jobRepo = new Mock<IJobRepository>();
-            jobRepo.Setup(j => j.GetStartIndex(It.IsAny<string>())).Returns(new StepContext());
+            jobRepo.Setup(j => j.GetStartIndexAsync(It.IsAny<string>())).Returns(new StepContext());
 
             new Job(jobRepo.Object)
                 .AddStep(step1)
                 .AddStep(step2)
                 .Start();
 
-            jobRepo.Verify(j => j.GetStartIndex("step1"), Times.Once);
-            jobRepo.Verify(j => j.GetStartIndex("step2"), Times.Once);
+            jobRepo.Verify(j => j.GetStartIndexAsync("step1"), Times.Once);
+            jobRepo.Verify(j => j.GetStartIndexAsync("step2"), Times.Once);
             VerifyMocks(step1, "STEP1: item read", "STEP1: item processed");
             VerifyMocks(step2, "STEP2: item read", "STEP2: item processed");
         }
