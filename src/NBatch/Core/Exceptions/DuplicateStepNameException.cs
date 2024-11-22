@@ -1,4 +1,4 @@
 ﻿namespace NBatch.Core.Exceptions;
 
-public class DuplicateStepNameException(string stepName) 
-    : Exception($"Step with name {stepName} already exists. Step name must be unique.") { }
+public class DuplicateStepNameException() 
+    : Exception($"Step names must be unique.") { }

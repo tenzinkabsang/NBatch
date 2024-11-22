@@ -5,10 +5,12 @@ namespace NBatch.Core;
 
 internal static class Ensure
 {
-    public static void UniqueStepName(ICollection<string> steps, IStep newStep)
+    public static void UniqueStepNames(IList<IStep> steps)
     {
-        if (!steps.Contains(newStep.Name)) return;
+        var uniqueNames = new HashSet<string>(steps.Select(s => s.Name));
 
-        throw new DuplicateStepNameException(newStep.Name);
+        if (uniqueNames.Count == steps.Count) return;
+
+        throw new DuplicateStepNameException();
     }
 }
