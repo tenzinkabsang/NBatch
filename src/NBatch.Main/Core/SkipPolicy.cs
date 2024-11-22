@@ -4,7 +4,7 @@ using NBatch.Main.Core.Repositories;
 
 namespace NBatch.Main.Core;
 
-sealed class SkipPolicy
+public sealed class SkipPolicy
 {
     public int SkipLimit { get; set; }
     private Type[] _skippableExceptions;
