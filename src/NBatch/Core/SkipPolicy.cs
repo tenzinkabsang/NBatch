@@ -33,5 +33,5 @@ public sealed class SkipPolicy
         return true;
     }
 
-    public static SkipPolicy None() => new(skippableExceptions: [], skipLimit: 0);
+    public static SkipPolicy None => new(skippableExceptions: [], skipLimit: 0);
 }

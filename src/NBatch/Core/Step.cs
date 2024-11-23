@@ -19,10 +19,10 @@ public class Step<TInput, TOutput>(string stepName,
     IProcessor<TInput, TOutput> processor,
     IWriter<TOutput> writer,
     SkipPolicy? skipPolicy = null,
-    int chunkSize = int.MaxValue) : IStep
+    int chunkSize = 10) : IStep
 {
     private readonly IProcessor<TInput, TOutput> _processor = processor ?? new DefaultProcessor<TInput, TOutput>();
-    private readonly SkipPolicy _skipPolicy = skipPolicy ?? SkipPolicy.None();
+    private readonly SkipPolicy _skipPolicy = skipPolicy ?? SkipPolicy.None;
     public string Name { get; init; } = stepName;
     public int ChunkSize { get; init; } = chunkSize;
 
@@ -33,16 +33,16 @@ public class Step<TInput, TOutput>(string stepName,
     /// <param name="stepContext"></param>
     /// <param name="stepRepository"></param>
     /// <returns></returns>
-    public async Task<bool> ProcessAsync(StepContext stepContext, IStepRepository stepRepository)
+    public async Task<StepResult> ProcessAsync(StepContext stepContext, IStepRepository stepRepository)
     {
         bool success = true;
         var ctx = StepContext.InitialRun(stepContext, ChunkSize);
         while (ctx.HasNext)
         {
             long newStepId = await stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex);
-            bool exceptionThrown = false;
+            bool exceptionThrown = false, skip = false, error = false;
             List<TInput> items = [];
-            List<TOutput> processed = [];
+            List<TOutput> processedItems = [];
             try
             {
                 items = (await reader.ReadAsync(ctx.StepIndex, ChunkSize)).ToList();
@@ -50,16 +50,16 @@ public class Step<TInput, TOutput>(string stepName,
                 foreach (var item in items)
                 {
                     var processedItem = await _processor.ProcessAsync(item);
-                    processed.Add(processedItem);
+                    processedItems.Add(processedItem);
                 }
 
-                success &= await writer.WriteAsync(processed);
+                success &= await writer.WriteAsync(processedItems);
             }
             catch (Exception ex)
             {
-                ctx.Error = true;
-                ctx.Skip = await _skipPolicy.IsSatisfiedByAsync(stepRepository, new SkipContext(ctx.StepName, ctx.NextStepIndex, ex));
-                if(!ctx.Skip)
+                error = true;
+                skip = await _skipPolicy.IsSatisfiedByAsync(stepRepository, new SkipContext(ctx.StepName, ctx.NextStepIndex, ex));
+                if(!skip)
                 {
                     exceptionThrown = true;
                     throw;
@@ -68,11 +68,11 @@ public class Step<TInput, TOutput>(string stepName,
             finally
             {
                 if (!exceptionThrown)
-                    ctx = StepContext.Increment(ctx, items.Count, processed.Count);
+                    ctx = StepContext.Increment(ctx, items.Count, processedItems.Count, skip);
 
-                await stepRepository.UpdateStepAsync(newStepId, processed.Count, ctx.Error, ctx.Skip);
+                await stepRepository.UpdateStepAsync(newStepId, processedItems.Count, error, skip);
             }
         }
-        return success;
+        return new StepResult(Name, success);
     }
 }

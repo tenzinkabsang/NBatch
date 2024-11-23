@@ -41,12 +41,12 @@ public sealed class StepContext
         return new StepContext(ctx.StepName, index, ctx.NumberOfItemsProcessed, true, chunkSize);
     }
 
-    public static StepContext Increment(StepContext ctx, int numberOfItemsReceived, int numberOfItemsProcessed)
+    public static StepContext Increment(StepContext ctx, int numberOfItemsReceived, int numberOfItemsProcessed, bool skipped)
     {
         return new StepContext(ctx.StepName, ctx.NextStepIndex, numberOfItemsProcessed, false, ctx.ChunkSize)
         {
             NumberOfItemsReceived = numberOfItemsReceived,
-            Skip = ctx.Skip
+            Skip = skipped
         };
     }
 
