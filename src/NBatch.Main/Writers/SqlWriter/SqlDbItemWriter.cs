@@ -31,7 +31,7 @@ namespace NBatch.Main.Writers.SqlWriter
         {
             TItem[] itemsToInsert = items != null ? items.ToArray() : Enumerable.Empty<TItem>().ToArray();
 
-            int result = _db.ExecuteQuery((conn, tx) => conn.Execute(_sql, itemsToInsert, tx));
+            int result = _db.ExecuteQueryAsync((conn, tx) => conn.Execute(_sql, itemsToInsert, tx));
 
             return result == itemsToInsert.Length;
         }

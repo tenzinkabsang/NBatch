@@ -16,8 +16,4 @@
     <InternalsVisibleTo Include="NBatch.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Writers\SqlWriter\" />
-  </ItemGroup>
-
 </Project>
