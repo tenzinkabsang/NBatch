@@ -1,4 +1,4 @@
-﻿namespace NBatch.Core.Repositories;
+﻿namespace NBatch.Core;
 
 public sealed class StepContext
 {
@@ -52,11 +52,10 @@ public sealed class StepContext
 
     private static long RetryPreviousIfFailed(StepContext ctx, int chunkSize)
     {
-        long index = ctx.StepIndex;
-        if (ctx.NumberOfItemsProcessed == 0 && (ctx.StepIndex - chunkSize) > 0)
-            index = ctx.StepIndex - chunkSize;
+        if (ctx.NumberOfItemsProcessed == 0 && ctx.StepIndex - chunkSize > 0)
+            return ctx.StepIndex - chunkSize;
 
-        return index;
+        return ctx.StepIndex;
     }
 
 }

@@ -14,9 +14,9 @@ namespace NBatch.Core;
 /// <param name="processor">Handles any intermediary processes that needs to be performed on the data before sending it to a writer</param>
 /// <param name="writer">Used to write/save the processed items.</param>
 /// <param name="chunkSize">Ability to perform operation in chunks.</param>
-public class Step<TInput, TOutput>(string stepName,
+internal class Step<TInput, TOutput>(string stepName,
     IReader<TInput> reader,
-    IProcessor<TInput, TOutput> processor,
+    IProcessor<TInput, TOutput>? processor,
     IWriter<TOutput> writer,
     SkipPolicy? skipPolicy = null,
     int chunkSize = 10) : IStep
@@ -27,12 +27,12 @@ public class Step<TInput, TOutput>(string stepName,
     public int ChunkSize { get; init; } = chunkSize;
 
     /// <summary>
-    /// Attempts to process the step based on the provided Reader, Processor and Writer.
-    /// 
+    /// Using the Reader, Processor and Writer it attempts to process the step in the specified chunkSize transactionally.
+    /// It keeps track of each chunk iteration to facilitate restart mechanism in the event of failure.
     /// </summary>
-    /// <param name="stepContext"></param>
-    /// <param name="stepRepository"></param>
-    /// <returns></returns>
+    /// <param name="stepContext">The initial step information.</param>
+    /// <param name="stepRepository">Used to store step information during each iteration.</param>
+    /// <returns>A success or failure result.</returns>
     public async Task<StepResult> ProcessAsync(StepContext stepContext, IStepRepository stepRepository)
     {
         bool success = true;
@@ -46,6 +46,9 @@ public class Step<TInput, TOutput>(string stepName,
             try
             {
                 items = (await reader.ReadAsync(ctx.StepIndex, ChunkSize)).ToList();
+
+                processedItems = await items.ToAsyncEnumerable().SelectAwait(
+                    async i => await _processor.ProcessAsync(i)).ToListAsync();
 
                 foreach (var item in items)
                 {

@@ -7,17 +7,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Dapper" Version="2.1.35" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="NUnit" Version="4.2.2" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="NBatch.Tests" />
+    <ProjectReference Include="..\NBatch\NBatch.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Writers\SqlWriter\" />
+    <Folder Include="Writers\" />
+    <Folder Include="Readers\" />
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,4 @@
 ﻿namespace NBatch.Core.Exceptions;
 
-public class DuplicateStepNameException() 
+public sealed class DuplicateStepNameException() 
     : Exception($"Step names must be unique.") { }

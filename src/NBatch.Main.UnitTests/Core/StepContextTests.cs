@@ -1,5 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using NBatch.Main.Core;
+﻿using NBatch.Main.Core;
 using NUnit.Framework;
 
 namespace NBatch.Main.UnitTests.Core
