@@ -7,9 +7,9 @@ namespace NBatch.ConsoleApp.Tests;
 
 public class ReadFromDb_SaveToDb
 {
-    public static async Task RunAsync(string sourceConnString, string destinationConnString)
+    public static async Task RunAsync(string jobDbConnString, string sourceConnString, string destinationConnString)
     {
-        var jobBuilder = Job.CreateBuilder(jobName: "JOB-2", sourceConnString);
+        var jobBuilder = Job.CreateBuilder(jobName: "JOB-2", jobDbConnString);
 
         jobBuilder.AddStep(
             stepName: "Read from DB and save to DB",

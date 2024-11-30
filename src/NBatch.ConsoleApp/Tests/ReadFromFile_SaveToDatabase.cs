@@ -7,14 +7,14 @@ namespace NBatch.ConsoleApp.Tests;
 
 public sealed class ReadFromFile_SaveToDatabase
 {
-    public static async Task RunAsync(string connectionString, string filePath)
+    public static async Task RunAsync(string jobDbConnString, string destinationConnString, string filePath)
     {
-        var jobBuilder = Job.CreateBuilder(jobName: "JOB-1", connectionString);
+        var jobBuilder = Job.CreateBuilder(jobName: "JOB-1", jobDbConnString);
 
         jobBuilder.AddStep(
             stepName: "Import from file and save to database",
             reader: FileReader(filePath),
-            writer: DbWriter(connectionString),
+            writer: DbWriter(destinationConnString),
             processor: new ProductLowercaseProcessor(),
             skipPolicy: SkipPolicy,
             chunkSize: 10

@@ -7,13 +7,13 @@ namespace NBatch.ConsoleApp.Tests;
 
 public class ReadFromDb_SaveToFile
 {
-    public static async Task RunAsync(string connectionString, string filePath)
+    public static async Task RunAsync(string jobDbConnString, string sourceConnString, string filePath)
     {
-        var jobBuilder = Job.CreateBuilder(jobName: "JOB-2", connectionString);
+        var jobBuilder = Job.CreateBuilder(jobName: "JOB-2", jobDbConnString);
 
         jobBuilder.AddStep(
             stepName: "Read from SQL and save to file",
-            reader: DbReader(connectionString),
+            reader: DbReader(sourceConnString),
             writer: FileWriter(filePath),
             skipPolicy: SkipPolicy,
             chunkSize: 3
