@@ -1,6 +1,6 @@
 ﻿namespace NBatch.Readers.FileReader;
 
-internal sealed class FieldSet
+public sealed class FieldSet
 {
     /// <summary>
     /// Contains key value information for a single row e.g.,

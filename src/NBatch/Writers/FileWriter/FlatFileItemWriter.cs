@@ -2,7 +2,7 @@
 
 namespace NBatch.Writers.FileWriter;
 
-internal sealed class FlatFileItemWriter<TItem> : IWriter<TItem> where TItem : class
+public sealed class FlatFileItemWriter<TItem> : IWriter<TItem> where TItem : class
 {
     private readonly IPropertyValueSerializer _serializer;
     private readonly IFileWriterService _fileService;

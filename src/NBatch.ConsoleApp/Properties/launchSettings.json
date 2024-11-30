@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NBatch.ConsoleApp": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

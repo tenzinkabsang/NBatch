@@ -18,13 +18,6 @@ public sealed class JobBuilder
         _jobRepository = new SqlJobRepository(jobName, connectionString);
     }
 
-    public JobBuilder AddStep(IStep step)
-    {
-        Ensure.UniqueStepNames(_steps.Keys, step);
-        _steps.Add(step.Name, step);
-        return this;
-    }
-
     public JobBuilder AddStep<TInput, TOutput>(
         string stepName,
         IReader<TInput> reader,

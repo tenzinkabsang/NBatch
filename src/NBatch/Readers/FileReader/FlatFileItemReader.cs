@@ -3,7 +3,7 @@ using NBatch.Readers.FileReader.Services;
 
 namespace NBatch.Readers.FileReader;
 
-internal sealed class FlatFileItemReader<TInput> : IReader<TInput>
+public sealed class FlatFileItemReader<TInput> : IReader<TInput>
 {
     private readonly ILineMapper<TInput> _lineMapper;
     private readonly IFileService _fileService;

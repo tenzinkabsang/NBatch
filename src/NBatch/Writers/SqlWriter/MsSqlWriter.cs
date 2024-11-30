@@ -4,7 +4,7 @@ using NBatch.Core.Interfaces;
 
 namespace NBatch.Writers.SqlWriter;
 
-internal sealed class MsSqlItemWriter<TItem>(string connectionString, string query) : IWriter<TItem>
+public sealed class MsSqlWriter<TItem>(string connectionString, string sql) : IWriter<TItem>
 {
     public async Task<bool> WriteAsync(IEnumerable<TItem> items)
     {
@@ -14,7 +14,7 @@ internal sealed class MsSqlItemWriter<TItem>(string connectionString, string que
         using var connection = new SqlConnection(connectionString);
         using var tranx = await connection.BeginTransactionAsync();
 
-        int result = await connection.ExecuteAsync(query, items.ToArray(), tranx);
+        int result = await connection.ExecuteAsync(sql, items.ToArray(), tranx);
         return result == items.Count();
     }
 }

@@ -16,7 +16,7 @@ public sealed class Job
         _jobRepository = jobRepository;
     }
 
-    public async Task<JobResult> StartAsync()
+    public async Task<JobResult> RunAsync()
     {
         await _jobRepository.CreateJobRecordAsync(_steps.Keys);
         bool success = true;
@@ -28,43 +28,6 @@ public sealed class Job
         return new JobResult(_jobName, success);
     }
 
-    public static JobBuilder CreateBuilder(string jobName, string connString)
-        => new(jobName, connString);
+    public static JobBuilder CreateBuilder(string jobName, string connectionString)
+        => new(jobName, connectionString);
 }
-
-//public class Test
-//{
-//    public async Task Run()
-//    {
-//        var step = new Step<object, object>("name",
-//            reader: null,
-//            processor: null,
-//            writer: null,
-//            skipPolicy: null,
-//            chunkSize: 100
-//            );
-
-
-//        var jobBuilder = Job.CreateBuilder("jobName", "connectionString");
-//        jobBuilder.AddStep(step);
-
-//        jobBuilder.AddStep<string, int>("stepName",
-//            reader: null,
-//            processor: null,
-//            writer: null);
-
-//        var job = jobBuilder.Build();
-//        await job.StartAsync();
-
-
-//        //jobBuilder.AddStep("step1", step =>
-//        //{
-//        //    step.AddReader(FlatFileReader())
-//        //        .AddProcessor(UpperCaseProcessor())
-//        //        .AddWriter(SqlWriter())
-//        //        .ConfigureSkipPolicy([typeof(ArgumentException)], 10)
-//        //        .BatchSize(10);
-//        //});
-
-//    }
-//}

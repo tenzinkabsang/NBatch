@@ -2,13 +2,13 @@
 
 namespace NBatch.Readers.FileReader;
 
-internal sealed class FlatFileItemBuilder<TItem>(string resourceUrl, IFieldSetMapper<TItem> fieldMapper)
+public sealed class FlatFileItemBuilder<TItem>(string resourceUrl, IFieldSetMapper<TItem> fieldMapper)
 {
     private string[]? _headers;
     private int _linesToSkip;
     private char? _token;
 
-    public FlatFileItemBuilder<TItem> WithHeaders(string[] headers)
+    public FlatFileItemBuilder<TItem> WithHeaders(params string[] headers)
     {
         _headers = headers;
         return this;
