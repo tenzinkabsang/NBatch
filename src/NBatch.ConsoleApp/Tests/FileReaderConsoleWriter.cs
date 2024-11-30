@@ -6,13 +6,13 @@ namespace NBatch.ConsoleApp.Tests;
 
 public class FileReaderConsoleWriter
 {
-    public static async Task RunAsync()
+    public static async Task RunAsync(string connectionString, string filePath)
     {
-        var jobBuilder = Job.CreateBuilder(jobName: "JOB-1", connectionString: "");
+        var jobBuilder = Job.CreateBuilder(jobName: "JOB-1", connectionString);
 
         jobBuilder.AddStep(
             stepName: "Import from file and print to console",
-            reader: FileReader(),
+            reader: FileReader(filePath),
             writer: new ConsoleWriter<Product>(),
             processor: new ProductLowercaseProcessor()
             );
@@ -21,8 +21,8 @@ public class FileReaderConsoleWriter
         await job.RunAsync();
     }
 
-    private static IReader<Product> FileReader() =>
-        new FlatFileItemBuilder<Product>(resourceUrl: "", new ProductMapper())
+    private static IReader<Product> FileReader(string filePath) =>
+        new FlatFileItemBuilder<Product>(filePath, new ProductMapper())
             .WithHeaders("Id", "Name", "Description", "Price")
             .LinesToSkip(1)
             .Build();

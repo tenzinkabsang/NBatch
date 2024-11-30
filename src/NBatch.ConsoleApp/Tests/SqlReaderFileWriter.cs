@@ -7,14 +7,14 @@ namespace NBatch.ConsoleApp.Tests;
 
 public class SqlReaderFileWriter
 {
-    public static async Task RunAsync()
+    public static async Task RunAsync(string connectionString, string filePath)
     {
-        var jobBuilder = Job.CreateBuilder(jobName: "JOB-2", connectionString: "");
+        var jobBuilder = Job.CreateBuilder(jobName: "JOB-2", connectionString);
 
         jobBuilder.AddStep(
             stepName: "Read from SQL and save to file",
-            reader: SqlReader(),
-            writer: FileWriter(),
+            reader: SqlReader(connectionString),
+            writer: FileWriter(filePath),
             chunkSize: 3
             );
 
@@ -22,13 +22,9 @@ public class SqlReaderFileWriter
         await job.RunAsync();
     }
 
-    public static IReader<Product> SqlReader()
-    {
-        return new MsSqlReader<Product>(connectionString: "", sql: "SELECT * FROM Products");
-    }
+    public static IReader<Product> SqlReader(string connectionString) 
+        => new MsSqlReader<Product>(connectionString, sql: "SELECT * FROM Products");
 
-    public static IWriter<Product> FileWriter()
-    {
-        return new FlatFileItemWriter<Product>("path");
-    }
+    public static IWriter<Product> FileWriter(string filePath) 
+        => new FlatFileItemWriter<Product>(filePath);
 }
