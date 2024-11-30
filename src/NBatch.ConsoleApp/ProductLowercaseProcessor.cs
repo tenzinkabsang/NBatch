@@ -10,7 +10,7 @@ public sealed class ProductLowercaseProcessor : IProcessor<Product, Product>
     public Task<Product> ProcessAsync(Product input)
     {
         return Task.FromResult(new Product(
-                Id: input.Id,
+                Sku: input.Sku,
                 Name: input.Name.ToLower(),
                 Description: input.Description.ToLower(),
                 Price: input.Price)

@@ -4,7 +4,7 @@ using NBatch.Readers.FileReader;
 
 namespace NBatch.ConsoleApp.Tests;
 
-public class FileReaderConsoleWriter
+public sealed class ReadFromFile_WriteToConsole
 {
     public static async Task RunAsync(string connectionString, string filePath)
     {
@@ -23,7 +23,7 @@ public class FileReaderConsoleWriter
 
     private static IReader<Product> FileReader(string filePath) =>
         new FlatFileItemBuilder<Product>(filePath, new ProductMapper())
-            .WithHeaders("Id", "Name", "Description", "Price")
+            .WithHeaders("Sku", "Name", "Description", "Price")
             .LinesToSkip(1)
             .Build();
 }

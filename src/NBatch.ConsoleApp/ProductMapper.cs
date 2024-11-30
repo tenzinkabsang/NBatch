@@ -6,7 +6,7 @@ public sealed class ProductMapper : IFieldSetMapper<Product>
 {
     public Product MapFieldSet(FieldSet fieldSet) => 
         new Product(
-                Id: fieldSet.GetInt("Id"),
+                Sku: fieldSet.GetString("Sku"),
                 Name: fieldSet.GetString("Name"),
                 Description: fieldSet.GetString("Description"),
                 Price: fieldSet.GetDecimal("Price")
