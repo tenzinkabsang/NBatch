@@ -1,9 +1,0 @@
-1111,c# for dummies,the book you should avoid,800.0000
-2222,design patterns,the worlds authority on software designs,299.9900
-3333,java 8 in depth,finally lambdas,399.9900
-4444,effective java,the best java book,499.9900
-5555,asp.net mvc 9,not even model view controller,599.9900
-6666,web api,easy way to expose endpoints,699.9900
-7777,c++ in-depth,everything related to c++,799.9900
-8888,scala programming,beautiful functional,899.9900
-9999,reactive extensions,asynchrony at its best,999.9900

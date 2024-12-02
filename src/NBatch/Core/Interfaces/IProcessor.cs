@@ -1,6 +1,6 @@
 ﻿namespace NBatch.Core.Interfaces;
 
-public interface IProcessor<TInput, TOutput>
+public interface IProcessor<T, U>
 {
-    Task<TOutput> ProcessAsync(TInput input);
+    Task<U> ProcessAsync(T input);
 }

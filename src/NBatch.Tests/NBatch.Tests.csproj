@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,11 +14,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NBatch\NBatch.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Writers\" />
-    <Folder Include="Readers\" />
   </ItemGroup>
 
 </Project>
