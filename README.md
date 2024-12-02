@@ -4,7 +4,7 @@
 
 Batch Processing Framework For .NET
 
-__NBatch__ simplifies your batch processing needs by providing a platform that supports common features needed for all mission critical tasks.  
+__NBatch__ simplifies batch processing by providing a framework that supports common features needed for all mission critical tasks.  
 
 Should your application stop if it encounters a badly formatted line, or should it skip that line and continue on? What about when you restart a failed batch job? NBatch handles
 all of these low-level infrastructural plumbing code and exposes configurable components that the user can set-up to cater for there particular app.
@@ -45,22 +45,21 @@ public class ProductMapper : IFieldSetMapper<Product>
 
 ```C#
 // Define a reader
-public static IReader<Product> FlatFileReader() 
-{
-   string sourceUrl = @"c:\sample.csv";
-   return new FlatFileItemBuilder<Product>(sourceUrl, new ProductMapper())
-	      .WithHeaders(new[] {"Name", "Description" })
-	      .LinesToSkip(1)
-	      .Build();
-}
+private static IReader<Product> FileReader(string filePath) =>
+    new FlatFileItemBuilder<Product>(filePath, new ProductMapper())
+        .WithHeaders("Name", "Description")
+        .LinesToSkip(1)
+        .Build();
+
 ```
 ```C#
 // Define a writer
-public static IWriter<Product> SqlWriter()
-{
-    return new SqlDbItemWriter<Product>("myDB")
-              .SetSql("INSERT INTO Product (Name, Description) VALUES (@Name, @Description)");
-}
+ private static IWriter<Product> DbWriter(string connectionString) 
+     => new MsSqlWriter<Product>(connectionString,
+             """
+             INSERT INTO Product (Name, Description)
+             VALUES (@Name, @Description)
+             """);
 ```
 
 ```C#
@@ -80,19 +79,29 @@ public class ProductUppercaseProcessor : IProcessor<Product, Product>
 ```
 
 ```C#
-public static void Main(string[] args)
+public static async Task Main(string[] args)
 {
-	// Create a Step containing the reader, processor and writer.
-	IStep processFileStep = new Step<Product, Product>("step1")
-	        .SetReader(FlatFileReader())
-	        .SetProcessor(new ProductUppercaseProcessor())
-	        .SetWriter(SqlWriter());
-        
-    // Create a Job with the step and run.
-    new Job("myJob", "myDB")
-        .AddStep(processFileStep)
-        .Start();
+    var jobBuilder = Job.CreateBuilder(jobName: "JOB-1", jobDbConnString);
+
+	// Add a Step containing the reader, (optional)processor and writer.
+    jobBuilder.AddStep(
+        stepName: "Import from file and save to database",
+        reader: FileReader(filePath),
+        writer: DbWriter(destinationConnString),
+        processor: new ProductUppercaseProcessor(),
+        skipPolicy: SkipPolicy,
+        chunkSize: 10
+        );
+
+    var job = jobBuilder.Build();
+    await job.RunAsync();
 }
+
+/// <summary>
+///  Specifies the exceptions that are skippable (per batch) along with the skip limit.
+///  Once the skip limit threshold is reached it will throw and the job will stop.
+/// </summary>
+private static SkipPolicy SkipPolicy => new([typeof(FlatFileParseException)], skipLimit: 3);
 ```
 
 ## Want to contribute?
