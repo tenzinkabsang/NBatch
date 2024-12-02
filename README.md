@@ -83,7 +83,7 @@ public static async Task Main(string[] args)
 {
     var jobBuilder = Job.CreateBuilder(jobName: "JOB-1", jobDbConnString);
 
-	// Add a Step containing the reader, (optional)processor and writer.
+    // Add a Step containing the reader, (optional)processor and writer.
     jobBuilder.AddStep(
         stepName: "Import from file and save to database",
         reader: FileReader(filePath),
