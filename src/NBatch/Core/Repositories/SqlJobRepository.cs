@@ -9,9 +9,10 @@ internal sealed class SqlJobRepository(string jobName, string connectionString) 
     public async Task CreateJobRecordAsync(ICollection<string> stepNames)
     {
         using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
         using var tranx = await connection.BeginTransactionAsync();
         
-        var job = await connection.QuerySingleAsync<string>(@"SELECT JobName FROM BatchJob WHERE JobName = @JobName", new { JobName = jobName }, tranx);
+        var job = await connection.QuerySingleOrDefaultAsync<string>(@"SELECT JobName FROM BatchJob WHERE JobName = @JobName", new { JobName = jobName }, tranx);
 
         // If the job exists, then update
         if (!string.IsNullOrEmpty(job))
@@ -33,13 +34,16 @@ internal sealed class SqlJobRepository(string jobName, string connectionString) 
                     NumberOfItemsProcessed = 0
                 }), tranx);
         }
+
+        await tranx.CommitAsync();
     }
 
     public async Task<long> InsertStepAsync(string stepName, long stepIndex)
     {
         using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
         using var tranx = await connection.BeginTransactionAsync();
-        return await connection.QuerySingleAsync<long>("""
+        var result = await connection.QuerySingleAsync<long>("""
             INSERT INTO BatchStep (StepName, JobName, StepIndex, NumberOfItemsProcessed)
             VALUES (@StepName, @JobName, @StepIndex, @NumberOfItemsProcessed); SELECT SCOPE_IDENTITY();
             """,
@@ -50,19 +54,22 @@ internal sealed class SqlJobRepository(string jobName, string connectionString) 
                 StepIndex = stepIndex,
                 NumberOfItemsProcessed = 0
             }, tranx);
+        await tranx.CommitAsync();
+        return result;
     }
 
 
     public async Task UpdateStepAsync(long stepId, int numberOfItemsProcessed, bool error, bool skipped)
     {
         using var connection = new SqlConnection(connectionString);
-        using var tranx = connection.BeginTransaction();
+        await connection.OpenAsync();
+        using var tranx = await connection.BeginTransactionAsync();
         await connection.ExecuteAsync("""
             Update BatchStep SET 
               NumberOfItemsProcessed = @NumberOfItemsProcessed, 
               Error = @Error, 
               Skipped = @Skipped 
-            WHERE Id = @StepId"
+            WHERE Id = @StepId
             """,
             new
             {
@@ -71,13 +78,14 @@ internal sealed class SqlJobRepository(string jobName, string connectionString) 
                 Skipped = skipped,
                 StepId = stepId
             }, tranx);
+        await tranx.CommitAsync();
     }
 
 
     public async Task<int> GetExceptionCountAsync(SkipContext skipContext)
     {
         using var connection = new SqlConnection(connectionString);
-        using var tranx = await connection.BeginTransactionAsync();
+        await connection.OpenAsync();
         return await connection.QuerySingleAsync<int>("""
             SELECT COUNT(1) FROM BatchStepException WHERE StepName = @StepName AND JobName = @JobName
             """,
@@ -85,13 +93,13 @@ internal sealed class SqlJobRepository(string jobName, string connectionString) 
             {
                 StepName = skipContext.StepName,
                 JobName = jobName
-            }, tranx);
+            });
     }
 
     public async Task<StepContext> GetStartIndexAsync(string stepName)
     {
         using var connection = new SqlConnection(connectionString);
-        using var tranx = connection.BeginTransaction();
+        await connection.OpenAsync();
         return await connection.QueryFirstAsync<StepContext>("""
             Select TOP 1 
               Id, 
@@ -107,13 +115,14 @@ internal sealed class SqlJobRepository(string jobName, string connectionString) 
             {
                 StepName = stepName,
                 JobName = jobName
-            }, tranx);
+            });
     }
 
    
     public async Task SaveExceptionInfoAsync(SkipContext skipContext, int currentCount)
     {
         using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
         using var tranx = await connection.BeginTransactionAsync();
         await connection.ExecuteAsync("""
             INSERT INTO BatchStepException (StepIndex, StepName, JobName, ExceptionMsg, ExceptionDetails)
@@ -127,6 +136,7 @@ internal sealed class SqlJobRepository(string jobName, string connectionString) 
                 ExceptionMsg = skipContext.ExceptionMessage,
                 ExceptionDetails = skipContext.ExceptionDetail
             }, tranx);
+        await tranx.CommitAsync();
     }
 
 }

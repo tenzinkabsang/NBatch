@@ -12,9 +12,11 @@ public sealed class MsSqlWriter<TItem>(string connectionString, string sql) : IW
             return false;
 
         using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
         using var tranx = await connection.BeginTransactionAsync();
 
         int result = await connection.ExecuteAsync(sql, items.ToArray(), tranx);
+        await tranx.CommitAsync();
         return result == items.Count();
     }
 }

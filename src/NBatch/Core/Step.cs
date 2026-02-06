@@ -50,12 +50,6 @@ internal class Step<TInput, TOutput>(string stepName,
                 processedItems = await items.ToAsyncEnumerable().SelectAwait(
                     async i => await _processor.ProcessAsync(i)).ToListAsync();
 
-                foreach (var item in items)
-                {
-                    var processedItem = await _processor.ProcessAsync(item);
-                    processedItems.Add(processedItem);
-                }
-
                 success &= await writer.WriteAsync(processedItems);
             }
             catch (Exception ex)
