@@ -33,6 +33,7 @@ internal class Step<TInput, TOutput>(string stepName,
     public async Task<StepResult> ProcessAsync(StepContext stepContext, IStepRepository stepRepository)
     {
         bool success = true;
+        int totalItemsRead = 0, totalItemsProcessed = 0, totalErrorsSkipped = 0;
         var ctx = StepContext.InitialRun(stepContext, ChunkSize);
 
         while (ctx.HasNext)
@@ -40,9 +41,12 @@ internal class Step<TInput, TOutput>(string stepName,
             long stepId = await stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex);
             (bool chunkSuccess, ctx) = await ProcessChunkAsync(ctx, stepId, stepRepository);
             success &= chunkSuccess;
+            totalItemsRead += ctx.NumberOfItemsReceived;
+            totalItemsProcessed += ctx.NumberOfItemsProcessed;
+            if (ctx.Skip) totalErrorsSkipped++;
         }
 
-        return new StepResult(Name, success);
+        return new StepResult(Name, success, totalItemsRead, totalItemsProcessed, totalErrorsSkipped);
     }
 
     /// <summary>
@@ -85,7 +89,8 @@ internal class Step<TInput, TOutput>(string stepName,
         }
         finally
         {
-            await stepRepository.UpdateStepAsync(stepId, processedItems.Count, error, skip);
+            int itemsCompleted = (error && !skip) ? 0 : processedItems.Count;
+            await stepRepository.UpdateStepAsync(stepId, itemsCompleted, error, skip);
         }
     }
 }

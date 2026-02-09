@@ -20,7 +20,7 @@ public sealed class StepContext
         {
             if (IsInitialRun || Skip)
                 return true;
-            return NumberOfItemsReceived > 0 || StepIndex == ChunkSize;
+            return NumberOfItemsReceived > 0;
         }
     }
 
@@ -52,7 +52,7 @@ public sealed class StepContext
 
     private static long RetryPreviousIfFailed(StepContext ctx, int chunkSize)
     {
-        if (ctx.NumberOfItemsProcessed == 0 && ctx.StepIndex - chunkSize > 0)
+        if (ctx.NumberOfItemsProcessed == 0 && ctx.StepIndex - chunkSize >= 0)
             return ctx.StepIndex - chunkSize;
 
         return ctx.StepIndex;

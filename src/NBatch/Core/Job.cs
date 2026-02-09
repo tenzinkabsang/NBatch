@@ -21,13 +21,15 @@ public sealed class Job
         await _jobRepository.CreateJobRecordAsync(_steps.Keys);
 
         bool success = true;
+        List<StepResult> stepResults = [];
         foreach (var (name, step) in _steps)
         {
             StepResult result = await ExecuteStepAsync(name, step);
+            stepResults.Add(result);
             success &= result.Success;
         }
 
-        return new JobResult(_jobName, success);
+        return new JobResult(_jobName, success, stepResults);
     }
 
     private async Task<StepResult> ExecuteStepAsync(string stepName, IStep step)
@@ -36,6 +38,9 @@ public sealed class Job
         return await step.ProcessAsync(context, _jobRepository);
     }
 
-    public static JobBuilder CreateBuilder(string jobName, string connectionString)
-        => new(jobName, connectionString);
+    public static JobBuilder CreateBuilder(string jobName, string connectionString, DatabaseProvider provider = DatabaseProvider.SqlServer)
+        => new(jobName, connectionString, provider);
+
+    public static JobBuilder CreateBuilder(string jobName)
+        => new(jobName);
 }

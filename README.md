@@ -48,7 +48,7 @@ public class ProductMapper : IFieldSetMapper<Product>
 private static IReader<Product> FileReader(string filePath) =>
     new FlatFileItemBuilder<Product>(filePath, new ProductMapper())
         .WithHeaders("Name", "Description")
-        .LinesToSkip(1)
+        .WithLinesToSkip(1)
         .Build();
 
 ```
@@ -67,13 +67,13 @@ private static IReader<Product> FileReader(string filePath) =>
 // before sending it to the writer.
 public class ProductUppercaseProcessor : IProcessor<Product, Product>
 {
-    public Product Process(Product input)
+    public Task<Product> ProcessAsync(Product input)
     {
-        return new Product
-			        {
-			            Name = input.Name.ToUpper(),
-			            Description = input.Description.ToUpper()
-			        };
+        return Task.FromResult(new Product
+                    {
+                        Name = input.Name.ToUpper(),
+                        Description = input.Description.ToUpper()
+                    });
     }
 }
 ```
@@ -81,27 +81,26 @@ public class ProductUppercaseProcessor : IProcessor<Product, Product>
 ```C#
 public static async Task Main(string[] args)
 {
-    var jobBuilder = Job.CreateBuilder(jobName: "JOB-1", jobDbConnString);
+    // Use the overload with a connection string to enable SQL-based job tracking
+    // with restart support. Or omit it to use lightweight in-memory tracking:
+    // var job = Job.CreateBuilder(jobName: "JOB-1")
+    var job = Job.CreateBuilder(jobName: "JOB-1", jobDbConnString)
+        .AddStep("Import from file and save to database")
+        .ReadFrom(FileReader(filePath))
+        .WriteTo(DbWriter(destinationConnString))
+        .ProcessWith(new ProductUppercaseProcessor())
+        .WithSkipPolicy(new SkipPolicy([typeof(FlatFileParseException)], skipLimit: 3))
+        .WithChunkSize(10)
+        .Build();
 
-    // Add a Step containing the reader, (optional)processor and writer.
-    jobBuilder.AddStep(
-        stepName: "Import from file and save to database",
-        reader: FileReader(filePath),
-        writer: DbWriter(destinationConnString),
-        processor: new ProductUppercaseProcessor(),
-        skipPolicy: SkipPolicy,
-        chunkSize: 10
-        );
+    // Or use a lambda for simple transformations:
+    //  .ProcessWith(p => new Product { Name = p.Name.ToUpper(), Description = p.Description.ToUpper() })
 
-    var job = jobBuilder.Build();
-    await job.RunAsync();
+    var result = await job.RunAsync();
+
+    // result.Success — overall job success
+    // result.Steps   — per-step details (ItemsRead, ItemsProcessed, ErrorsSkipped)
 }
-
-/// <summary>
-///  Specifies the exceptions that are skippable (per batch) along with the skip limit.
-///  Once the skip limit threshold is reached it will throw and the job will stop.
-/// </summary>
-private static SkipPolicy SkipPolicy => new([typeof(FlatFileParseException)], skipLimit: 3);
 ```
 
 ## Want to contribute?

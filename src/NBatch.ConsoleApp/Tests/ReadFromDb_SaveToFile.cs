@@ -9,32 +9,20 @@ public class ReadFromDb_SaveToFile
 {
     public static async Task RunAsync(string jobDbConnString, string sourceConnString, string filePath)
     {
-        var jobBuilder = Job.CreateBuilder(jobName: "JOB-2", jobDbConnString);
+        var job = Job.CreateBuilder(jobName: "JOB-2", jobDbConnString, DatabaseProvider.SqlServer)
+            .AddStep("Read from SQL and save to file")
+            .ReadFrom(DbReader(sourceConnString))
+            .WriteTo(FileWriter(filePath))
+            .WithSkipPolicy(new SkipPolicy([typeof(TimeoutException)], skipLimit: 3))
+            .WithChunkSize(3)
+            .Build();
 
-        jobBuilder.AddStep(
-            stepName: "Read from SQL and save to file",
-            reader: DbReader(sourceConnString),
-            writer: FileWriter(filePath),
-            skipPolicy: SkipPolicy,
-            chunkSize: 3
-            );
-
-        var job = jobBuilder.Build();
         await job.RunAsync();
     }
 
-    /// <summary>
-    ///  Specifies the exceptions that are skippable (per batch) along with the skip limit.
-    ///  Once the skip limit threshold is reached it will throw and the job will stop.
-    /// </summary>
-    private static SkipPolicy SkipPolicy => new([typeof(TimeoutException)], skipLimit: 3);
-
     private static IReader<Product> DbReader(string connectionString) 
-        => new MsSqlReader<Product>(connectionString, sql: "SELECT * FROM Products");
+        => new MsSqlReader<Product>(connectionString, sql: "SELECT * FROM Products ORDER BY Sku");
 
-    /// <summary>
-    /// Writes to file with the values separated using the provided token.
-    /// </summary>
     private static IWriter<Product> FileWriter(string filePath) 
         => new FlatFileItemWriter<Product>(filePath)
                 .WithToken('|');

@@ -14,7 +14,7 @@ public sealed class FlatFileItemBuilder<TItem>(string resourceUrl, IFieldSetMapp
         return this;
     }
 
-    public FlatFileItemBuilder<TItem> LinesToSkip(int linesToSkip)
+    public FlatFileItemBuilder<TItem> WithLinesToSkip(int linesToSkip)
     {
         _linesToSkip = linesToSkip;
         return this;

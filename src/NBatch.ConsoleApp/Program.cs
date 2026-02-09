@@ -30,3 +30,6 @@ await ReadFromFile_WriteToConsole.RunAsync(jobDb, fileSourcePath);
 
 await ReadFromFile_WriteToFile.RunAsync(jobDb, fileSourcePath, fileTargetPath);
 
+// Uses a lambda processor and in-memory job tracking (no SQL required)
+await ReadFromFile_WriteToConsole_Lambda.RunAsync(fileSourcePath);
+
