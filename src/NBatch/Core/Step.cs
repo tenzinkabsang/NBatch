@@ -27,51 +27,65 @@ internal class Step<TInput, TOutput>(string stepName,
     public int ChunkSize { get; init; } = chunkSize;
 
     /// <summary>
-    /// Using the Reader, Processor and Writer it attempts to process the step in the specified chunkSize transactionally.
-    /// It keeps track of each chunk iteration to facilitate restart mechanism in the event of failure.
+    /// Processes all chunks sequentially using the Reader, Processor and Writer.
+    /// Tracks each chunk iteration via the repository to support restart on failure.
     /// </summary>
-    /// <param name="stepContext">The initial step information.</param>
-    /// <param name="stepRepository">Used to store step information during each iteration.</param>
-    /// <returns>A success or failure result.</returns>
     public async Task<StepResult> ProcessAsync(StepContext stepContext, IStepRepository stepRepository)
     {
         bool success = true;
         var ctx = StepContext.InitialRun(stepContext, ChunkSize);
+
         while (ctx.HasNext)
         {
-            long newStepId = await stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex);
-            bool exceptionThrown = false, skip = false, error = false;
-            List<TInput> items = [];
-            List<TOutput> processedItems = [];
-            try
-            {
-                items = (await reader.ReadAsync(ctx.StepIndex, ChunkSize)).ToList();
-
-                foreach (var item in items)
-                {
-                    processedItems.Add(await _processor.ProcessAsync(item));
-                }
-
-                success &= await writer.WriteAsync(processedItems);
-            }
-            catch (Exception ex)
-            {
-                error = true;
-                skip = await _skipPolicy.IsSatisfiedByAsync(stepRepository, new SkipContext(ctx.StepName, ctx.NextStepIndex, ex));
-                if(!skip)
-                {
-                    exceptionThrown = true;
-                    throw;
-                }
-            }
-            finally
-            {
-                if (!exceptionThrown)
-                    ctx = StepContext.Increment(ctx, items.Count, processedItems.Count, skip);
-
-                await stepRepository.UpdateStepAsync(newStepId, processedItems.Count, error, skip);
-            }
+            long stepId = await stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex);
+            (bool chunkSuccess, ctx) = await ProcessChunkAsync(ctx, stepId, stepRepository);
+            success &= chunkSuccess;
         }
+
         return new StepResult(Name, success);
+    }
+
+    /// <summary>
+    /// Reads, processes, and writes a single chunk. On a skippable error the chunk is
+    /// marked as skipped and the next context is advanced. On a fatal error the step
+    /// state is persisted before the exception propagates (context is not advanced).
+    /// </summary>
+    private async Task<(bool Success, StepContext NextContext)> ProcessChunkAsync(
+        StepContext ctx, long stepId, IStepRepository stepRepository)
+    {
+        List<TInput> items = [];
+        List<TOutput> processedItems = [];
+        bool error = false, skip = false;
+
+        try
+        {
+            items = (await reader.ReadAsync(ctx.StepIndex, ChunkSize)).ToList();
+
+            foreach (var item in items)
+            {
+                var result = await _processor.ProcessAsync(item);
+                processedItems.Add(result);
+            }
+
+            bool writeSuccess = await writer.WriteAsync(processedItems);
+
+            var stepContext = StepContext.Increment(ctx, items.Count, processedItems.Count, false);
+
+            return (writeSuccess, stepContext);
+        }
+        catch (Exception ex)
+        {
+            error = true;
+            skip = await _skipPolicy.IsSatisfiedByAsync(stepRepository, new SkipContext(ctx.StepName, ctx.NextStepIndex, ex));
+
+            if (!skip)
+                throw;
+
+            return (true, StepContext.Increment(ctx, items.Count, processedItems.Count, true));
+        }
+        finally
+        {
+            await stepRepository.UpdateStepAsync(stepId, processedItems.Count, error, skip);
+        }
     }
 }

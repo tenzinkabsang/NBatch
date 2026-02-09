@@ -14,12 +14,7 @@ internal sealed class DefaultLineMapper<T> : ILineMapper<T>
 
     public T MapToModel(string line)
     {
-        // Call tokenizer to return a fieldset
         FieldSet fieldSet = Tokenizer.Tokenize(line);
-
-        // Call Mapper passing in the fieldset
-        T result = _mapper.MapFieldSet(fieldSet);
-
-        return result;
+        return _mapper.MapFieldSet(fieldSet);
     }
 }

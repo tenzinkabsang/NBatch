@@ -57,5 +57,4 @@ public sealed class StepContext
 
         return ctx.StepIndex;
     }
-
 }

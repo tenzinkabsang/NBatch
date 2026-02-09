@@ -8,9 +8,9 @@ public sealed class FieldSet
     /// ["LastName"] = "Doe"
     /// ["Age"] = 20
     /// </summary>
-    private readonly IDictionary<string, string> _valueWithHeader;
+    private readonly Dictionary<string, string> _valueWithHeader;
 
-    private FieldSet(IDictionary<string, string> valueWithHeader) => _valueWithHeader = valueWithHeader;
+    private FieldSet(Dictionary<string, string> valueWithHeader) => _valueWithHeader = valueWithHeader;
 
     public static FieldSet Create(IList<string> headers, IList<string> line)
     {
@@ -27,8 +27,6 @@ public sealed class FieldSet
     /// If no header information is provided, use index as keys. 
     /// This allows the user to retrieve value based on index.
     /// </summary>
-    /// <param name="line">Represents information from a single line</param>
-    /// <returns>Index as keys</returns>
     private static IEnumerable<string> UseIndexAsKeys(IList<string> line)
         => Enumerable.Range(0, line.Count).Select(index => index.ToString());
 
@@ -38,29 +36,17 @@ public sealed class FieldSet
 
     public decimal GetDecimal(int index) => GetDecimal(index.ToString());
 
-    public decimal GetDecimal(string key)
-    {
-        string value = GetValue(key);
-        return decimal.Parse(value);
-    }
+    public decimal GetDecimal(string key) => decimal.Parse(GetValue(key));
 
     public int GetInt(int index) => GetInt(index.ToString());
 
-    public int GetInt(string key)
-    {
-        string value = GetValue(key);
-        return int.Parse(value);
-    }
+    public int GetInt(string key) => int.Parse(GetValue(key));
 
     private string GetValue(string key)
     {
-        ValidateKeyExists(key);
-        return _valueWithHeader[key];
-    }
+        if (!_valueWithHeader.TryGetValue(key, out var value))
+            throw new KeyNotFoundException($"No value with the key '{key}' exists.");
 
-    private void ValidateKeyExists(string key)
-    {
-        if (!_valueWithHeader.ContainsKey(key))
-            throw new KeyNotFoundException("No value with the given name exists");
+        return value;
     }
 }

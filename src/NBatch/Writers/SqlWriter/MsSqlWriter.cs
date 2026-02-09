@@ -8,15 +8,17 @@ public sealed class MsSqlWriter<TItem>(string connectionString, string sql) : IW
 {
     public async Task<bool> WriteAsync(IEnumerable<TItem> items)
     {
-        if (!items.Any())
+        var itemList = items.ToList();
+
+        if (itemList.Count == 0)
             return false;
 
         using var connection = new SqlConnection(connectionString);
         await connection.OpenAsync();
-        using var tranx = await connection.BeginTransactionAsync();
+        using var transaction = await connection.BeginTransactionAsync();
 
-        int result = await connection.ExecuteAsync(sql, items.ToArray(), tranx);
-        await tranx.CommitAsync();
-        return result == items.Count();
+        int result = await connection.ExecuteAsync(sql, itemList, transaction);
+        await transaction.CommitAsync();
+        return result == itemList.Count;
     }
 }

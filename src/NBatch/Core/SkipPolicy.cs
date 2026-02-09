@@ -3,25 +3,27 @@
 namespace NBatch.Core;
 
 /// <summary>
-/// Configure expections that are safe to skip. Allows the Job to continue processing the next item.
+/// Configure exceptions that are safe to skip. Allows the Job to continue processing the next item.
 /// </summary>
 public sealed class SkipPolicy
 {
-    public readonly int _skipLimit;
+    private readonly int _skipLimit;
     private readonly Type[] _skippableExceptions;
 
     public SkipPolicy(Type[] skippableExceptions, int skipLimit)
     {
         ArgumentNullException.ThrowIfNull(skippableExceptions);
+
+        if (!skippableExceptions.All(IsExceptionType))
+            throw new ArgumentException("All types must derive from Exception.", nameof(skippableExceptions));
+
         _skippableExceptions = skippableExceptions;
-        if (_skippableExceptions.Length > 0 && !_skippableExceptions.All(ex => ex.IsSubclassOf(typeof(Exception)) || ex == typeof(Exception)))
-            throw new Exception("Invalid Skippable Exception Type");
         _skipLimit = skipLimit;
     }
 
     public async Task<bool> IsSatisfiedByAsync(IStepRepository stepRepository, SkipContext skipContext)
     {
-        if (_skippableExceptions.Length == 0 || _skipLimit == 0 )
+        if (_skippableExceptions.Length == 0 || _skipLimit == 0)
             return false;
 
         int exceptionCount = await stepRepository.GetExceptionCountAsync(skipContext);
@@ -32,6 +34,9 @@ public sealed class SkipPolicy
         await stepRepository.SaveExceptionInfoAsync(skipContext, exceptionCount);
         return true;
     }
+
+    private static bool IsExceptionType(Type type)
+        => type == typeof(Exception) || type.IsSubclassOf(typeof(Exception));
 
     public static SkipPolicy None => new(skippableExceptions: [], skipLimit: 0);
 }

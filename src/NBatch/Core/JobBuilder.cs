@@ -1,4 +1,5 @@
-﻿using NBatch.Core.Interfaces;
+﻿using NBatch.Core.Exceptions;
+using NBatch.Core.Interfaces;
 using NBatch.Core.Repositories;
 
 namespace NBatch.Core;
@@ -7,13 +8,12 @@ public sealed class JobBuilder
 {
     private readonly string _jobName;
     private readonly IJobRepository _jobRepository;
-    private readonly Dictionary<string, IStep> _steps;
+    private readonly Dictionary<string, IStep> _steps = [];
 
     internal JobBuilder(string jobName, string connectionString)
     {
         ArgumentNullException.ThrowIfNull(jobName);
         ArgumentNullException.ThrowIfNull(connectionString);
-        _steps = [];
         _jobName = jobName;
         _jobRepository = new SqlJobRepository(jobName, connectionString);
     }
@@ -26,10 +26,15 @@ public sealed class JobBuilder
         SkipPolicy? skipPolicy = null,
         int chunkSize = 10)
     {
-        IStep s = new Step<TInput, TOutput>(stepName, reader, processor, writer, skipPolicy, chunkSize);
-        Ensure.UniqueStepNames(_steps.Keys, s);
+        ArgumentNullException.ThrowIfNull(stepName);
+        ArgumentNullException.ThrowIfNull(reader);
+        ArgumentNullException.ThrowIfNull(writer);
 
-        _steps.Add(s.Name, s);
+        if (_steps.ContainsKey(stepName))
+            throw new DuplicateStepNameException();
+
+        var step = new Step<TInput, TOutput>(stepName, reader, processor, writer, skipPolicy, chunkSize);
+        _steps.Add(step.Name, step);
         return this;
     }
 
