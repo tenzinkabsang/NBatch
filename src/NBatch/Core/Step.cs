@@ -47,8 +47,10 @@ internal class Step<TInput, TOutput>(string stepName,
             {
                 items = (await reader.ReadAsync(ctx.StepIndex, ChunkSize)).ToList();
 
-                processedItems = await items.ToAsyncEnumerable().SelectAwait(
-                    async i => await _processor.ProcessAsync(i)).ToListAsync();
+                foreach (var item in items)
+                {
+                    processedItems.Add(await _processor.ProcessAsync(item));
+                }
 
                 success &= await writer.WriteAsync(processedItems);
             }
