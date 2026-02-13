@@ -5,11 +5,12 @@ using NBatch.Core.Interfaces;
 namespace NBatch.Tests.Core;
 
 internal class FakeStep<T, U>(string stepName,
-    Mock<IReader<T>> reader,
-    Mock<IProcessor<T, U>> processor,
-    Mock<IWriter<U>> writer,
-    SkipPolicy? skipPolicy = null,
-    int chunkSize = 10) : Step<T, U>(stepName, reader.Object, processor.Object, writer.Object, skipPolicy, chunkSize)
+Mock<IReader<T>> reader,
+Mock<IProcessor<T, U>> processor,
+Mock<IWriter<U>> writer,
+SkipPolicy? skipPolicy = null,
+RetryPolicy? retryPolicy = null,
+int chunkSize = 10) : Step<T, U>(stepName, reader.Object, processor.Object, writer.Object, skipPolicy, retryPolicy, chunkSize)
 {
     public Mock<IReader<T>> MockReader = reader;
     public Mock<IProcessor<T, U>> MockProcessor = processor;

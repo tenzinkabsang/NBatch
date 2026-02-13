@@ -9,6 +9,8 @@ public sealed class JobBuilder
     private readonly string _jobName;
     private readonly IJobRepository _jobRepository;
     private readonly Dictionary<string, IStep> _steps = [];
+    private readonly Dictionary<string, List<IStepListener>> _stepListeners = [];
+    private readonly List<IJobListener> _jobListeners = [];
 
     internal JobBuilder(string jobName, string connectionString, DatabaseProvider provider)
     {
@@ -25,6 +27,13 @@ public sealed class JobBuilder
         _jobRepository = new InMemoryJobRepository(jobName);
     }
 
+    public JobBuilder WithListener(IJobListener listener)
+    {
+        ArgumentNullException.ThrowIfNull(listener);
+        _jobListeners.Add(listener);
+        return this;
+    }
+
     public IStepBuilderReadFrom AddStep(string stepName)
     {
         ArgumentNullException.ThrowIfNull(stepName);
@@ -37,14 +46,29 @@ public sealed class JobBuilder
         IWriter<TOutput> writer,
         IProcessor<TInput, TOutput>? processor,
         SkipPolicy? skipPolicy,
-        int chunkSize)
+        RetryPolicy? retryPolicy,
+        int chunkSize,
+        List<IStepListener> stepListeners)
     {
         if (_steps.ContainsKey(stepName))
             throw new DuplicateStepNameException();
 
-        var step = new Step<TInput, TOutput>(stepName, reader, processor, writer, skipPolicy, chunkSize);
+        var step = new Step<TInput, TOutput>(stepName, reader, processor, writer, skipPolicy, retryPolicy, chunkSize);
         _steps.Add(step.Name, step);
+        if (stepListeners.Count > 0)
+            _stepListeners[stepName] = stepListeners;
     }
 
-    public Job Build() => new(_jobName, _steps, _jobRepository);
+    internal void RegisterTaskletStep(string stepName, ITasklet tasklet, List<IStepListener> stepListeners)
+    {
+        if (_steps.ContainsKey(stepName))
+            throw new DuplicateStepNameException();
+
+        var step = new TaskletStep(stepName, tasklet);
+        _steps.Add(step.Name, step);
+        if (stepListeners.Count > 0)
+            _stepListeners[stepName] = stepListeners;
+    }
+
+    public Job Build() => new(_jobName, _steps, _jobRepository, _jobListeners, _stepListeners);
 }

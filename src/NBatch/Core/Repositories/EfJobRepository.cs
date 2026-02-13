@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using NBatch.Core.Repositories.Entities;
 
@@ -6,12 +7,16 @@ namespace NBatch.Core.Repositories;
 internal sealed class EfJobRepository : IJobRepository
 {
     private readonly string _jobName;
+    private readonly string _connectionString;
     private readonly DbContextOptions<NBatchDbContext> _options;
-    private bool _databaseInitialized;
+
+    private static readonly ConcurrentDictionary<string, bool> _initializedDatabases = new();
+    private static readonly SemaphoreSlim _initLock = new(1, 1);
 
     public EfJobRepository(string jobName, string connectionString, DatabaseProvider provider)
     {
         _jobName = jobName;
+        _connectionString = connectionString;
         _options = NBatchDbContext.CreateOptions(connectionString, provider);
     }
 
@@ -19,10 +24,20 @@ internal sealed class EfJobRepository : IJobRepository
 
     private async Task EnsureDatabaseCreatedAsync()
     {
-        if (_databaseInitialized) return;
-        await using var ctx = CreateContext();
-        await ctx.Database.EnsureCreatedAsync();
-        _databaseInitialized = true;
+        if (_initializedDatabases.ContainsKey(_connectionString)) return;
+
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_initializedDatabases.ContainsKey(_connectionString)) return;
+            await using var ctx = CreateContext();
+            await ctx.Database.EnsureCreatedAsync();
+            _initializedDatabases.TryAdd(_connectionString, true);
+        }
+        finally
+        {
+            _initLock.Release();
+        }
     }
 
     public async Task CreateJobRecordAsync(ICollection<string> stepNames)

@@ -15,7 +15,8 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
         {
             entity.ToTable("BatchJob");
             entity.HasKey(e => e.JobName);
-            entity.Property(e => e.JobName).HasMaxLength(256);
+            entity.Property(e => e.JobName).HasMaxLength(100);
+            entity.Property(e => e.CreateDate);
         });
 
         modelBuilder.Entity<BatchStepEntity>(entity =>
@@ -23,11 +24,14 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             entity.ToTable("BatchStep");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.StepName).HasMaxLength(256);
-            entity.Property(e => e.JobName).HasMaxLength(256);
+            entity.Property(e => e.StepName).HasMaxLength(100);
+            entity.Property(e => e.JobName).HasMaxLength(100);
+            entity.Property(e => e.Error).HasDefaultValue(false);
+            entity.Property(e => e.Skipped).HasDefaultValue(false);
             entity.HasOne<BatchJobEntity>()
                 .WithMany()
                 .HasForeignKey(e => e.JobName);
+            entity.HasIndex(e => e.StepName);
         });
 
         modelBuilder.Entity<BatchStepExceptionEntity>(entity =>
@@ -35,11 +39,15 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             entity.ToTable("BatchStepException");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.StepName).HasMaxLength(256);
-            entity.Property(e => e.JobName).HasMaxLength(256);
+            entity.Property(e => e.StepName).HasMaxLength(100);
+            entity.Property(e => e.JobName).HasMaxLength(100);
+            entity.Property(e => e.ExceptionMsg).HasMaxLength(500);
+            entity.Property(e => e.ExceptionDetails).HasMaxLength(1500);
+            entity.Property(e => e.CreateDate);
             entity.HasOne<BatchJobEntity>()
                 .WithMany()
                 .HasForeignKey(e => e.JobName);
+            entity.HasIndex(e => e.StepName);
         });
     }
 

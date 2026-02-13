@@ -9,4 +9,5 @@ internal sealed class BatchStepEntity
     public int NumberOfItemsProcessed { get; set; }
     public bool Error { get; set; }
     public bool Skipped { get; set; }
+    public DateTime RunDate { get; set; } = DateTime.UtcNow;
 }

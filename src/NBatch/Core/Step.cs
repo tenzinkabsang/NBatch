@@ -19,10 +19,12 @@ internal class Step<TInput, TOutput>(string stepName,
     IProcessor<TInput, TOutput>? processor,
     IWriter<TOutput> writer,
     SkipPolicy? skipPolicy = null,
+    RetryPolicy? retryPolicy = null,
     int chunkSize = 10) : IStep
 {
     private readonly IProcessor<TInput, TOutput> _processor = processor ?? new DefaultProcessor<TInput, TOutput>();
     private readonly SkipPolicy _skipPolicy = skipPolicy ?? SkipPolicy.None;
+    private readonly RetryPolicy _retryPolicy = retryPolicy ?? RetryPolicy.None;
     public string Name { get; init; } = stepName;
     public int ChunkSize { get; init; } = chunkSize;
 
@@ -50,9 +52,10 @@ internal class Step<TInput, TOutput>(string stepName,
     }
 
     /// <summary>
-    /// Reads, processes, and writes a single chunk. On a skippable error the chunk is
-    /// marked as skipped and the next context is advanced. On a fatal error the step
-    /// state is persisted before the exception propagates (context is not advanced).
+    /// Reads, processes, and writes a single chunk with retry support.
+    /// Retryable exceptions are re-attempted up to the configured limit before
+    /// falling through to the skip policy. On a fatal error the step state is
+    /// persisted before the exception propagates.
     /// </summary>
     private async Task<(bool Success, StepContext NextContext)> ProcessChunkAsync(
         StepContext ctx, long stepId, IStepRepository stepRepository)
@@ -63,19 +66,32 @@ internal class Step<TInput, TOutput>(string stepName,
 
         try
         {
-            items = (await reader.ReadAsync(ctx.StepIndex, ChunkSize)).ToList();
-
-            foreach (var item in items)
+            int attempt = 0;
+            while (true)
             {
-                var result = await _processor.ProcessAsync(item);
-                processedItems.Add(result);
+                try
+                {
+                    attempt++;
+                    items = (await reader.ReadAsync(ctx.StepIndex, ChunkSize)).ToList();
+
+                    processedItems = [];
+                    foreach (var item in items)
+                    {
+                        var result = await _processor.ProcessAsync(item);
+                        processedItems.Add(result);
+                    }
+
+                    bool writeSuccess = await writer.WriteAsync(processedItems);
+
+                    var stepContext = StepContext.Increment(ctx, items.Count, processedItems.Count, false);
+
+                    return (writeSuccess, stepContext);
+                }
+                catch (Exception ex) when (_retryPolicy.ShouldRetry(ex, attempt))
+                {
+                    await _retryPolicy.WaitAsync();
+                }
             }
-
-            bool writeSuccess = await writer.WriteAsync(processedItems);
-
-            var stepContext = StepContext.Increment(ctx, items.Count, processedItems.Count, false);
-
-            return (writeSuccess, stepContext);
         }
         catch (Exception ex)
         {

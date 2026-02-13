@@ -9,8 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Files\NewItems\sample.txt" />
-    <Content Include="Files\Processed\target.txt" />
+    <Content Include="Files\NewItems\sample.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Files\Processed\target.txt" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

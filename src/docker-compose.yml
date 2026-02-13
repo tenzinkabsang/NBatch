@@ -1,12 +1,9 @@
+name: nbatch
+
 volumes:
   sqlserver_data:
-services:
-  nbatch.consoleapp:
-    image: ${DOCKER_REGISTRY-}nbatchconsoleapp
-    build:
-      context: .
-      dockerfile: NBatch.ConsoleApp/Dockerfile
 
+services:
   nbatch.database:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: nbatch.database
@@ -17,3 +14,18 @@ services:
       - MSSQL_SA_PASSWORD=@Password1234
     volumes:
       - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools*/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b -o /dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  nbatch.consoleapp:
+    build:
+      context: .
+      dockerfile: NBatch.ConsoleApp/Dockerfile
+    container_name: nbatch.consoleapp
+    depends_on:
+      nbatch.database:
+        condition: service_healthy
