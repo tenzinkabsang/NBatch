@@ -1,21 +1,21 @@
-# NBatch
+ï»¿# NBatch
 
 [![NuGet Version](https://img.shields.io/nuget/v/NBatch.svg?style=flat)](https://www.nuget.org/packages/NBatch/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/NBatch.svg?style=flat)](https://www.nuget.org/packages/NBatch/)
 
 **A lightweight batch-processing framework for .NET.**
 
-NBatch gives you a declarative, step-based pipeline for ETL jobs, data migrations, and scheduled tasks. You wire up readers, processors, and writers — NBatch handles chunking, error skipping, progress tracking, and restart-from-failure so you can focus on your business logic.
+NBatch gives you a declarative, step-based pipeline for ETL jobs, data migrations, and scheduled tasks. You wire up readers, processors, and writers â€” NBatch handles chunking, error skipping, progress tracking, and restart-from-failure so you can focus on your business logic.
 
 ### Highlights
 
-- **Chunk-oriented processing** — read, transform, and write data in configurable batches.
-- **Skip policies** — keep the job running when a record is malformed; skip it and move on.
-- **Restart from failure** — optional SQL-backed job store tracks progress so a crashed job resumes where it left off.
-- **Tasklet steps** — fire-and-forget units of work (send an email, call an API, run a stored proc).
-- **Lambda-friendly** — processors and writers can be plain lambdas; no extra classes required.
-- **Multi-target** — supports .NET 8, .NET 9, and .NET 10.
-- **Provider-agnostic storage** — SQL Server, PostgreSQL, or SQLite for the job store; any EF Core provider for your data.
+- **Chunk-oriented processing** â€” read, transform, and write data in configurable batches.
+- **Skip policies** â€” keep the job running when a record is malformed; skip it and move on.
+- **Restart from failure** â€” optional SQL-backed job store tracks progress so a crashed job resumes where it left off.
+- **Tasklet steps** â€” fire-and-forget units of work (send an email, call an API, run a stored proc).
+- **Lambda-friendly** â€” processors and writers can be plain lambdas; no extra classes required.
+- **Multi-target** â€” supports .NET 8, .NET 9, and .NET 10.
+- **Provider-agnostic storage** â€” SQL Server, PostgreSQL, or SQLite for the job store; any EF Core provider for your data.
 
 ---
 
@@ -26,45 +26,11 @@ NBatch gives you a declarative, step-based pipeline for ETL jobs, data migration
 ```bash
 dotnet add package NBatch
 ```
-
-### Minimal example
-
-Read a CSV, uppercase every field, and print to the console — no database required:
-
-```csharp
-using NBatch.Core;
-using NBatch.Readers.FileReader;
-
-var job = Job.CreateBuilder("import-products")
-    .AddStep("read-and-print", step => step
-        .ReadFrom(new CsvReader<Product>("products.csv", row => new Product
-        {
-            Name  = row.GetString("Name"),
-            Price = row.GetDecimal("Price")
-        }))
-        .ProcessWith(p => new Product
-        {
-            Name  = p.Name.ToUpper(),
-            Price = p.Price
-        })
-        .WriteTo(items =>
-        {
-            foreach (var item in items)
-                Console.WriteLine($"{item.Name} — {item.Price:C}");
-            return Task.CompletedTask;
-        }))
-    .Build();
-
-var result = await job.RunAsync();
-// result.Success — overall job success
-// result.Steps   — per-step details (ItemsRead, ItemsProcessed, ErrorsSkipped)
-```
-
 ---
 
 ## Examples
 
-### CSV ? Database (with job store & skip policy)
+### CSV â†’ Database (with job store & skip policy)
 
 ```csharp
 var job = Job.CreateBuilder("csv-to-db")
@@ -84,7 +50,7 @@ var job = Job.CreateBuilder("csv-to-db")
 await job.RunAsync();
 ```
 
-### Database ? File
+### Database â†’ File
 
 ```csharp
 var job = Job.CreateBuilder("db-to-file")
@@ -117,7 +83,7 @@ await job.RunAsync();
 
 ### Lambda-only (no classes needed)
 
-Every component — processor and writer — can be a simple lambda:
+Every component â€” processor and writer â€” can be a simple lambda:
 
 ```csharp
 var job = Job.CreateBuilder("quick-job")
@@ -145,7 +111,7 @@ await job.RunAsync();
 | Concept | Description |
 |---------|-------------|
 | **Job** | A named container of one or more steps, executed in order. |
-| **Step** | A chunk-oriented pipeline: `IReader<T>` ? `IProcessor<TIn, TOut>` ? `IWriter<T>`. |
+| **Step** | A chunk-oriented pipeline: `IReader<T>` â†’ `IProcessor<TIn, TOut>` â†’ `IWriter<T>`. |
 | **Tasklet step** | A single unit of work (via `Execute(...)`) that doesn't follow the reader/writer pattern. |
 | **Skip policy** | Tells the step to skip (not abort) when a specific exception type is thrown, up to a configurable limit. |
 | **Job store** | Optional SQL-backed tracking. Call `.UseJobStore(connStr)` to enable restart-from-failure. Omit it for lightweight in-memory tracking. |
