@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, v2.0.0]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  SOLUTION_DIR: src
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+
+      - name: Restore
+        run: dotnet restore
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Build
+        run: dotnet build -c Release --no-restore /p:ContinuousIntegrationBuild=true /warnaserror
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Test
+        run: dotnet test -c Release --no-build --logger "trx;LogFileName=results.trx"
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: ${{ env.SOLUTION_DIR }}/**/results.trx

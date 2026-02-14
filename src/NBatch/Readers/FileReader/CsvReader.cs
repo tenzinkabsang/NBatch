@@ -25,6 +25,9 @@ public sealed class CsvReader<T> : IReader<T>
     private string[]? _headers;
     private bool _headersResolved;
 
+    /// <summary>Creates a reader for the specified file with a row-mapping function.</summary>
+    /// <param name="filePath">Path to the delimited file.</param>
+    /// <param name="map">A function that maps each <see cref="CsvRow"/> to <typeparamref name="T"/>.</param>
     public CsvReader(string filePath, Func<CsvRow, T> map)
         : this(filePath, map, new FileService(filePath)) { }
 
@@ -56,6 +59,7 @@ public sealed class CsvReader<T> : IReader<T>
         return this;
     }
 
+    /// <inheritdoc />
     public async Task<IEnumerable<T>> ReadAsync(long startIndex, int chunkSize, CancellationToken cancellationToken = default)
     {
         try

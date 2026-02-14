@@ -12,11 +12,11 @@ internal sealed class FileService(string resourceUrl) : IFileService
         string? input;
         while ((input = await reader.ReadLineAsync(cancellationToken)) != null)
         {
-            /** If the current row is less than the start index, then skip **/
+            // If the current row is less than the start index, then skip
             if (RowAlreadyProcessed(startIndex, ref rowCounter))
                 continue;
 
-            /** If the specified chunk size is reached than we are done. **/
+            // If the specified chunk size is reached then we are done
             if (HasReachedChunkSize(chunkSize, ref chunkCounter))
                 break;
 

@@ -18,6 +18,7 @@ public sealed class DbReader<TItem>(
     Func<IQueryable<TItem>, IQueryable<TItem>> queryBuilder) : IReader<TItem>
     where TItem : class
 {
+    /// <inheritdoc />
     public async Task<IEnumerable<TItem>> ReadAsync(long startIndex, int chunkSize, CancellationToken cancellationToken = default)
     {
         return await queryBuilder(dbContext.Set<TItem>())

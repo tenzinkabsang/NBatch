@@ -9,7 +9,7 @@ namespace NBatch.Tests.Core;
 [TestFixture]
 class StepTests
 {
-    private Mock<IJobRepository> _jobRepo;
+    private Mock<IJobRepository> _jobRepo = null!;
 
     [SetUp]
     public void BeforeEach()

@@ -14,7 +14,7 @@ internal sealed class TaskletStep(string stepName, ITasklet tasklet, IStepReposi
 
     public async Task<StepResult> ProcessAsync(CancellationToken cancellationToken = default)
     {
-        long stepId = await stepRepository.InsertStepAsync(stepName, 0, cancellationToken);
+        long stepId = await stepRepository.InsertStepAsync(Name, 0, cancellationToken);
         try
         {
             await tasklet.ExecuteAsync(cancellationToken);
