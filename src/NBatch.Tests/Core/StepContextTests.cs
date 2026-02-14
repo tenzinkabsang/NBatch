@@ -14,7 +14,7 @@ class StepContextTests
         var current = StepContext.InitialRun(previous, chunkSize: 2);
 
         Assert.That(current.StepIndex, Is.EqualTo(2));
-        Assert.That(current.IsInitialRun, Is.True);
+        Assert.That(current.FirstIteration, Is.True);
     }
 
     [Test]
@@ -30,8 +30,8 @@ class StepContextTests
     {
         var previous = new StepContext { StepIndex = 4, ChunkSize = 2 };
         var current = StepContext.Increment(previous,
-            numberOfItemsReceived: 1,
-            numberOfItemsProcessed: 1,
+            itemsReceived: 1,
+            itemsProcessed: 1,
             skipped: false);
         Assert.That(current.StepIndex, Is.EqualTo(6));
     }

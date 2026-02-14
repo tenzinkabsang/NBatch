@@ -1,3 +1,5 @@
-﻿namespace NBatch.Core;
+﻿using NBatch.Core.Interfaces;
 
-public record JobResult(string Name, bool Success);
+namespace NBatch.Core;
+
+public record JobResult(string Name, bool Success, IReadOnlyList<StepResult> Steps);

@@ -2,6 +2,5 @@
 
 internal interface IJobRepository : IStepRepository
 {
-    Task<StepContext> GetStartIndexAsync(string stepName);
-    Task CreateJobRecordAsync(ICollection<string> stepNames);
+    Task CreateJobRecordAsync(ICollection<string> stepNames, CancellationToken cancellationToken = default);
 }

@@ -1,113 +1,207 @@
-## NBatch [![NuGet Version](http://img.shields.io/nuget/v/NBatch.svg?style=flat)](https://www.nuget.org/packages/NBatch/) [![NuGet Downloads](http://img.shields.io/nuget/dt/NBatch.svg?style=flat)](https://www.nuget.org/packages/NBatch/)
+﻿# NBatch
 
-	
+[![NuGet Version](https://img.shields.io/nuget/v/NBatch.svg?style=flat)](https://www.nuget.org/packages/NBatch/)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/NBatch.svg?style=flat)](https://www.nuget.org/packages/NBatch/)
 
-Batch Processing Framework For .NET
+**A lightweight batch-processing framework for .NET.**
 
-__NBatch__ simplifies batch processing by providing a framework that supports common features needed for all mission critical tasks.  
+NBatch gives you a declarative, step-based pipeline for ETL jobs, data migrations, and scheduled tasks. You wire up readers, processors, and writers — NBatch handles chunking, error skipping, progress tracking, and restart-from-failure so you can focus on your business logic.
 
-Should your application stop if it encounters a badly formatted line, or should it skip that line and continue on? What about when you restart a failed batch job? NBatch handles
-all of these low-level infrastructural plumbing code and exposes configurable components that the user can set-up to cater for there particular app.
-NBatch internally tracks everything that happens within the framework and provides features to handle errors, self-recover, able to restart where it left off, etc,.
+### Highlights
 
-Developers can implement only the business logic and simply plug them into the framework, which handles the batch processing machinery, thus giving developers more time to focus on what's really important - their business logic.
+- **Chunk-oriented processing** — read, transform, and write data in configurable batches.
+- **Skip policies** — keep the job running when a record is malformed; skip it and move on.
+- **Restart from failure** — optional SQL-backed job store tracks progress so a crashed job resumes where it left off.
+- **Tasklet steps** — fire-and-forget units of work (send an email, call an API, run a stored proc).
+- **Lambda-friendly** — processors and writers can be plain lambdas; no extra classes required.
+- **Multi-target** — supports .NET 8, .NET 9, and .NET 10.
+- **Provider-agnostic storage** — SQL Server, PostgreSQL, or SQLite for the job store; any EF Core provider for your data.
 
+---
 
-## Documentation
+## Quick start
 
-For a Getting started guide, API docs, etc. see the [documentation page](/doc/gettingStarted/readme.md)!
+### Install
 
-## Sample
-Parse items from a file, uppercase all values and save it to a database.
-
-sample.csv
+```bash
+dotnet add package NBatch
 ```
-ProductId,	Name,				Description
-1111,		C# For Dummies,		The book you should avoid
-2222,		Design Patterns,	Just a template
-3333,		Java 8 In Depth,	Finally Lambdas
-```
+---
 
-```C#
-// FieldSet contains the headers you define below in FlatFileReader.
-public class ProductMapper : IFieldSetMapper<Product>
-{
-    public Product MapFieldSet(FieldSet fieldSet)
-    {
-        return new Product
+## Examples
+
+### CSV → Database (with job store & skip policy)
+
+```csharp
+var job = Job.CreateBuilder("csv-to-db")
+    .UseJobStore(connStr)                          // enable SQL-backed progress tracking
+    .AddStep("import", step => step
+        .ReadFrom(new CsvReader<Product>(filePath, row => new Product
         {
-            Name = fieldSet.GetString("Name"),
-            Description = fieldSet.GetString("Description")
-        };
-    }
-}
+            Name        = row.GetString("Name"),
+            Description = row.GetString("Description"),
+            Price       = row.GetDecimal("Price")
+        }))
+        .WriteTo(new DbWriter<Product>(dbContext))
+        .WithSkipPolicy(SkipPolicy.For<FlatFileParseException>(maxSkips: 3))
+        .WithChunkSize(100))
+    .Build();
+
+await job.RunAsync();
 ```
 
-```C#
-// Define a reader
-private static IReader<Product> FileReader(string filePath) =>
-    new FlatFileItemBuilder<Product>(filePath, new ProductMapper())
-        .WithHeaders("Name", "Description")
-        .LinesToSkip(1)
-        .Build();
+### Database → File
 
-```
-```C#
-// Define a writer
- private static IWriter<Product> DbWriter(string connectionString) 
-     => new MsSqlWriter<Product>(connectionString,
-             """
-             INSERT INTO Product (Name, Description)
-             VALUES (@Name, @Description)
-             """);
+```csharp
+var job = Job.CreateBuilder("db-to-file")
+    .UseJobStore(connStr)
+    .AddStep("export", step => step
+        .ReadFrom(new DbReader<Product>(dbContext, q => q.OrderBy(p => p.Id)))
+        .WriteTo(new FlatFileItemWriter<Product>("output.csv").WithToken(','))
+        .WithChunkSize(50))
+    .Build();
+
+await job.RunAsync();
 ```
 
-```C#
-// Define an optional processor if you need to do any transformation
-// before sending it to the writer.
-public class ProductUppercaseProcessor : IProcessor<Product, Product>
-{
-    public Product Process(Product input)
-    {
-        return new Product
-			        {
-			            Name = input.Name.ToUpper(),
-			            Description = input.Description.ToUpper()
-			        };
-    }
-}
+### Multi-step job with a tasklet
+
+```csharp
+var job = Job.CreateBuilder("ETL")
+    .UseJobStore(connStr)
+    .AddStep("extract-transform", step => step
+        .ReadFrom(new DbReader<Order>(sourceDb, q => q.OrderBy(o => o.Id)))
+        .ProcessWith(o => new OrderDto { Id = o.Id, Total = o.Total })
+        .WriteTo(new FlatFileItemWriter<OrderDto>("orders.csv"))
+        .WithChunkSize(100))
+    .AddStep("notify", step => step
+        .Execute(() => SendEmailAsync()))
+    .Build();
+
+await job.RunAsync();
 ```
 
-```C#
-public static async Task Main(string[] args)
-{
-    var jobBuilder = Job.CreateBuilder(jobName: "JOB-1", jobDbConnString);
+### Lambda-only (no classes needed)
 
-    // Add a Step containing the reader, (optional)processor and writer.
-    jobBuilder.AddStep(
-        stepName: "Import from file and save to database",
-        reader: FileReader(filePath),
-        writer: DbWriter(destinationConnString),
-        processor: new ProductUppercaseProcessor(),
-        skipPolicy: SkipPolicy,
-        chunkSize: 10
-        );
+Every component — processor and writer — can be a simple lambda:
 
-    var job = jobBuilder.Build();
-    await job.RunAsync();
-}
+```csharp
+var job = Job.CreateBuilder("quick-job")
+    .AddStep("transform", step => step
+        .ReadFrom(new CsvReader<Product>("data.csv", row => new Product
+        {
+            Name  = row.GetString("Name"),
+            Price = row.GetDecimal("Price")
+        }))
+        .ProcessWith(p => new Product { Name = p.Name.ToUpper(), Price = p.Price })
+        .WriteTo(async items =>
+        {
+            foreach (var item in items)
+                Console.WriteLine(item);
+        }))
+    .Build();
 
-/// <summary>
-///  Specifies the exceptions that are skippable (per batch) along with the skip limit.
-///  Once the skip limit threshold is reached it will throw and the job will stop.
-/// </summary>
-private static SkipPolicy SkipPolicy => new([typeof(FlatFileParseException)], skipLimit: 3);
+await job.RunAsync();
 ```
 
-## Want to contribute?
+---
 
-1. Fork it!
-2. Create your feature branch: `git checkout -b my-new-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin my-new-feature`
-5. Submit a pull request :D
+## Core concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Job** | A named container of one or more steps, executed in order. |
+| **Step** | A chunk-oriented pipeline: `IReader<T>` → `IProcessor<TIn, TOut>` → `IWriter<T>`. |
+| **Tasklet step** | A single unit of work (via `Execute(...)`) that doesn't follow the reader/writer pattern. |
+| **Skip policy** | Tells the step to skip (not abort) when a specific exception type is thrown, up to a configurable limit. |
+| **Job store** | Optional SQL-backed tracking. Call `.UseJobStore(connStr)` to enable restart-from-failure. Omit it for lightweight in-memory tracking. |
+| **Chunk size** | Number of items read per iteration. Default is `10`. |
+
+### Built-in readers & writers
+
+| Component | Description |
+|-----------|-------------|
+| `CsvReader<T>` | Reads delimited text files (CSV, TSV, pipe). Parses headers from the first row automatically. |
+| `DbReader<T>` | Reads from any EF Core `DbContext` with paginated chunking. |
+| `DbWriter<T>` | Writes to any EF Core `DbContext`. |
+| `FlatFileItemWriter<T>` | Serializes objects to a delimited text file. |
+
+### Listeners
+
+Implement `IJobListener` or `IStepListener` for cross-cutting concerns like logging, metrics, or notifications:
+
+```csharp
+var job = Job.CreateBuilder("monitored-job")
+    .WithListener(new MyJobListener())
+    .AddStep("work", step => step
+        .ReadFrom(reader)
+        .WriteTo(writer)
+        .WithListener(new MyStepListener()))
+    .Build();
+```
+
+---
+
+## Running locally
+
+### Prerequisites
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download) (or later)
+- [Docker](https://www.docker.com/) (for the SQL Server test database)
+
+### 1. Start the database
+
+From the `src/` directory:
+
+```bash
+docker compose up -d
+```
+
+This spins up a SQL Server container and runs the init script automatically. The default connection string in `appsettings.json` points to `localhost:1433`.
+
+### 2. Build & run
+
+```bash
+cd src
+dotnet build
+dotnet run --project NBatch.ConsoleApp
+```
+
+### 3. Run tests
+
+```bash
+dotnet test
+```
+
+> **Tip:** The job store tracks progress across runs. If you want to reprocess the same data, reset the `BatchJob` and `BatchStep` tables (or delete the database and let `docker compose up` recreate it).
+
+---
+
+## Job store providers
+
+```csharp
+// SQL Server (default)
+.UseJobStore(connStr, DatabaseProvider.SqlServer)
+
+// PostgreSQL
+.UseJobStore(connStr, DatabaseProvider.PostgreSql)
+
+// SQLite
+.UseJobStore(connStr, DatabaseProvider.Sqlite)
+```
+
+---
+
+## Contributing
+
+1. Fork the repo
+2. Create a feature branch: `git checkout -b my-feature`
+3. Commit your changes: `git commit -m "Add my feature"`
+4. Push: `git push origin my-feature`
+5. Open a pull request
+
+---
+
+## License
+
+See [LICENSE](LICENSE) for details.

@@ -1,46 +1,31 @@
-﻿using NBatch.Core;
-using NBatch.Core.Interfaces;
-using NBatch.Readers.SqlReader;
-using NBatch.Writers.SqlWriter;
+﻿using Microsoft.EntityFrameworkCore;
+using NBatch.Core;
+using NBatch.Readers.DbReader;
+using NBatch.Writers.DbWriter;
 
 namespace NBatch.ConsoleApp.Tests;
 
 public class ReadFromDb_SaveToDb
 {
-    public static async Task RunAsync(string jobDbConnString, string sourceConnString, string destinationConnString)
+    public static async Task RunAsync(string jobDbConnString, DbContext sourceDb, DbContext destinationDb)
     {
-        var jobBuilder = Job.CreateBuilder(jobName: "JOB-2", jobDbConnString);
+        var job = Job.CreateBuilder(jobName: "JOB-2")
+            .UseJobStore(jobDbConnString, DatabaseProvider.SqlServer)
+            .AddStep("Read from DB and save to DB", step => step
+                .ReadFrom(new DbReader<Product>(sourceDb, q => q.OrderBy(p => p.Sku)))
+                .ProcessWith(p => new ProductLowercase
+                {
+                    Sku = p.Sku.ToLower(),
+                    Name = p.Name.ToLower(),
+                    Description = p.Description.ToLower(),
+                    Price = p.Price
+                })
+                .WriteTo(new DbWriter<ProductLowercase>(destinationDb))
+                .WithSkipPolicy(SkipPolicy.For<TimeoutException>(maxSkips: 3))
+                .WithChunkSize(3))
+            .Build();
 
-        jobBuilder.AddStep(
-            stepName: "Read from DB and save to DB",
-            reader: DbReader(sourceConnString),
-            writer: DbWriter(destinationConnString),
-            processor: new ProductLowercaseProcessor(),
-            skipPolicy: SkipPolicy,
-            chunkSize: 3
-            );
-
-        var job = jobBuilder.Build();
         await job.RunAsync();
     }
-
-    /// <summary>
-    ///  Specifies the exceptions that are skippable (per batch) along with the skip limit.
-    ///  Once the skip limit threshold is reached it will throw and the job will stop.
-    /// </summary>
-    private static SkipPolicy SkipPolicy => new([typeof(TimeoutException)], skipLimit: 3);
-
-    private static IReader<Product> DbReader(string connectionString)
-        => new MsSqlReader<Product>(connectionString, sql: "SELECT * FROM Products");
-
-    /// <summary>
-    /// Creates a new MsSqlWriter that will execute the SQL statement (per batch) in a transaction.
-    /// </summary>
-    private static IWriter<Product> DbWriter(string connectionString) 
-        => new MsSqlWriter<Product>(connectionString,
-                    """
-                    INSERT INTO Product (Sku, Name, Description, Price)
-                    VALUES (@Sku, @Name, @Description, @Price)
-                    """);
 }
 

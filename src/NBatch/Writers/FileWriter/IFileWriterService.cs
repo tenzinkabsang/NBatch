@@ -2,5 +2,5 @@
 
 internal interface IFileWriterService
 {
-    Task WriteFileAsync(IEnumerable<string> contents);
+    Task WriteFileAsync(IEnumerable<string> contents, CancellationToken cancellationToken = default);
 }

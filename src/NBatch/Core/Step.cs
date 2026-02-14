@@ -1,81 +1,126 @@
-﻿using NBatch.Core.Interfaces;
+﻿using Microsoft.Extensions.Logging;
+using NBatch.Core.Interfaces;
 using NBatch.Core.Repositories;
 
 namespace NBatch.Core;
 
 /// <summary>
-/// Step consists of three parts: Reader, (optional) Processor and a Writer.
-/// It supports skipping certain types of `ERRORS` as well as the `NUMBER` of times errors should be skipped. 
+/// A chunk-oriented step that reads, optionally processes, and writes items.
+/// Supports skip policies, and persists progress for restart-on-failure.
 /// </summary>
-/// <typeparam name="TInput">Input data for the Reader.</typeparam>
-/// <typeparam name="TOutput">Output data for the Processor & the Writer.</typeparam>
-/// <param name="stepName">A unique name for the Step.</param>
-/// <param name="reader">Used to read data from various sources (file, databases, etc,.) and feeds into the processor.</param>
-/// <param name="processor">Handles any intermediary processes that needs to be performed on the data before sending it to a writer</param>
-/// <param name="writer">Used to write/save the processed items.</param>
-/// <param name="chunkSize">Ability to perform operation in chunks.</param>
-internal class Step<TInput, TOutput>(string stepName,
-    IReader<TInput> reader,
-    IProcessor<TInput, TOutput>? processor,
-    IWriter<TOutput> writer,
-    SkipPolicy? skipPolicy = null,
-    int chunkSize = 10) : IStep
+internal class Step<TInput, TOutput> : IStep
 {
-    private readonly IProcessor<TInput, TOutput> _processor = processor ?? new DefaultProcessor<TInput, TOutput>();
-    private readonly SkipPolicy _skipPolicy = skipPolicy ?? SkipPolicy.None;
-    public string Name { get; init; } = stepName;
-    public int ChunkSize { get; init; } = chunkSize;
+    private readonly IReader<TInput> _reader;
+    private readonly IProcessor<TInput, TOutput> _processor;
+    private readonly IWriter<TOutput> _writer;
+    private readonly IStepRepository _stepRepository;
+    private readonly ILogger _logger;
+    private readonly SkipPolicy _skipPolicy;
+
+    public string Name { get; }
+    public int ChunkSize { get; }
+
+    internal Step(
+        string stepName,
+        IReader<TInput> reader,
+        IProcessor<TInput, TOutput>? processor,
+        IWriter<TOutput> writer,
+        IStepRepository stepRepository,
+        ILogger logger,
+        SkipPolicy? skipPolicy = null,
+        int chunkSize = 10)
+    {
+        Name = stepName;
+        _reader = reader;
+        _processor = processor ?? new DefaultProcessor<TInput, TOutput>();
+        _writer = writer;
+        _stepRepository = stepRepository;
+        _logger = logger;
+        _skipPolicy = skipPolicy ?? SkipPolicy.None;
+        ChunkSize = chunkSize;
+    }
 
     /// <summary>
-    /// Using the Reader, Processor and Writer it attempts to process the step in the specified chunkSize transactionally.
-    /// It keeps track of each chunk iteration to facilitate restart mechanism in the event of failure.
+    /// Processes all chunks sequentially using the Reader, Processor and Writer.
+    /// Tracks each chunk iteration via the repository to support restart on failure.
     /// </summary>
-    /// <param name="stepContext">The initial step information.</param>
-    /// <param name="stepRepository">Used to store step information during each iteration.</param>
-    /// <returns>A success or failure result.</returns>
-    public async Task<StepResult> ProcessAsync(StepContext stepContext, IStepRepository stepRepository)
+    public async Task<StepResult> ProcessAsync(CancellationToken cancellationToken = default)
     {
-        bool success = true;
-        var ctx = StepContext.InitialRun(stepContext, ChunkSize);
+        var savedState = await _stepRepository.GetStartIndexAsync(Name, cancellationToken);
+        var ctx = StepContext.InitialRun(savedState, ChunkSize);
+        int totalRead = 0, totalProcessed = 0, totalSkipped = 0;
+
+        if (ctx.StepIndex > 0)
+            _logger.LogInformation("Step '{StepName}' resuming from index {StepIndex}", Name, ctx.StepIndex);
+
         while (ctx.HasNext)
         {
-            long newStepId = await stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex);
-            bool exceptionThrown = false, skip = false, error = false;
-            List<TInput> items = [];
-            List<TOutput> processedItems = [];
-            try
-            {
-                items = (await reader.ReadAsync(ctx.StepIndex, ChunkSize)).ToList();
+            cancellationToken.ThrowIfCancellationRequested();
 
-                processedItems = await items.ToAsyncEnumerable().SelectAwait(
-                    async i => await _processor.ProcessAsync(i)).ToListAsync();
+            long stepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, cancellationToken);
+            ctx = await ProcessChunkAsync(ctx, stepId, cancellationToken);
 
-                foreach (var item in items)
-                {
-                    var processedItem = await _processor.ProcessAsync(item);
-                    processedItems.Add(processedItem);
-                }
-
-                success &= await writer.WriteAsync(processedItems);
-            }
-            catch (Exception ex)
-            {
-                error = true;
-                skip = await _skipPolicy.IsSatisfiedByAsync(stepRepository, new SkipContext(ctx.StepName, ctx.NextStepIndex, ex));
-                if(!skip)
-                {
-                    exceptionThrown = true;
-                    throw;
-                }
-            }
-            finally
-            {
-                if (!exceptionThrown)
-                    ctx = StepContext.Increment(ctx, items.Count, processedItems.Count, skip);
-
-                await stepRepository.UpdateStepAsync(newStepId, processedItems.Count, error, skip);
-            }
+            totalRead += ctx.NumberOfItemsReceived;
+            totalProcessed += ctx.NumberOfItemsProcessed;
+            if (ctx.Skip) totalSkipped++;
         }
-        return new StepResult(Name, success);
+
+        return new StepResult(Name, true, totalRead, totalProcessed, totalSkipped);
+    }
+
+    /// <summary>
+    /// Reads, processes, and writes a single chunk.
+    /// On failure, the skip policy determines whether to skip the chunk or propagate the error.
+    /// Step state is always persisted in the finally block.
+    /// </summary>
+    private async Task<StepContext> ProcessChunkAsync(StepContext ctx, long stepId, CancellationToken cancellationToken)
+    {
+        int itemsRead = 0;
+        int itemsWritten = 0;
+        bool error = false;
+        bool skipped = false;
+
+        try
+        {
+            var items = (await _reader.ReadAsync(ctx.StepIndex, ChunkSize, cancellationToken)).ToList();
+            itemsRead = items.Count;
+
+            List<TOutput> processedItems = [];
+            foreach (var item in items)
+            {
+                var result = await _processor.ProcessAsync(item, cancellationToken);
+                processedItems.Add(result);
+            }
+
+            await _writer.WriteAsync(processedItems, cancellationToken);
+            itemsWritten = processedItems.Count;
+
+            _logger.LogDebug("Step '{StepName}' chunk at index {Index} — read {Read}, wrote {Wrote}",
+                Name, ctx.StepIndex, itemsRead, itemsWritten);
+
+            return StepContext.Increment(ctx, itemsRead, itemsWritten, skipped: false);
+        }
+        catch (Exception ex)
+        {
+            error = true;
+
+            var skipContext = new SkipContext(ctx.StepName, ctx.NextStepIndex, ex);
+            skipped = await _skipPolicy.IsSatisfiedByAsync(_stepRepository, skipContext, cancellationToken);
+
+            if (skipped)
+            {
+                _logger.LogWarning(ex, "Step '{StepName}' chunk at index {Index} — skipped ({ExceptionType})",
+                    Name, ctx.StepIndex, ex.GetType().Name);
+                return StepContext.Increment(ctx, itemsRead, itemsWritten, skipped: true);
+            }
+
+            _logger.LogError(ex, "Step '{StepName}' chunk at index {Index} — fatal error", Name, ctx.StepIndex);
+            throw;
+        }
+        finally
+        {
+            int completedItems = (error && !skipped) ? 0 : itemsWritten;
+            await _stepRepository.UpdateStepAsync(stepId, completedItems, error, skipped, cancellationToken);
+        }
     }
 }

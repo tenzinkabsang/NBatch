@@ -1,18 +1,8 @@
 ﻿namespace NBatch.Core;
 
-public sealed record SkipContext
+internal sealed record SkipContext(string StepName, long StepIndex, Exception Exception)
 {
-    private readonly Exception _exception;
-    public string StepName { get; init; }
-    public long StepIndex { get; init; }
-    public Type ExceptionType => _exception.GetType();
-    public string ExceptionMessage => _exception.Message;
-    public string ExceptionDetail => _exception.StackTrace!;
-
-    public SkipContext(string stepName, long stepIndex, Exception exception)
-    {
-        StepName = stepName;
-        StepIndex = stepIndex;
-        _exception = exception;
-    }
+    public Type ExceptionType => Exception.GetType();
+    public string ExceptionMessage => Exception.Message;
+    public string ExceptionDetail => Exception.StackTrace ?? string.Empty;
 }

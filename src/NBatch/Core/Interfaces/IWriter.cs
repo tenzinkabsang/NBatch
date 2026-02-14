@@ -2,5 +2,5 @@
 
 public interface IWriter<TItem>
 {
-    Task<bool> WriteAsync(IEnumerable<TItem> items);
+    Task WriteAsync(IEnumerable<TItem> items, CancellationToken cancellationToken = default);
 }
