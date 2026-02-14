@@ -7,34 +7,36 @@ using NBatch.Core.Repositories;
 
 namespace NBatch.Tests.Core;
 
-internal class FakeStep<T, U>(string stepName,
-Mock<IReader<T>> reader,
-Mock<IProcessor<T, U>> processor,
-Mock<IWriter<U>> writer,
-IStepRepository stepRepository,
-ILogger logger,
-SkipPolicy? skipPolicy = null,
-RetryPolicy? retryPolicy = null,
-int chunkSize = 10) : Step<T, U>(stepName, reader.Object, processor.Object, writer.Object, stepRepository, logger, skipPolicy, retryPolicy, chunkSize)
+internal class FakeStep<T, U> : Step<T, U>
 {
-    public Mock<IReader<T>> MockReader = reader;
-    public Mock<IProcessor<T, U>> MockProcessor = processor;
-    public Mock<IWriter<U>> MockWriter = writer;
+    public Mock<IReader<T>> MockReader;
+    public Mock<IProcessor<T, U>> MockProcessor;
+    public Mock<IWriter<U>> MockWriter;
+
+    private FakeStep(string stepName,
+        Mock<IReader<T>> reader,
+        Mock<IProcessor<T, U>> processor,
+        Mock<IWriter<U>> writer,
+        IStepRepository stepRepository,
+        ILogger logger,
+        SkipPolicy? skipPolicy = null,
+        int chunkSize = 10)
+        : base(stepName, reader.Object, processor.Object, writer.Object, stepRepository, logger, skipPolicy, chunkSize)
+    {
+        MockReader = reader;
+        MockProcessor = processor;
+        MockWriter = writer;
+    }
 
     public static FakeStep<T, U> Create(string name, IStepRepository stepRepository, int chunkSize = 1, SkipPolicy? skipPolicy = null)
     {
-        var reader = new Mock<IReader<T>>();
-        var writer = new Mock<IWriter<U>>();
-        var processor = new Mock<IProcessor<T, U>>();
-
         return new FakeStep<T, U>(name,
-            reader,
-            processor,
-            writer,
+            new Mock<IReader<T>>(),
+            new Mock<IProcessor<T, U>>(),
+            new Mock<IWriter<U>>(),
             stepRepository,
             NullLogger.Instance,
             skipPolicy,
-            chunkSize: chunkSize
-            );
+            chunkSize: chunkSize);
     }
 }

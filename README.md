@@ -18,83 +18,40 @@ Developers can implement only the business logic and simply plug them into the f
 For a Getting started guide, API docs, etc. see the [documentation page](/doc/gettingStarted/readme.md)!
 
 ## Sample
-Parse items from a file, uppercase all values and save it to a database.
+Parse items from a CSV file, uppercase all values and save to a database.
 
 sample.csv
 ```
-ProductId,	Name,				Description
-1111,		C# For Dummies,		The book you should avoid
-2222,		Design Patterns,	Just a template
-3333,		Java 8 In Depth,	Finally Lambdas
-```
-
-```C#
-// FieldSet contains the headers you define below in FlatFileReader.
-public class ProductMapper : IFieldSetMapper<Product>
-{
-    public Product MapFieldSet(FieldSet fieldSet)
-    {
-        return new Product
-        {
-            Name = fieldSet.GetString("Name"),
-            Description = fieldSet.GetString("Description")
-        };
-    }
-}
-```
-
-```C#
-// Define a reader
-private static IReader<Product> FileReader(string filePath) =>
-    new FlatFileItemBuilder<Product>(filePath, new ProductMapper())
-        .WithHeaders("Name", "Description")
-        .WithLinesToSkip(1)
-        .Build();
-
-```
-```C#
-// Define a writer
- private static IWriter<Product> DbWriter(string connectionString) 
-     => new MsSqlWriter<Product>(connectionString,
-             """
-             INSERT INTO Product (Name, Description)
-             VALUES (@Name, @Description)
-             """);
-```
-
-```C#
-// Define an optional processor if you need to do any transformation
-// before sending it to the writer.
-public class ProductUppercaseProcessor : IProcessor<Product, Product>
-{
-    public Task<Product> ProcessAsync(Product input)
-    {
-        return Task.FromResult(new Product
-                    {
-                        Name = input.Name.ToUpper(),
-                        Description = input.Description.ToUpper()
-                    });
-    }
-}
+ProductId,Name,Description,Price
+1111,C# For Dummies,The book you should avoid,800.00
+2222,Design Patterns,The worlds authority on software designs,299.99
+3333,Java 8 In Depth,Finally Lambdas,399.99
 ```
 
 ```C#
 public static async Task Main(string[] args)
 {
-    // Use the overload with a connection string to enable SQL-based job tracking
-    // with restart support. Or omit it to use lightweight in-memory tracking:
-    // var job = Job.CreateBuilder(jobName: "JOB-1")
-    var job = Job.CreateBuilder(jobName: "JOB-1", jobDbConnString)
-        .AddStep("Import from file and save to database")
-        .ReadFrom(FileReader(filePath))
-        .WriteTo(DbWriter(destinationConnString))
-        .ProcessWith(new ProductUppercaseProcessor())
-        .WithSkipPolicy(new SkipPolicy([typeof(FlatFileParseException)], skipLimit: 3))
-        .WithChunkSize(10)
+    // Use .UseJobStore() to enable SQL-based job tracking with restart support.
+    // Omit it to use lightweight in-memory tracking (great for one-off ETL scripts).
+    var job = Job.CreateBuilder(jobName: "JOB-1")
+        .UseJobStore(jobDbConnString)
+        .AddStep("Import from file and save to database", step => step
+            .ReadFrom(new CsvReader<Product>(filePath, row => new Product
+            {
+                Name = row.GetString("Name"),
+                Description = row.GetString("Description"),
+                Price = row.GetDecimal("Price")
+            }))
+            .ProcessWith(p => new Product
+            {
+                Name = p.Name.ToUpper(),
+                Description = p.Description.ToUpper(),
+                Price = p.Price
+            })
+            .WriteTo(new DbWriter<Product>(destinationDb))
+            .WithSkipPolicy(SkipPolicy.For<FlatFileParseException>(maxSkips: 3))
+            .WithChunkSize(10))
         .Build();
-
-    // Or use a lambda for simple transformations:
-    //  .ProcessWith(p => new Product { Name = p.Name.ToUpper(), Description = p.Description.ToUpper() })
 
     var result = await job.RunAsync();
 

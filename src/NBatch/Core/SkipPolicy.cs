@@ -39,4 +39,18 @@ public sealed class SkipPolicy
         => type == typeof(Exception) || type.IsSubclassOf(typeof(Exception));
 
     public static SkipPolicy None => new(skippableExceptions: [], skipLimit: 0);
+
+    public static SkipPolicy For<TException>(int maxSkips) where TException : Exception
+        => new([typeof(TException)], maxSkips);
+
+    public static SkipPolicy For<TException1, TException2>(int maxSkips)
+        where TException1 : Exception
+        where TException2 : Exception
+        => new([typeof(TException1), typeof(TException2)], maxSkips);
+
+    public static SkipPolicy For<TException1, TException2, TException3>(int maxSkips)
+        where TException1 : Exception
+        where TException2 : Exception
+        where TException3 : Exception
+        => new([typeof(TException1), typeof(TException2), typeof(TException3)], maxSkips);
 }

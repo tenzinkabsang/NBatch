@@ -2,12 +2,17 @@ using NBatch.Core.Interfaces;
 
 namespace NBatch.Core;
 
+internal interface IStepRegistration
+{
+    void Register();
+}
+
 internal sealed class StepBuilderReadFrom(JobBuilder jobBuilder, string stepName) : IStepBuilderReadFrom
 {
-    public IStepBuilderWriteTo<TInput> ReadFrom<TInput>(IReader<TInput> reader)
+    public IStepBuilderProcess<TInput> ReadFrom<TInput>(IReader<TInput> reader)
     {
         ArgumentNullException.ThrowIfNull(reader);
-        return new StepBuilderWriteTo<TInput>(jobBuilder, stepName, reader);
+        return new StepBuilderProcess<TInput>(jobBuilder, stepName, reader);
     }
 
     public ITaskletStepBuilder Execute(ITasklet tasklet)
@@ -29,12 +34,49 @@ internal sealed class StepBuilderReadFrom(JobBuilder jobBuilder, string stepName
     }
 }
 
-internal sealed class StepBuilderWriteTo<TInput>(JobBuilder jobBuilder, string stepName, IReader<TInput> reader) : IStepBuilderWriteTo<TInput>
+internal sealed class StepBuilderProcess<TInput>(JobBuilder jobBuilder, string stepName, IReader<TInput> reader) : IStepBuilderProcess<TInput>
 {
-    public IStepBuilderOptions<TInput, TOutput> WriteTo<TOutput>(IWriter<TOutput> writer)
+    public IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(IProcessor<TInput, TOutput> processor)
+    {
+        ArgumentNullException.ThrowIfNull(processor);
+        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, reader, processor);
+    }
+
+    public IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, TOutput> processor)
+    {
+        ArgumentNullException.ThrowIfNull(processor);
+        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, reader, new DelegateProcessor<TInput, TOutput>(processor));
+    }
+
+    public IStepBuilderOptions WriteTo(IWriter<TInput> writer)
     {
         ArgumentNullException.ThrowIfNull(writer);
-        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, reader, writer);
+        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, reader, null, writer);
+    }
+
+    public IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, Task> writeAction)
+    {
+        ArgumentNullException.ThrowIfNull(writeAction);
+        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, reader, null, new DelegateWriter<TInput>(writeAction));
+    }
+}
+
+internal sealed class StepBuilderWriteTo<TInput, TOutput>(
+    JobBuilder jobBuilder,
+    string stepName,
+    IReader<TInput> reader,
+    IProcessor<TInput, TOutput> processor) : IStepBuilderWriteTo<TOutput>
+{
+    public IStepBuilderOptions WriteTo(IWriter<TOutput> writer)
+    {
+        ArgumentNullException.ThrowIfNull(writer);
+        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, reader, processor, writer);
+    }
+
+    public IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, Task> writeAction)
+    {
+        ArgumentNullException.ThrowIfNull(writeAction);
+        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, reader, processor, new DelegateWriter<TOutput>(writeAction));
     }
 }
 
@@ -42,77 +84,45 @@ internal sealed class StepBuilderOptions<TInput, TOutput>(
     JobBuilder jobBuilder,
     string stepName,
     IReader<TInput> reader,
-    IWriter<TOutput> writer) : IStepBuilderOptions<TInput, TOutput>
+    IProcessor<TInput, TOutput>? processor,
+    IWriter<TOutput> writer) : IStepBuilderOptions, IStepRegistration
 {
-    private IProcessor<TInput, TOutput>? _processor;
     private SkipPolicy? _skipPolicy;
-    private RetryPolicy? _retryPolicy;
     private readonly List<IStepListener> _stepListeners = [];
     private int _chunkSize = 10;
     private bool _registered;
 
-    public IStepBuilderOptions<TInput, TOutput> ProcessWith(IProcessor<TInput, TOutput> processor)
-    {
-        ArgumentNullException.ThrowIfNull(processor);
-        _processor = processor;
-        return this;
-    }
-
-    public IStepBuilderOptions<TInput, TOutput> ProcessWith(Func<TInput, TOutput> processor)
-    {
-        ArgumentNullException.ThrowIfNull(processor);
-        _processor = new DelegateProcessor<TInput, TOutput>(processor);
-        return this;
-    }
-
-    public IStepBuilderOptions<TInput, TOutput> WithSkipPolicy(SkipPolicy skipPolicy)
+    public IStepBuilderOptions WithSkipPolicy(SkipPolicy skipPolicy)
     {
         ArgumentNullException.ThrowIfNull(skipPolicy);
         _skipPolicy = skipPolicy;
         return this;
     }
 
-    public IStepBuilderOptions<TInput, TOutput> WithRetryPolicy(RetryPolicy retryPolicy)
-    {
-        ArgumentNullException.ThrowIfNull(retryPolicy);
-        _retryPolicy = retryPolicy;
-        return this;
-    }
-
-    public IStepBuilderOptions<TInput, TOutput> WithListener(IStepListener listener)
+    public IStepBuilderOptions WithListener(IStepListener listener)
     {
         ArgumentNullException.ThrowIfNull(listener);
         _stepListeners.Add(listener);
         return this;
     }
 
-    public IStepBuilderOptions<TInput, TOutput> WithChunkSize(int chunkSize)
+    public IStepBuilderOptions WithChunkSize(int chunkSize)
     {
         _chunkSize = chunkSize;
         return this;
-    }
-
-    public IStepBuilderReadFrom AddStep(string stepName)
-    {
-        RegisterStep();
-        return jobBuilder.AddStep(stepName);
-    }
-
-    public Job Build()
-    {
-        RegisterStep();
-        return jobBuilder.Build();
     }
 
     private void RegisterStep()
     {
         if (_registered) return;
         _registered = true;
-        jobBuilder.RegisterStep(stepName, reader, writer, _processor, _skipPolicy, _retryPolicy, _chunkSize, _stepListeners);
+        jobBuilder.RegisterStep(stepName, reader, writer, processor, _skipPolicy, _chunkSize, _stepListeners);
     }
+
+    void IStepRegistration.Register() => RegisterStep();
 }
 
-internal sealed class TaskletStepBuilder(JobBuilder jobBuilder, string stepName, ITasklet tasklet) : ITaskletStepBuilder
+internal sealed class TaskletStepBuilder(JobBuilder jobBuilder, string stepName, ITasklet tasklet) : ITaskletStepBuilder, IStepRegistration
 {
     private readonly List<IStepListener> _stepListeners = [];
     private bool _registered;
@@ -124,22 +134,12 @@ internal sealed class TaskletStepBuilder(JobBuilder jobBuilder, string stepName,
         return this;
     }
 
-    public IStepBuilderReadFrom AddStep(string newStepName)
-    {
-        RegisterStep();
-        return jobBuilder.AddStep(newStepName);
-    }
-
-    public Job Build()
-    {
-        RegisterStep();
-        return jobBuilder.Build();
-    }
-
     private void RegisterStep()
     {
         if (_registered) return;
         _registered = true;
         jobBuilder.RegisterTaskletStep(stepName, tasklet, _stepListeners);
     }
+
+    void IStepRegistration.Register() => RegisterStep();
 }

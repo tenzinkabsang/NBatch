@@ -85,7 +85,7 @@ internal sealed class RestartFromFailureTests
 
     /// <summary>
     /// A processor that throws on a configurable number of initial attempts,
-    /// then succeeds. Used to test <see cref="RetryPolicy"/> integration.
+    /// then succeeds. Used to test <see cref="SkipPolicy"/> integration.
     /// </summary>
     private sealed class FailNTimesProcessor<T>(int failCount) : IProcessor<T, T>
     {
@@ -115,11 +115,12 @@ internal sealed class RestartFromFailureTests
         var writer = new CollectingWriter<string>();
 
         // Run 1 — should fail on the second chunk
-        var job1 = Job.CreateBuilder("restart-job", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job1 = Job.CreateBuilder("restart-job")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(failReader)
                 .WriteTo(writer)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
@@ -129,11 +130,12 @@ internal sealed class RestartFromFailureTests
 
         // Run 2 — same job name, same connection string ? should restart from failed chunk
         // FailOnceAtIndexReader already flipped _hasFailed, so it won't throw again.
-        var job2 = Job.CreateBuilder("restart-job", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job2 = Job.CreateBuilder("restart-job")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(failReader)
                 .WriteTo(writer)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         var result = await job2.RunAsync();
@@ -152,11 +154,12 @@ internal sealed class RestartFromFailureTests
 
         var writer = new CollectingWriter<string>();
 
-        var job1 = Job.CreateBuilder("done-job", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job1 = Job.CreateBuilder("done-job")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(new ListReader<string>(data))
                 .WriteTo(writer)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         var result1 = await job1.RunAsync();
@@ -165,11 +168,12 @@ internal sealed class RestartFromFailureTests
 
         // Run 2 — nothing left to process
         var writer2 = new CollectingWriter<string>();
-        var job2 = Job.CreateBuilder("done-job", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job2 = Job.CreateBuilder("done-job")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(new ListReader<string>(data))
                 .WriteTo(writer2)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         var result2 = await job2.RunAsync();
@@ -194,22 +198,24 @@ internal sealed class RestartFromFailureTests
         var failReader = new FailOnceAtIndexReader<string>(data, failAtIndex: 2);
         var writer = new CollectingWriter<string>();
 
-        var job1 = Job.CreateBuilder("retry-offset", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job1 = Job.CreateBuilder("retry-offset")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(failReader)
                 .WriteTo(writer)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b" }));
 
         // Restart
-        var job2 = Job.CreateBuilder("retry-offset", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job2 = Job.CreateBuilder("retry-offset")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(failReader)
                 .WriteTo(writer)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         var result = await job2.RunAsync();
@@ -229,22 +235,24 @@ internal sealed class RestartFromFailureTests
         var failReader = new FailOnceAtIndexReader<string>(data, failAtIndex: 0);
         var writer = new CollectingWriter<string>();
 
-        var job1 = Job.CreateBuilder("retry-zero", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job1 = Job.CreateBuilder("retry-zero")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(failReader)
                 .WriteTo(writer)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
         Assert.That(writer.Written, Is.Empty);
 
         // Restart — should retry from index 0
-        var job2 = Job.CreateBuilder("retry-zero", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job2 = Job.CreateBuilder("retry-zero")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(failReader)
                 .WriteTo(writer)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         var result = await job2.RunAsync();
@@ -264,22 +272,24 @@ internal sealed class RestartFromFailureTests
         var failReader = new FailOnceAtIndexReader<string>(data, failAtIndex: 1);
         var writer = new CollectingWriter<string>();
 
-        var job1 = Job.CreateBuilder("retry-cs1", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job1 = Job.CreateBuilder("retry-cs1")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(failReader)
                 .WriteTo(writer)
-                .WithChunkSize(1)
+                .WithChunkSize(1))
             .Build();
 
         Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
         Assert.That(writer.Written, Is.EqualTo(new[] { "a" }));
 
         // Restart — backs up to index 1 and continues
-        var job2 = Job.CreateBuilder("retry-cs1", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job2 = Job.CreateBuilder("retry-cs1")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(failReader)
                 .WriteTo(writer)
-                .WithChunkSize(1)
+                .WithChunkSize(1))
             .Build();
 
         var result = await job2.RunAsync();
@@ -288,118 +298,10 @@ internal sealed class RestartFromFailureTests
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b", "c" }));
     }
 
-    #endregion
-
-    #region 3 — RetryPolicy integration with ProcessChunkAsync
-
-    [Test]
-    public async Task RetryPolicy_retries_transient_failures_then_succeeds()
-    {
-        var data = new[] { "item1" };
-        var connStr = UniqueConnectionString;
-
-        var writer = new CollectingWriter<string>();
-        var processor = new FailNTimesProcessor<string>(failCount: 2);
-        var retryPolicy = new RetryPolicy([typeof(TimeoutException)], maxAttempts: 3);
-
-        var job = Job.CreateBuilder("retry-policy-ok", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
-                .ReadFrom(new ListReader<string>(data))
-                .WriteTo(writer)
-                .ProcessWith(processor)
-                .WithRetryPolicy(retryPolicy)
-                .WithChunkSize(1)
-            .Build();
-
-        var result = await job.RunAsync();
-
-        Assert.That(result.Success, Is.True);
-        Assert.That(writer.Written, Is.EqualTo(new[] { "item1" }));
-    }
-
-    [Test]
-    public void RetryPolicy_exhausted_throws_after_max_attempts()
-    {
-        var data = new[] { "item1" };
-        var connStr = UniqueConnectionString;
-
-        var writer = new CollectingWriter<string>();
-        // Fails 3 times but we only allow 2 attempts
-        var processor = new FailNTimesProcessor<string>(failCount: 3);
-        var retryPolicy = new RetryPolicy([typeof(TimeoutException)], maxAttempts: 2);
-
-        var job = Job.CreateBuilder("retry-policy-fail", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
-                .ReadFrom(new ListReader<string>(data))
-                .WriteTo(writer)
-                .ProcessWith(processor)
-                .WithRetryPolicy(retryPolicy)
-                .WithChunkSize(1)
-            .Build();
-
-        Assert.ThrowsAsync<TimeoutException>(() => job.RunAsync());
-        Assert.That(writer.Written, Is.Empty);
-    }
-
-    [Test]
-    public void RetryPolicy_does_not_retry_non_matching_exceptions()
-    {
-        var data = new[] { "item1" };
-        var connStr = UniqueConnectionString;
-
-        var writer = new CollectingWriter<string>();
-        var processor = new FailNTimesProcessor<string>(failCount: 1);
-        // Only retry TimeoutException, but the processor throws TimeoutException — 
-        // let's use a processor that throws a different type
-        var retryPolicy = new RetryPolicy([typeof(ArgumentException)], maxAttempts: 3);
-
-        var job = Job.CreateBuilder("retry-nomatch", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
-                .ReadFrom(new ListReader<string>(data))
-                .WriteTo(writer)
-                .ProcessWith(processor)
-                .WithRetryPolicy(retryPolicy)
-                .WithChunkSize(1)
-            .Build();
-
-        // TimeoutException is not in the retry list ? should throw immediately
-        Assert.ThrowsAsync<TimeoutException>(() => job.RunAsync());
-    }
-
-    [Test]
-    public async Task RetryPolicy_combined_with_SkipPolicy()
-    {
-        // Retry 2 times, then fall through to skip policy which allows 1 skip
-        var data = new[] { "item1", "item2" };
-        var connStr = UniqueConnectionString;
-
-        var writer = new CollectingWriter<string>();
-        // Processor always fails — exhausts retry, then skip policy catches it
-        var processor = new FailNTimesProcessor<string>(failCount: int.MaxValue);
-        var retryPolicy = new RetryPolicy([typeof(TimeoutException)], maxAttempts: 2);
-        var skipPolicy = new SkipPolicy([typeof(TimeoutException)], skipLimit: 2);
-
-        var job = Job.CreateBuilder("retry-skip", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
-                .ReadFrom(new ListReader<string>(data))
-                .WriteTo(writer)
-                .ProcessWith(processor)
-                .WithRetryPolicy(retryPolicy)
-                .WithSkipPolicy(skipPolicy)
-                .WithChunkSize(1)
-            .Build();
-
-        var result = await job.RunAsync();
-
-        // Both chunks skipped — job still succeeds
-        Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(2));
-        Assert.That(writer.Written, Is.Empty);
-    }
 
     #endregion
 
-    #region 4 — TaskletStep error handling
+    #region 3 — TaskletStep error handling
 
     [Test]
     public async Task TaskletStep_success_is_recorded()
@@ -407,13 +309,14 @@ internal sealed class RestartFromFailureTests
         var connStr = UniqueConnectionString;
         bool executed = false;
 
-        var job = Job.CreateBuilder("tasklet-ok", connStr, DatabaseProvider.Sqlite)
-            .AddStep("cleanup")
+        var job = Job.CreateBuilder("tasklet-ok")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("cleanup", step => step
                 .Execute(() =>
                 {
                     executed = true;
                     return Task.CompletedTask;
-                })
+                }))
             .Build();
 
         var result = await job.RunAsync();
@@ -427,9 +330,10 @@ internal sealed class RestartFromFailureTests
     {
         var connStr = UniqueConnectionString;
 
-        var job = Job.CreateBuilder("tasklet-fail", connStr, DatabaseProvider.Sqlite)
-            .AddStep("cleanup")
-                .Execute(() => throw new InvalidOperationException("Cleanup failed"))
+        var job = Job.CreateBuilder("tasklet-fail")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("cleanup", step => step
+                .Execute(() => throw new InvalidOperationException("Cleanup failed")))
             .Build();
 
         Assert.ThrowsAsync<InvalidOperationException>(() => job.RunAsync());
@@ -449,18 +353,20 @@ internal sealed class RestartFromFailureTests
             return Task.CompletedTask;
         }
 
-        var job1 = Job.CreateBuilder("tasklet-restart", connStr, DatabaseProvider.Sqlite)
-            .AddStep("cleanup")
-                .Execute(FailOnceThenSucceed)
+        var job1 = Job.CreateBuilder("tasklet-restart")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("cleanup", step => step
+                .Execute(FailOnceThenSucceed))
             .Build();
 
         Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
         Assert.That(callCount, Is.EqualTo(1));
 
         // Restart — should re-execute the tasklet
-        var job2 = Job.CreateBuilder("tasklet-restart", connStr, DatabaseProvider.Sqlite)
-            .AddStep("cleanup")
-                .Execute(FailOnceThenSucceed)
+        var job2 = Job.CreateBuilder("tasklet-restart")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("cleanup", step => step
+                .Execute(FailOnceThenSucceed))
             .Build();
 
         var result = await job2.RunAsync();
@@ -471,7 +377,7 @@ internal sealed class RestartFromFailureTests
 
     #endregion
 
-    #region 5 — EfJobRepository with in-memory SQLite provider
+    #region 4 — EfJobRepository with in-memory SQLite provider
 
     [Test]
     public async Task EfJobRepository_persists_step_progress_across_runs()
@@ -482,11 +388,12 @@ internal sealed class RestartFromFailureTests
         var writer1 = new CollectingWriter<string>();
 
         // Run 1: process all 4 items in 2 chunks
-        var job1 = Job.CreateBuilder("ef-persist", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job1 = Job.CreateBuilder("ef-persist")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(new ListReader<string>(data))
                 .WriteTo(writer1)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         var result1 = await job1.RunAsync();
@@ -495,11 +402,12 @@ internal sealed class RestartFromFailureTests
 
         // Run 2: same job name ? repository shows step already completed (reader returns empty)
         var writer2 = new CollectingWriter<string>();
-        var job2 = Job.CreateBuilder("ef-persist", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job2 = Job.CreateBuilder("ef-persist")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(new ListReader<string>(data))
                 .WriteTo(writer2)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         var result2 = await job2.RunAsync();
@@ -518,15 +426,16 @@ internal sealed class RestartFromFailureTests
         var writer1 = new CollectingWriter<string>();
         var writer2 = new CollectingWriter<int>();
 
-        var job = Job.CreateBuilder("multi-step", connStr, DatabaseProvider.Sqlite)
-            .AddStep("strings")
+        var job = Job.CreateBuilder("multi-step")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("strings", step => step
                 .ReadFrom(new ListReader<string>(data1))
                 .WriteTo(writer1)
-                .WithChunkSize(2)
-            .AddStep("numbers")
+                .WithChunkSize(2))
+            .AddStep("numbers", step => step
                 .ReadFrom(new ListReader<int>(data2))
                 .WriteTo(writer2)
-                .WithChunkSize(2)
+                .WithChunkSize(2))
             .Build();
 
         var result = await job.RunAsync();
@@ -547,13 +456,14 @@ internal sealed class RestartFromFailureTests
         var processor = new FailNTimesProcessor<string>(failCount: int.MaxValue);
         var skipPolicy = new SkipPolicy([typeof(TimeoutException)], skipLimit: 1);
 
-        var job = Job.CreateBuilder("ef-skip", connStr, DatabaseProvider.Sqlite)
-            .AddStep("step1")
+        var job = Job.CreateBuilder("ef-skip")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
                 .ReadFrom(new ListReader<string>(data))
-                .WriteTo(writer)
                 .ProcessWith(processor)
+                .WriteTo(writer)
                 .WithSkipPolicy(skipPolicy)
-                .WithChunkSize(1)
+                .WithChunkSize(1))
             .Build();
 
         var result = await job.RunAsync();

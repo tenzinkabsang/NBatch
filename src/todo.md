@@ -10,9 +10,19 @@
 - [x] **Integration tests for restart-from-failure**
   - Job restart from a failed chunk (the headline feature)
   - `StepContext.RetryPreviousIfFailed` with various offsets
-  - `RetryPolicy` integration with `ProcessChunkAsync`
   - `TaskletStep` error handling
   - `EfJobRepository` with SQLite provider (`DatabaseProvider.Sqlite` added)
+
+- [x] **Extract `.UseJobStore()` from `CreateBuilder`**
+  - Removed `CreateBuilder(name, connStr, provider)` overload
+  - Added `JobBuilder.UseJobStore(connectionString, provider)` fluent method
+  - In-memory tracking is now the default; SQL-based tracking is opt-in
+  - Makes the job-tracking DB purpose obvious to new users
+
+- [x] **Eliminate inner `.Build()` on `FlatFileItemBuilder`**
+  - `FlatFileItemBuilder<T>` now implements `IReader<T>` directly
+  - Users pass the builder straight to `.ReadFrom()` without calling `.Build()`
+  - `Build()` method kept for backward compatibility
 
 ## P1 — Important for public NuGet
 
@@ -32,6 +42,19 @@
   - Repository injected via constructor into `Step` and `TaskletStep`
   - `SkipPolicy.IsSatisfiedByAsync` changed to `internal`
   - Added `InternalsVisibleTo("DynamicProxyGenAssembly2")` for Moq
+
+- [x] **Add `SkipPolicy.For<T>()` fluent factory**
+- Compile-time safety via generic constraints (no `typeof(string)` accidents)
+- Overloads for 1–3 exception types
+- Original constructors kept for advanced use cases
+
+- [x] **Add `WriteTo(Func<IEnumerable<T>, Task>)` lambda overload**
+  - Inline writers for quick debug/demo scenarios without a dedicated class
+  - Internal `DelegateWriter<T>` mirrors existing `DelegateProcessor<T>` pattern
+
+- [x] **Throw on duplicate `ProcessWith` calls**
+  - `InvalidOperationException` if `ProcessWith` is called more than once per step
+  - Prevents silent overwrite of the processor
 
 ## P2 — Nice to have
 

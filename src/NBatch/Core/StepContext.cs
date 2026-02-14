@@ -1,5 +1,9 @@
 ﻿namespace NBatch.Core;
 
+/// <summary>
+/// Tracks the current position and state of a step's chunk-processing loop.
+/// Created via factory methods — not intended for direct construction outside of repositories.
+/// </summary>
 internal sealed class StepContext
 {
     public string StepName { get; set; } = string.Empty;
@@ -7,50 +11,53 @@ internal sealed class StepContext
     public long StepIndex { get; set; }
     public int NumberOfItemsReceived { get; set; }
     public int NumberOfItemsProcessed { get; set; }
-    public bool Skip { get; set; }
-    public bool IsInitialRun { get; set; }
     public int ChunkSize { get; set; }
-    public bool Error { get; set; }
+    public bool Skip { get; set; }
+
+    /// <summary>Whether this is the first iteration of the processing loop.</summary>
+    public bool FirstIteration { get; set; }
 
     public long NextStepIndex => StepIndex + ChunkSize;
 
-    public bool HasNext
+    public bool HasNext => FirstIteration || Skip || NumberOfItemsReceived > 0;
+
+    /// <summary>Parameterless constructor required by repository hydration.</summary>
+    public StepContext() { }
+
+    /// <summary>
+    /// Creates the initial context for a step run. If the previous run failed
+    /// (zero items processed), backs up one chunk to retry.
+    /// </summary>
+    public static StepContext InitialRun(StepContext previous, int chunkSize)
     {
-        get
+        long index = BackUpIfPreviousFailed(previous, chunkSize);
+        return new StepContext
         {
-            if (IsInitialRun || Skip)
-                return true;
-            return NumberOfItemsReceived > 0;
-        }
+            StepName = previous.StepName,
+            StepIndex = index,
+            NumberOfItemsProcessed = previous.NumberOfItemsProcessed,
+            ChunkSize = chunkSize,
+            FirstIteration = true
+        };
     }
 
-    public StepContext() { /** Needed by ORM **/ }
-
-    private StepContext(string stepName, long stepIndex, int numOfItemsProcessed, bool isInitialRun, int chunkSize)
+    /// <summary>
+    /// Advances the context to the next chunk after a successful (or skipped) iteration.
+    /// </summary>
+    public static StepContext Increment(StepContext current, int itemsReceived, int itemsProcessed, bool skipped)
     {
-        StepName = stepName;
-        StepIndex = stepIndex;
-        NumberOfItemsProcessed = numOfItemsProcessed;
-        IsInitialRun = isInitialRun;
-        ChunkSize = chunkSize;
-    }
-
-    public static StepContext InitialRun(StepContext ctx, int chunkSize)
-    {
-        long index = RetryPreviousIfFailed(ctx, chunkSize);
-        return new StepContext(ctx.StepName, index, ctx.NumberOfItemsProcessed, true, chunkSize);
-    }
-
-    public static StepContext Increment(StepContext ctx, int numberOfItemsReceived, int numberOfItemsProcessed, bool skipped)
-    {
-        return new StepContext(ctx.StepName, ctx.NextStepIndex, numberOfItemsProcessed, false, ctx.ChunkSize)
+        return new StepContext
         {
-            NumberOfItemsReceived = numberOfItemsReceived,
+            StepName = current.StepName,
+            StepIndex = current.NextStepIndex,
+            NumberOfItemsReceived = itemsReceived,
+            NumberOfItemsProcessed = itemsProcessed,
+            ChunkSize = current.ChunkSize,
             Skip = skipped
         };
     }
 
-    private static long RetryPreviousIfFailed(StepContext ctx, int chunkSize)
+    private static long BackUpIfPreviousFailed(StepContext ctx, int chunkSize)
     {
         if (ctx.NumberOfItemsProcessed == 0 && ctx.StepIndex - chunkSize >= 0)
             return ctx.StepIndex - chunkSize;

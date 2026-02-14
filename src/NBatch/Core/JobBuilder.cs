@@ -9,25 +9,24 @@ namespace NBatch.Core;
 public sealed class JobBuilder
 {
     private readonly string _jobName;
-    private readonly IJobRepository _jobRepository;
+    private IJobRepository _jobRepository;
     private readonly Dictionary<string, IStep> _steps = [];
     private readonly Dictionary<string, List<IStepListener>> _stepListeners = [];
     private readonly List<IJobListener> _jobListeners = [];
     private ILogger _logger = NullLogger.Instance;
-
-    internal JobBuilder(string jobName, string connectionString, DatabaseProvider provider)
-    {
-        ArgumentNullException.ThrowIfNull(jobName);
-        ArgumentNullException.ThrowIfNull(connectionString);
-        _jobName = jobName;
-        _jobRepository = new EfJobRepository(jobName, connectionString, provider);
-    }
 
     internal JobBuilder(string jobName)
     {
         ArgumentNullException.ThrowIfNull(jobName);
         _jobName = jobName;
         _jobRepository = new InMemoryJobRepository(jobName);
+    }
+
+    public JobBuilder UseJobStore(string connectionString, DatabaseProvider provider = DatabaseProvider.SqlServer)
+    {
+        ArgumentNullException.ThrowIfNull(connectionString);
+        _jobRepository = new EfJobRepository(_jobName, connectionString, provider);
+        return this;
     }
 
     public JobBuilder WithLogger(ILogger logger)
@@ -44,10 +43,15 @@ public sealed class JobBuilder
         return this;
     }
 
-    public IStepBuilderReadFrom AddStep(string stepName)
+    public JobBuilder AddStep(string stepName, Func<IStepBuilderReadFrom, IStepBuilderFinal> configure)
     {
         ArgumentNullException.ThrowIfNull(stepName);
-        return new StepBuilderReadFrom(this, stepName);
+        ArgumentNullException.ThrowIfNull(configure);
+        var readFrom = new StepBuilderReadFrom(this, stepName);
+        var result = configure(readFrom);
+        if (result is IStepRegistration registration)
+            registration.Register();
+        return this;
     }
 
     internal void RegisterStep<TInput, TOutput>(
@@ -56,14 +60,13 @@ public sealed class JobBuilder
         IWriter<TOutput> writer,
         IProcessor<TInput, TOutput>? processor,
         SkipPolicy? skipPolicy,
-        RetryPolicy? retryPolicy,
         int chunkSize,
         List<IStepListener> stepListeners)
     {
         if (_steps.ContainsKey(stepName))
             throw new DuplicateStepNameException();
 
-        var step = new Step<TInput, TOutput>(stepName, reader, processor, writer, _jobRepository, _logger, skipPolicy, retryPolicy, chunkSize);
+        var step = new Step<TInput, TOutput>(stepName, reader, processor, writer, _jobRepository, _logger, skipPolicy, chunkSize);
         _steps.Add(step.Name, step);
         if (stepListeners.Count > 0)
             _stepListeners[stepName] = stepListeners;

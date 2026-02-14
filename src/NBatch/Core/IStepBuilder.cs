@@ -7,41 +7,52 @@ namespace NBatch.Core;
 /// </summary>
 public interface IStepBuilderReadFrom
 {
-    IStepBuilderWriteTo<TInput> ReadFrom<TInput>(IReader<TInput> reader);
+    IStepBuilderProcess<TInput> ReadFrom<TInput>(IReader<TInput> reader);
     ITaskletStepBuilder Execute(ITasklet tasklet);
     ITaskletStepBuilder Execute(Func<Task> action);
     ITaskletStepBuilder Execute(Func<CancellationToken, Task> action);
 }
 
 /// <summary>
-/// Second stage: a writer must be provided.
+/// Second stage: optionally process the items, or skip straight to writing.
 /// </summary>
-public interface IStepBuilderWriteTo<TInput>
+public interface IStepBuilderProcess<TInput>
 {
-    IStepBuilderOptions<TInput, TOutput> WriteTo<TOutput>(IWriter<TOutput> writer);
+    IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(IProcessor<TInput, TOutput> processor);
+    IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, TOutput> processor);
+    IStepBuilderOptions WriteTo(IWriter<TInput> writer);
+    IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, Task> writeAction);
 }
 
 /// <summary>
-/// Final stage: configure optional settings, add another step, or build the job.
+/// Third stage: provide a writer for the processed output.
 /// </summary>
-public interface IStepBuilderOptions<TInput, TOutput>
+public interface IStepBuilderWriteTo<TOutput>
 {
-    IStepBuilderOptions<TInput, TOutput> ProcessWith(IProcessor<TInput, TOutput> processor);
-    IStepBuilderOptions<TInput, TOutput> ProcessWith(Func<TInput, TOutput> processor);
-    IStepBuilderOptions<TInput, TOutput> WithSkipPolicy(SkipPolicy skipPolicy);
-    IStepBuilderOptions<TInput, TOutput> WithRetryPolicy(RetryPolicy retryPolicy);
-    IStepBuilderOptions<TInput, TOutput> WithListener(IStepListener listener);
-    IStepBuilderOptions<TInput, TOutput> WithChunkSize(int chunkSize);
-    IStepBuilderReadFrom AddStep(string stepName);
-    Job Build();
+    IStepBuilderOptions WriteTo(IWriter<TOutput> writer);
+    IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, Task> writeAction);
 }
 
 /// <summary>
-/// Terminal stage for a tasklet step: add another step, attach a listener, or build the job.
+/// Marker interface for a fully-configured step.
+/// Used as the return type of the lambda-based <c>AddStep</c> overload.
 /// </summary>
-public interface ITaskletStepBuilder
+public interface IStepBuilderFinal;
+
+/// <summary>
+/// Final stage: configure optional settings (skip policy, chunk size, listeners).
+/// </summary>
+public interface IStepBuilderOptions : IStepBuilderFinal
+{
+    IStepBuilderOptions WithSkipPolicy(SkipPolicy skipPolicy);
+    IStepBuilderOptions WithListener(IStepListener listener);
+    IStepBuilderOptions WithChunkSize(int chunkSize);
+}
+
+/// <summary>
+/// Terminal stage for a tasklet step: attach a listener.
+/// </summary>
+public interface ITaskletStepBuilder : IStepBuilderFinal
 {
     ITaskletStepBuilder WithListener(IStepListener listener);
-    IStepBuilderReadFrom AddStep(string stepName);
-    Job Build();
 }

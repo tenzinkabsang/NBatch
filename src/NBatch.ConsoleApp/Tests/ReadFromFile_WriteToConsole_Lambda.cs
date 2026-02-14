@@ -1,5 +1,4 @@
 using NBatch.Core;
-using NBatch.Core.Interfaces;
 using NBatch.Readers.FileReader;
 
 namespace NBatch.ConsoleApp.Tests;
@@ -9,16 +8,27 @@ public sealed class ReadFromFile_WriteToConsole_Lambda
     public static async Task RunAsync(string filePath)
     {
         var job = Job.CreateBuilder(jobName: "JOB-LAMBDA")
-            .AddStep("Import from file, uppercase with lambda, print to console")
-            .ReadFrom(FileReader(filePath))
-            .WriteTo(new ConsoleWriter<Product>())
-            .ProcessWith(p => new Product
-            {
-                Sku = p.Sku.ToUpper(),
-                Name = p.Name.ToUpper(),
-                Description = p.Description.ToUpper(),
-                Price = p.Price
-            })
+            .AddStep("Import from file, uppercase with lambda, print to console", step => step
+                .ReadFrom(new CsvReader<Product>(filePath, row => new Product
+                {
+                    Sku = row.GetString("ProductId"),
+                    Name = row.GetString("Name"),
+                    Description = row.GetString("Description"),
+                    Price = row.GetDecimal("Price")
+                }))
+                .ProcessWith(p => new Product
+                {
+                    Sku = p.Sku.ToUpper(),
+                    Name = p.Name.ToUpper(),
+                    Description = p.Description.ToUpper(),
+                    Price = p.Price
+                })
+                .WriteTo(items =>
+                {
+                    foreach (var item in items)
+                        Console.WriteLine(item);
+                    return Task.CompletedTask;
+                }))
             .Build();
 
         var result = await job.RunAsync();
@@ -29,10 +39,4 @@ public sealed class ReadFromFile_WriteToConsole_Lambda
             Console.WriteLine($"  Step '{step.Name}': Read={step.ItemsRead}, Processed={step.ItemsProcessed}, ErrorsSkipped={step.ErrorsSkipped}");
         }
     }
-
-    private static IReader<Product> FileReader(string filePath) =>
-        new FlatFileItemBuilder<Product>(filePath, new ProductMapper())
-            .WithHeaders("Sku", "Name", "Description", "Price")
-            .WithLinesToSkip(1)
-            .Build();
 }
