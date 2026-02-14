@@ -12,6 +12,7 @@ namespace NBatch.Writers.DbWriter;
 public sealed class DbWriter<TItem>(DbContext dbContext) : IWriter<TItem>
     where TItem : class
 {
+    /// <inheritdoc />
     public async Task WriteAsync(IEnumerable<TItem> items, CancellationToken cancellationToken = default)
     {
         dbContext.Set<TItem>().AddRange(items);

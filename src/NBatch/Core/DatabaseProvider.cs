@@ -5,7 +5,10 @@ namespace NBatch.Core;
 /// </summary>
 public enum DatabaseProvider
 {
+    /// <summary>Microsoft SQL Server.</summary>
     SqlServer,
+    /// <summary>PostgreSQL via Npgsql.</summary>
     PostgreSql,
+    /// <summary>SQLite.</summary>
     Sqlite
 }

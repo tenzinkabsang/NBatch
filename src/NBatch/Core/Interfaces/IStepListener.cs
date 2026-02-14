@@ -6,6 +6,8 @@ namespace NBatch.Core.Interfaces;
 /// </summary>
 public interface IStepListener
 {
+    /// <summary>Called before the step starts.</summary>
     Task BeforeStepAsync(string stepName, CancellationToken cancellationToken) => Task.CompletedTask;
+    /// <summary>Called after the step completes.</summary>
     Task AfterStepAsync(StepResult result, CancellationToken cancellationToken) => Task.CompletedTask;
 }

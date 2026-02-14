@@ -1,0 +1,62 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  SOLUTION_DIR: src
+  PACKAGE_DIR: src/NBatch
+
+jobs:
+  publish:
+    name: Pack & Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.x
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.x
+
+      - name: Restore
+        run: dotnet restore
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Build
+        run: dotnet build -c Release --no-restore /p:ContinuousIntegrationBuild=true /warnaserror
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Pack
+        run: dotnet pack -c Release --no-build -o nupkgs
+        working-directory: ${{ env.PACKAGE_DIR }}
+
+      - name: Push to NuGet
+        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        working-directory: ${{ env.PACKAGE_DIR }}/nupkgs
+
+      - name: Push symbols to NuGet
+        run: dotnet nuget push "*.snupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        working-directory: ${{ env.PACKAGE_DIR }}/nupkgs

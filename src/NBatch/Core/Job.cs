@@ -4,6 +4,10 @@ using NBatch.Core.Repositories;
 
 namespace NBatch.Core;
 
+/// <summary>
+/// A configured batch job containing one or more steps executed in sequence.
+/// Create instances via <see cref="CreateBuilder"/>.
+/// </summary>
 public sealed class Job
 {
     private readonly string _jobName;
@@ -31,6 +35,8 @@ public sealed class Job
         _logger = logger;
     }
 
+    /// <summary>Executes all steps in order and returns the aggregate result.</summary>
+    /// <param name="cancellationToken">Token to cancel the job.</param>
     public async Task<JobResult> RunAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Job '{JobName}' starting with {StepCount} step(s)", _jobName, _steps.Count);
@@ -99,6 +105,8 @@ public sealed class Job
             await listener.AfterJobAsync(jobResult, cancellationToken);
     }
 
+    /// <summary>Creates a new <see cref="JobBuilder"/> for configuring a job.</summary>
+    /// <param name="jobName">A unique name that identifies this job.</param>
     public static JobBuilder CreateBuilder(string jobName)
         => new(jobName);
 }

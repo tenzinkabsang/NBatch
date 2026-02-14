@@ -6,6 +6,9 @@ using NBatch.Core.Repositories;
 
 namespace NBatch.Core;
 
+/// <summary>
+/// Fluent builder for configuring and creating a <see cref="Job"/>.
+/// </summary>
 public sealed class JobBuilder
 {
     private readonly string _jobName;
@@ -22,6 +25,9 @@ public sealed class JobBuilder
         _jobRepository = new InMemoryJobRepository(jobName);
     }
 
+    /// <summary>Enables SQL-backed job tracking for restart-from-failure support.</summary>
+    /// <param name="connectionString">Database connection string.</param>
+    /// <param name="provider">The database provider to use.</param>
     public JobBuilder UseJobStore(string connectionString, DatabaseProvider provider = DatabaseProvider.SqlServer)
     {
         ArgumentNullException.ThrowIfNull(connectionString);
@@ -29,6 +35,8 @@ public sealed class JobBuilder
         return this;
     }
 
+    /// <summary>Sets the logger used for job and step diagnostics.</summary>
+    /// <param name="logger">The logger instance.</param>
     public JobBuilder WithLogger(ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(logger);
@@ -36,6 +44,8 @@ public sealed class JobBuilder
         return this;
     }
 
+    /// <summary>Registers a job-level listener for before/after callbacks.</summary>
+    /// <param name="listener">The listener to register.</param>
     public JobBuilder WithListener(IJobListener listener)
     {
         ArgumentNullException.ThrowIfNull(listener);
@@ -43,6 +53,9 @@ public sealed class JobBuilder
         return this;
     }
 
+    /// <summary>Adds a named step to the job.</summary>
+    /// <param name="stepName">A unique name for this step.</param>
+    /// <param name="configure">A delegate that configures the step pipeline.</param>
     public JobBuilder AddStep(string stepName, Func<IStepBuilderReadFrom, IStepBuilderFinal> configure)
     {
         ArgumentNullException.ThrowIfNull(stepName);
@@ -83,5 +96,6 @@ public sealed class JobBuilder
             _stepListeners[stepName] = stepListeners;
     }
 
+    /// <summary>Creates the configured <see cref="Job"/> instance.</summary>
     public Job Build() => new(_jobName, _steps, _jobRepository, _jobListeners, _stepListeners, _logger);
 }
