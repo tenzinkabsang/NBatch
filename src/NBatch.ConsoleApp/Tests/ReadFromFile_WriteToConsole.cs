@@ -1,14 +1,16 @@
-﻿using NBatch.Core;
+﻿using Microsoft.Extensions.Logging;
+using NBatch.Core;
 using NBatch.Readers.FileReader;
 
 namespace NBatch.ConsoleApp.Tests;
 
 public sealed class ReadFromFile_WriteToConsole
 {
-    public static async Task RunAsync(string connectionString, string filePath)
+    public static async Task RunAsync(string connectionString, string filePath, ILogger logger)
     {
         var job = Job.CreateBuilder(jobName: "JOB-1")
             .UseJobStore(connectionString, DatabaseProvider.SqlServer)
+            .WithLogger(logger)
             .AddStep("Import from file and print to console", step => step
                 .ReadFrom(new CsvReader<Product>(filePath, row => new Product
                 {

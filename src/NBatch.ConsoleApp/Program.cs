@@ -1,38 +1,90 @@
 ﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using NBatch.ConsoleApp;
 using NBatch.ConsoleApp.Tests;
-
-Console.WriteLine("Hello, NBatch!");
-
-var fileSourcePath = PathUtil.GetPath(@"Files\NewItems\sample.txt");
-var fileTargetPath = PathUtil.GetPath(@"Files\Processed\target.txt");
+using Serilog;
 
 var config = new ConfigurationBuilder()
     .SetBasePath(AppContext.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .Build();
 
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(config)
+    .CreateLogger();
+
+using var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(dispose: false));
+var logger = loggerFactory.CreateLogger("NBatch");
+
+var fileSourcePath = PathUtil.GetPath(@"Files\NewItems\sample.txt");
+var fileTargetPath = PathUtil.GetPath(@"Files\Processed\target.txt");
+
 var jobDb = config["ConnectionStrings:JobDb"]!;
 var appDbConnString = config["ConnectionStrings:AppDb"]!;
 
-using var sourceDb = AppDbContext.Create(appDbConnString);
-using var destinationDb = AppDbContext.Create(appDbConnString);
+while (true)
+{
+    Console.WriteLine();
+    Console.WriteLine("╔══════════════════════════════════════════╗");
+    Console.WriteLine("║            NBatch Test Runner            ║");
+    Console.WriteLine("╠══════════════════════════════════════════╣");
+    Console.WriteLine("║  1. DB   -> DB                           ║");
+    Console.WriteLine("║  2. DB   -> File                         ║");
+    Console.WriteLine("║  3. File -> DB                           ║");
+    Console.WriteLine("║  4. File -> Console                      ║");
+    Console.WriteLine("║  5. File -> File                         ║");
+    Console.WriteLine("║  6. File -> Console (lambda, no SQL)     ║");
+    Console.WriteLine("║  0. Exit                                 ║");
+    Console.WriteLine("╚══════════════════════════════════════════╝");
+    Console.Write("Select a test to run: ");
 
+    var choice = Console.ReadLine()?.Trim();
 
-// UNCOMMENT each lines below for testing.
-// PLEASE ensure that the BatchJob and BatchStep database tables are reset after each run, because one of the features
-// of NBatch is that it will not reprocess items that has already been processed :)
-await ReadFromDb_SaveToDb.RunAsync(jobDb, sourceDb, destinationDb);
+    if (choice is "0" or null)
+        break;
 
-await ReadFromDb_SaveToFile.RunAsync(jobDb, sourceDb, fileTargetPath);
+    try
+    {
+        switch (choice)
+        {
+            case "1":
+                using (var src = AppDbContext.Create(appDbConnString))
+                using (var dst = AppDbContext.Create(appDbConnString))
+                    await ReadFromDb_SaveToDb.RunAsync(jobDb, src, dst, logger);
+                break;
 
-using var destinationDb2 = AppDbContext.Create(appDbConnString);
-await ReadFromFile_SaveToDatabase.RunAsync(jobDb, destinationDb2, fileSourcePath);
+            case "2":
+                using (var src = AppDbContext.Create(appDbConnString))
+                    await ReadFromDb_SaveToFile.RunAsync(jobDb, src, fileTargetPath, logger);
+                break;
 
-await ReadFromFile_WriteToConsole.RunAsync(jobDb, fileSourcePath);
+            case "3":
+                using (var dst = AppDbContext.Create(appDbConnString))
+                    await ReadFromFile_SaveToDatabase.RunAsync(jobDb, dst, fileSourcePath, logger);
+                break;
 
-await ReadFromFile_WriteToFile.RunAsync(jobDb, fileSourcePath, fileTargetPath);
+            case "4":
+                await ReadFromFile_WriteToConsole.RunAsync(jobDb, fileSourcePath, logger);
+                break;
 
-// Uses a lambda processor and in-memory job tracking (no SQL required)
-await ReadFromFile_WriteToConsole_Lambda.RunAsync(fileSourcePath);
+            case "5":
+                await ReadFromFile_WriteToFile.RunAsync(jobDb, fileSourcePath, fileTargetPath, logger);
+                break;
+
+            case "6":
+                await ReadFromFile_WriteToConsole_Lambda.RunAsync(fileSourcePath, logger);
+                break;
+
+            default:
+                Console.WriteLine("Invalid selection.");
+                continue;
+        }
+
+        Console.WriteLine("Done.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error: {ex.Message}");
+    }
+}
 

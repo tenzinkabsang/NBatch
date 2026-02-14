@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NBatch.Core;
 using NBatch.Readers.FileReader;
 
@@ -5,9 +6,10 @@ namespace NBatch.ConsoleApp.Tests;
 
 public sealed class ReadFromFile_WriteToConsole_Lambda
 {
-    public static async Task RunAsync(string filePath)
+    public static async Task RunAsync(string filePath, ILogger logger)
     {
         var job = Job.CreateBuilder(jobName: "JOB-LAMBDA")
+            .WithLogger(logger)
             .AddStep("Import from file, uppercase with lambda, print to console", step => step
                 .ReadFrom(new CsvReader<Product>(filePath, row => new Product
                 {

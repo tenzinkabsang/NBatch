@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Runtime.ExceptionServices;
+using Microsoft.Extensions.Logging;
 using NBatch.Core.Interfaces;
 using NBatch.Core.Repositories;
 
@@ -40,6 +41,9 @@ internal class Step<TInput, TOutput> : IStep
         ChunkSize = chunkSize;
     }
 
+    private enum ReadOutcome { Items, EndOfData, ReadError }
+    private readonly record struct ChunkReadResult(ReadOutcome Outcome, List<TInput> Items, StepContext Context);
+
     /// <summary>
     /// Processes all chunks sequentially using the Reader, Processor and Writer.
     /// Tracks each chunk iteration via the repository to support restart on failure.
@@ -57,34 +61,65 @@ internal class Step<TInput, TOutput> : IStep
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            long stepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, cancellationToken);
-            ctx = await ProcessChunkAsync(ctx, stepId, cancellationToken);
+            var readResult = await ReadChunkAsync(ctx, cancellationToken);
+
+            if (readResult.Outcome == ReadOutcome.EndOfData)
+                break;
+
+            if (readResult.Outcome == ReadOutcome.ReadError)
+            {
+                ctx = readResult.Context;
+            }
+            else
+            {
+                long stepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, cancellationToken);
+                ctx = await ProcessChunkAsync(ctx, stepId, readResult.Items, cancellationToken);
+            }
 
             totalRead += ctx.NumberOfItemsReceived;
             totalProcessed += ctx.NumberOfItemsProcessed;
-            if (ctx.Skip) totalSkipped++;
+
+            if (ctx.Skip)
+                totalSkipped++;
         }
 
         return new StepResult(Name, true, totalRead, totalProcessed, totalSkipped);
     }
 
     /// <summary>
-    /// Reads, processes, and writes a single chunk.
-    /// On failure, the skip policy determines whether to skip the chunk or propagate the error.
-    /// Step state is always persisted in the finally block.
+    /// Reads the next chunk from the reader. On failure, evaluates the skip policy
+    /// and returns a <see cref="ReadOutcome.ReadError"/> result with the updated context.
     /// </summary>
-    private async Task<StepContext> ProcessChunkAsync(StepContext ctx, long stepId, CancellationToken cancellationToken)
+    private async Task<ChunkReadResult> ReadChunkAsync(StepContext ctx, CancellationToken cancellationToken)
     {
-        int itemsRead = 0;
-        int itemsWritten = 0;
-        bool error = false;
-        bool skipped = false;
+        List<TInput> items;
+        try
+        {
+            items = (await _reader.ReadAsync(ctx.StepIndex, ChunkSize, cancellationToken)).ToList();
+        }
+        catch (Exception ex)
+        {
+            long errorStepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, cancellationToken);
+            var errorCtx = await HandleErrorAsync(ctx, errorStepId, 0, ex, cancellationToken);
+            return new ChunkReadResult(ReadOutcome.ReadError, [], errorCtx);
+        }
+
+        if (items.Count == 0)
+            return new ChunkReadResult(ReadOutcome.EndOfData, [], ctx);
+
+        return new ChunkReadResult(ReadOutcome.Items, items, ctx);
+    }
+
+    /// <summary>
+    /// Processes and writes a single chunk of items.
+    /// On failure, the skip policy determines whether to skip the chunk or propagate the error.
+    /// </summary>
+    private async Task<StepContext> ProcessChunkAsync(StepContext ctx, long stepId, List<TInput> items, CancellationToken cancellationToken)
+    {
+        int itemsRead = items.Count;
 
         try
         {
-            var items = (await _reader.ReadAsync(ctx.StepIndex, ChunkSize, cancellationToken)).ToList();
-            itemsRead = items.Count;
-
             List<TOutput> processedItems = [];
             foreach (var item in items)
             {
@@ -92,8 +127,11 @@ internal class Step<TInput, TOutput> : IStep
                 processedItems.Add(result);
             }
 
-            await _writer.WriteAsync(processedItems, cancellationToken);
-            itemsWritten = processedItems.Count;
+            if (processedItems.Count > 0)
+                await _writer.WriteAsync(processedItems, cancellationToken);
+
+            int itemsWritten = processedItems.Count;
+            await _stepRepository.UpdateStepAsync(stepId, itemsWritten, error: false, skipped: false, cancellationToken);
 
             _logger.LogDebug("Step '{StepName}' chunk at index {Index} — read {Read}, wrote {Wrote}",
                 Name, ctx.StepIndex, itemsRead, itemsWritten);
@@ -102,25 +140,31 @@ internal class Step<TInput, TOutput> : IStep
         }
         catch (Exception ex)
         {
-            error = true;
-
-            var skipContext = new SkipContext(ctx.StepName, ctx.NextStepIndex, ex);
-            skipped = await _skipPolicy.IsSatisfiedByAsync(_stepRepository, skipContext, cancellationToken);
-
-            if (skipped)
-            {
-                _logger.LogWarning(ex, "Step '{StepName}' chunk at index {Index} — skipped ({ExceptionType})",
-                    Name, ctx.StepIndex, ex.GetType().Name);
-                return StepContext.Increment(ctx, itemsRead, itemsWritten, skipped: true);
-            }
-
-            _logger.LogError(ex, "Step '{StepName}' chunk at index {Index} — fatal error", Name, ctx.StepIndex);
-            throw;
+            return await HandleErrorAsync(ctx, stepId, itemsRead, ex, cancellationToken);
         }
-        finally
+    }
+
+    /// <summary>
+    /// Evaluates the skip policy for a failed chunk. If the error is skippable, logs a warning
+    /// and advances to the next chunk. Otherwise logs a fatal error and rethrows.
+    /// </summary>
+    private async Task<StepContext> HandleErrorAsync(
+        StepContext ctx, long stepId, int itemsRead, Exception ex, CancellationToken cancellationToken)
+    {
+        var skipContext = new SkipContext(ctx.StepName, ctx.NextStepIndex, ex);
+        bool skipped = await _skipPolicy.IsSatisfiedByAsync(_stepRepository, skipContext, cancellationToken);
+
+        await _stepRepository.UpdateStepAsync(stepId, 0, error: true, skipped, cancellationToken);
+
+        if (skipped)
         {
-            int completedItems = (error && !skipped) ? 0 : itemsWritten;
-            await _stepRepository.UpdateStepAsync(stepId, completedItems, error, skipped, cancellationToken);
+            _logger.LogWarning(ex, "Step '{StepName}' chunk at index {Index} — skipped ({ExceptionType})",
+                Name, ctx.StepIndex, ex.GetType().Name);
+            return StepContext.Increment(ctx, itemsRead, 0, skipped: true);
         }
+
+        _logger.LogError(ex, "Step '{StepName}' chunk at index {Index} — fatal error", Name, ctx.StepIndex);
+        ExceptionDispatchInfo.Throw(ex);
+        return default; // unreachable
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using NBatch.Core;
 using NBatch.Readers.FileReader;
 using NBatch.Writers.DbWriter;
@@ -7,10 +8,11 @@ namespace NBatch.ConsoleApp.Tests;
 
 public sealed class ReadFromFile_SaveToDatabase
 {
-    public static async Task RunAsync(string jobDbConnString, DbContext destinationDb, string filePath)
+    public static async Task RunAsync(string jobDbConnString, DbContext destinationDb, string filePath, ILogger logger)
     {
         var job = Job.CreateBuilder(jobName: "JOB-1")
             .UseJobStore(jobDbConnString, DatabaseProvider.SqlServer)
+            .WithLogger(logger)
             .AddStep("Import from file and save to database", step => step
                 .ReadFrom(new CsvReader<Product>(filePath, row => new Product
                 {

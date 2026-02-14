@@ -15,7 +15,7 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
 
         modelBuilder.Entity<JobEntity>(entity =>
         {
-            entity.ToTable("job");
+            entity.ToTable("jobs");
             entity.HasKey(e => e.JobName);
 
             entity.Property(e => e.JobName)
@@ -31,7 +31,7 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
 
         modelBuilder.Entity<StepEntity>(entity =>
         {
-            entity.ToTable("step");
+            entity.ToTable("steps");
             entity.HasKey(e => e.Id);
             
             entity.Property(e => e.Id)
@@ -71,7 +71,7 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
 
         modelBuilder.Entity<StepExceptionEntity>(entity =>
         {
-            entity.ToTable("step_exception");
+            entity.ToTable("step_exceptions");
             entity.HasKey(e => e.Id);
             
             entity.Property(e => e.Id)
