@@ -10,6 +10,7 @@ public interface IStepBuilderReadFrom
     IStepBuilderWriteTo<TInput> ReadFrom<TInput>(IReader<TInput> reader);
     ITaskletStepBuilder Execute(ITasklet tasklet);
     ITaskletStepBuilder Execute(Func<Task> action);
+    ITaskletStepBuilder Execute(Func<CancellationToken, Task> action);
 }
 
 /// <summary>

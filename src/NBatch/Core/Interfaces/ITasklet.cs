@@ -6,5 +6,5 @@ namespace NBatch.Core.Interfaces;
 /// </summary>
 public interface ITasklet
 {
-    Task ExecuteAsync();
+    Task ExecuteAsync(CancellationToken cancellationToken = default);
 }

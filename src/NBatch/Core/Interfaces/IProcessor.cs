@@ -2,5 +2,5 @@
 
 public interface IProcessor<TInput, TOutput>
 {
-    Task<TOutput> ProcessAsync(TInput input);
+    Task<TOutput> ProcessAsync(TInput input, CancellationToken cancellationToken = default);
 }

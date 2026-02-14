@@ -15,62 +15,64 @@ class StepTests
     public void BeforeEach()
     {
         _jobRepo = new Mock<IJobRepository>();
+        _jobRepo.Setup(r => r.GetStartIndexAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StepContext());
     }
 
     [TestCase(1, 1)]
     [TestCase(10, 10)]
     public async Task WriterShouldBeCalledWithTheSpecifiedChunkSize(int chunkSize, int itemCount)
     {
-        var step = FakeStep<string, string>.Create("step1", chunkSize);
+        var step = FakeStep<string, string>.Create("step1", _jobRepo.Object, chunkSize);
 
-        step.MockReader.Setup(r => r.ReadAsync(0, chunkSize))
+        step.MockReader.Setup(r => r.ReadAsync(0, chunkSize, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Enumerable.Range(0, chunkSize).Select(s => "item read"));
 
-        step.MockProcessor.Setup(p => p.ProcessAsync(It.IsAny<string>())).ReturnsAsync("processed");
+        step.MockProcessor.Setup(p => p.ProcessAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync("processed");
 
-        var result = await step.ProcessAsync(new StepContext(), _jobRepo.Object);
+        var result = await step.ProcessAsync();
 
-        step.MockWriter.Verify(w => w.WriteAsync(It.Is<IEnumerable<string>>(items => items.Count() == itemCount)));
-        step.MockWriter.Verify(w => w.WriteAsync(new List<string> { "processed", "processed" }));
+        step.MockWriter.Verify(w => w.WriteAsync(It.Is<IEnumerable<string>>(items => items.Count() == itemCount), It.IsAny<CancellationToken>()));
     }
 
     [Test]
     public async Task WhenSkippableExceptionsAreThrownItShouldProceedToTheNextChunk()
     {
         var skipPolicy = new SkipPolicy([typeof(FlatFileParseException)], skipLimit: 1);
-        var step = FakeStep<string, string>.Create("step1", skipPolicy: skipPolicy);
-        step.MockReader.Setup(r => r.ReadAsync(0, 1)).ThrowsAsync(new FlatFileParseException());
+        _jobRepo.Setup(r => r.GetStartIndexAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new StepContext { StepName = "step1" });
+        var step = FakeStep<string, string>.Create("step1", _jobRepo.Object, skipPolicy: skipPolicy);
+        step.MockReader.Setup(r => r.ReadAsync(0, 1, It.IsAny<CancellationToken>())).ThrowsAsync(new FlatFileParseException());
 
-        var stepContext = new StepContext { StepName = "step1" };
-        await step.ProcessAsync(stepContext, _jobRepo.Object);
+        await step.ProcessAsync();
 
-        _jobRepo.Verify(j => j.GetExceptionCountAsync(It.Is<SkipContext>(ctx => ctx.StepName == "step1")));
-        _jobRepo.Verify(j => j.SaveExceptionInfoAsync(It.IsAny<SkipContext>(), It.IsAny<int>()));
+        _jobRepo.Verify(j => j.GetExceptionCountAsync(It.Is<SkipContext>(ctx => ctx.StepName == "step1"), It.IsAny<CancellationToken>()));
+        _jobRepo.Verify(j => j.SaveExceptionInfoAsync(It.IsAny<SkipContext>(), It.IsAny<int>(), It.IsAny<CancellationToken>()));
     }
 
     [Test]
     public void StepIndexNotIncrementedWhenExceptionThrownAndSkipLimitReacher()
     {
         var skipPolicy = new SkipPolicy([typeof(Exception)], skipLimit: 1);
-        var step = FakeStep<string, string>.Create("step1", skipPolicy: skipPolicy);
+        var step = FakeStep<string, string>.Create("step1", _jobRepo.Object, skipPolicy: skipPolicy);
 
         // When it gets to the second iteration, we return 1 to indicate that we've already had one exception
-        _jobRepo.Setup(r => r.GetExceptionCountAsync(It.Is<SkipContext>(ctx => ctx.StepIndex == 2))).ReturnsAsync(1);
+        _jobRepo.Setup(r => r.GetExceptionCountAsync(It.Is<SkipContext>(ctx => ctx.StepIndex == 2), It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        step.MockReader.Setup(r => r.ReadAsync(It.IsAny<long>(), It.IsAny<int>())).ReturnsAsync(["line1"]);
-        step.MockProcessor.Setup(p => p.ProcessAsync(It.IsAny<string>())).ThrowsAsync(new Exception());
+        step.MockReader.Setup(r => r.ReadAsync(It.IsAny<long>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(["line1"]);
+        step.MockProcessor.Setup(p => p.ProcessAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ThrowsAsync(new Exception());
 
         // Should throw an excpetion on the second iteration since the skipLimit is reached.
-        Assert.ThrowsAsync<Exception>(() => step.ProcessAsync(new StepContext(), _jobRepo.Object));
+        Assert.ThrowsAsync<Exception>(() => step.ProcessAsync());
     }
 
     [Test]
     public void IfNoSkipPolicySpecifiedThenThrowExceptionOnFirstError()
     {
-        var step = FakeStep<string, string>.Create("step1", skipPolicy: null);
-        step.MockReader.Setup(r => r.ReadAsync(0, 1)).ThrowsAsync(new Exception());
+        var step = FakeStep<string, string>.Create("step1", _jobRepo.Object, skipPolicy: null);
+        step.MockReader.Setup(r => r.ReadAsync(0, 1, It.IsAny<CancellationToken>())).ThrowsAsync(new Exception());
 
-        Assert.ThrowsAsync<Exception>(() => step.ProcessAsync(new StepContext(), _jobRepo.Object));
-        _jobRepo.Verify(r => r.GetExceptionCountAsync(It.IsAny<SkipContext>()), Times.Never());
+        Assert.ThrowsAsync<Exception>(() => step.ProcessAsync());
+        _jobRepo.Verify(r => r.GetExceptionCountAsync(It.IsAny<SkipContext>(), It.IsAny<CancellationToken>()), Times.Never());
     }
 }

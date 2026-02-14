@@ -2,5 +2,5 @@
 
 public interface IReader<TItem>
 {
-    Task<IEnumerable<TItem>> ReadAsync(long startIndex, int chunkSize);
+    Task<IEnumerable<TItem>> ReadAsync(long startIndex, int chunkSize, CancellationToken cancellationToken = default);
 }

@@ -59,6 +59,7 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
         {
             DatabaseProvider.SqlServer => builder.UseSqlServer(connectionString),
             DatabaseProvider.PostgreSql => builder.UseNpgsql(connectionString).UseSnakeCaseNamingConvention(),
+            DatabaseProvider.Sqlite => builder.UseSqlite(connectionString),
             _ => throw new ArgumentOutOfRangeException(nameof(provider))
         };
 

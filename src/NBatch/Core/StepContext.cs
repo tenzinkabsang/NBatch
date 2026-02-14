@@ -1,6 +1,6 @@
 ﻿namespace NBatch.Core;
 
-public sealed class StepContext
+internal sealed class StepContext
 {
     public string StepName { get; set; } = string.Empty;
     public string JobName { get; set; } = string.Empty;

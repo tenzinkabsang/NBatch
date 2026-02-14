@@ -21,17 +21,17 @@ public sealed class SkipPolicy
         _skipLimit = skipLimit;
     }
 
-    public async Task<bool> IsSatisfiedByAsync(IStepRepository stepRepository, SkipContext skipContext)
+    internal async Task<bool> IsSatisfiedByAsync(IStepRepository stepRepository, SkipContext skipContext, CancellationToken cancellationToken = default)
     {
         if (_skippableExceptions.Length == 0 || _skipLimit == 0)
             return false;
 
-        int exceptionCount = await stepRepository.GetExceptionCountAsync(skipContext);
+        int exceptionCount = await stepRepository.GetExceptionCountAsync(skipContext, cancellationToken);
 
         if (exceptionCount >= _skipLimit || !_skippableExceptions.Contains(skipContext.ExceptionType))
             return false;
 
-        await stepRepository.SaveExceptionInfoAsync(skipContext, exceptionCount);
+        await stepRepository.SaveExceptionInfoAsync(skipContext, exceptionCount, cancellationToken);
         return true;
     }
 

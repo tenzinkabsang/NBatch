@@ -17,7 +17,7 @@ public class FlatFileItemWriterTests
 
         string[] items = ["one", "two"];
 
-        var result = await fileWriter.WriteAsync(items);
+        await fileWriter.WriteAsync(items);
 
         propSerializer.Verify(p => p.Serialize(items));
     }
@@ -33,9 +33,8 @@ public class FlatFileItemWriterTests
 
         var fileWriter = new FlatFileItemWriter<string>(propSerializer.Object, fileService.Object);
 
-        bool isSaved = await fileWriter.WriteAsync(items);
+        await fileWriter.WriteAsync(items);
 
-        Assert.That(isSaved, Is.True);
-        fileService.Verify(f => f.WriteFileAsync(items));
+        fileService.Verify(f => f.WriteFileAsync(items, It.IsAny<CancellationToken>()));
     }
 }

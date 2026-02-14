@@ -4,12 +4,11 @@ namespace NBatch.ConsoleApp;
 
 public sealed class ConsoleWriter<TItem> : IWriter<TItem>
 {
-    public async Task<bool> WriteAsync(IEnumerable<TItem> items)
+    public Task WriteAsync(IEnumerable<TItem> items, CancellationToken cancellationToken = default)
     {
-        var result = await Task.FromResult(true);
         foreach (var item in items)
             Console.WriteLine(item);
 
-        return result;
+        return Task.CompletedTask;
     }
 }

@@ -35,10 +35,10 @@ public sealed class RetryPolicy
         return attempt < _maxAttempts && _retryableExceptions.Contains(exception.GetType());
     }
 
-    internal async Task WaitAsync()
+    internal async Task WaitAsync(CancellationToken cancellationToken = default)
     {
         if (_delay > TimeSpan.Zero)
-            await Task.Delay(_delay);
+            await Task.Delay(_delay, cancellationToken);
     }
 
     private static bool IsExceptionType(Type type)

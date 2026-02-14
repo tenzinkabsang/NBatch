@@ -8,15 +8,16 @@ public sealed class MsSqlReader<TItem>(string connectionString, string sql) : IR
 {
     private readonly string _sql = ValidateSql(sql);
 
-    public async Task<IEnumerable<TItem>> ReadAsync(long startIndex, int chunkSize)
+    public async Task<IEnumerable<TItem>> ReadAsync(long startIndex, int chunkSize, CancellationToken cancellationToken = default)
     {
         using var connection = new SqlConnection(connectionString);
-        await connection.OpenAsync();
+        await connection.OpenAsync(cancellationToken);
 
         string sqlWithPagination = $"{_sql} OFFSET((@PageNumber-1) * @RowsPerPage) Rows FETCH NEXT @RowsPerPage ROWS ONLY";
 
         long pageNumber = (startIndex / chunkSize) + 1;
-        return await connection.QueryAsync<TItem>(sqlWithPagination, new { PageNumber = pageNumber, RowsPerPage = chunkSize });
+        var command = new CommandDefinition(sqlWithPagination, new { PageNumber = pageNumber, RowsPerPage = chunkSize }, cancellationToken: cancellationToken);
+        return await connection.QueryAsync<TItem>(command);
     }
 
     private static string ValidateSql(string sql)

@@ -16,11 +16,11 @@ public sealed class FlatFileItemReader<TInput> : IReader<TInput>
         _fileService = fileService;
     }
 
-    public async Task<IEnumerable<TInput>> ReadAsync(long startIndex, int chunkSize)
+    public async Task<IEnumerable<TInput>> ReadAsync(long startIndex, int chunkSize, CancellationToken cancellationToken = default)
     {
         try
         {
-            var itemsToProcess = await _fileService.ReadLinesAsync(startIndex, chunkSize).ToListAsync();
+            var itemsToProcess = await _fileService.ReadLinesAsync(startIndex, chunkSize, cancellationToken).ToListAsync(cancellationToken);
 
             return itemsToProcess
                 .Skip(IsFirstLine(startIndex) ? LinesToSkip : 0)

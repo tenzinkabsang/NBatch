@@ -6,5 +6,6 @@ namespace NBatch.Core;
 public enum DatabaseProvider
 {
     SqlServer,
-    PostgreSql
+    PostgreSql,
+    Sqlite
 }

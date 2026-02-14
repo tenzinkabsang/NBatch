@@ -6,6 +6,6 @@ namespace NBatch.Core.Interfaces;
 /// </summary>
 public interface IJobListener
 {
-    Task BeforeJobAsync(string jobName) => Task.CompletedTask;
-    Task AfterJobAsync(JobResult result) => Task.CompletedTask;
+    Task BeforeJobAsync(string jobName, CancellationToken cancellationToken) => Task.CompletedTask;
+    Task AfterJobAsync(JobResult result, CancellationToken cancellationToken) => Task.CompletedTask;
 }

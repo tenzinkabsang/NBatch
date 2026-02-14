@@ -19,6 +19,12 @@ internal sealed class StepBuilderReadFrom(JobBuilder jobBuilder, string stepName
     public ITaskletStepBuilder Execute(Func<Task> action)
     {
         ArgumentNullException.ThrowIfNull(action);
+        return new TaskletStepBuilder(jobBuilder, stepName, new DelegateTasklet(_ => action()));
+    }
+
+    public ITaskletStepBuilder Execute(Func<CancellationToken, Task> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
         return new TaskletStepBuilder(jobBuilder, stepName, new DelegateTasklet(action));
     }
 }

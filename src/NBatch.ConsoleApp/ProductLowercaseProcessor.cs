@@ -7,7 +7,7 @@ namespace NBatch.ConsoleApp;
 /// </summary>
 public sealed class ProductLowercaseProcessor : IProcessor<Product, Product>
 {
-    public Task<Product> ProcessAsync(Product input)
+    public Task<Product> ProcessAsync(Product input, CancellationToken cancellationToken = default)
     {
         Product product = new(
                         Sku: input.Sku.ToLower(),

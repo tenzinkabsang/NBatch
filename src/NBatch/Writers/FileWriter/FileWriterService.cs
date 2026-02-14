@@ -2,6 +2,6 @@
 
 internal sealed class FileWriterService(string destinationPath) : IFileWriterService
 {
-    public async Task WriteFileAsync(IEnumerable<string> contents)
-        => await File.AppendAllLinesAsync(destinationPath, contents);
+    public async Task WriteFileAsync(IEnumerable<string> contents, CancellationToken cancellationToken = default)
+        => await File.AppendAllLinesAsync(destinationPath, contents, cancellationToken);
 }

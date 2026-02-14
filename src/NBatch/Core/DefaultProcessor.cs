@@ -9,5 +9,5 @@ namespace NBatch.Core;
 /// <typeparam name="TOutput">Item returned after processing.</typeparam>
 internal sealed class DefaultProcessor<TInput, TOutput> : IProcessor<TInput, TOutput>
 {
-    public Task<TOutput> ProcessAsync(TInput input) => Task.FromResult((TOutput)(object)input!);
+    public Task<TOutput> ProcessAsync(TInput input, CancellationToken cancellationToken = default) => Task.FromResult((TOutput)(object)input!);
 }

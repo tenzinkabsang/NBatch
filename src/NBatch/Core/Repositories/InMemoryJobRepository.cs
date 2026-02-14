@@ -6,7 +6,7 @@ internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
     private readonly Dictionary<long, StepEntry> _steps = [];
     private readonly List<ExceptionEntry> _exceptions = [];
 
-    public Task CreateJobRecordAsync(ICollection<string> stepNames)
+    public Task CreateJobRecordAsync(ICollection<string> stepNames, CancellationToken cancellationToken = default)
     {
         foreach (var stepName in stepNames)
         {
@@ -16,7 +16,7 @@ internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
         return Task.CompletedTask;
     }
 
-    public Task<StepContext> GetStartIndexAsync(string stepName)
+    public Task<StepContext> GetStartIndexAsync(string stepName, CancellationToken cancellationToken = default)
     {
         var latest = _steps
             .Where(s => s.Value.StepName == stepName)
@@ -33,14 +33,14 @@ internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
         });
     }
 
-    public Task<long> InsertStepAsync(string stepName, long stepIndex)
+    public Task<long> InsertStepAsync(string stepName, long stepIndex, CancellationToken cancellationToken = default)
     {
         long id = ++_nextId;
         _steps[id] = new StepEntry(stepName, stepIndex, NumberOfItemsProcessed: 0);
         return Task.FromResult(id);
     }
 
-    public Task UpdateStepAsync(long stepId, int numberOfItemsProcessed, bool error, bool skipped)
+    public Task UpdateStepAsync(long stepId, int numberOfItemsProcessed, bool error, bool skipped, CancellationToken cancellationToken = default)
     {
         if (_steps.TryGetValue(stepId, out var entry))
             _steps[stepId] = entry with { NumberOfItemsProcessed = numberOfItemsProcessed };
@@ -48,13 +48,13 @@ internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
         return Task.CompletedTask;
     }
 
-    public Task<int> GetExceptionCountAsync(SkipContext skipContext)
+    public Task<int> GetExceptionCountAsync(SkipContext skipContext, CancellationToken cancellationToken = default)
     {
         int count = _exceptions.Count(e => e.StepName == skipContext.StepName);
         return Task.FromResult(count);
     }
 
-    public Task SaveExceptionInfoAsync(SkipContext skipContext, int currentCount)
+    public Task SaveExceptionInfoAsync(SkipContext skipContext, int currentCount, CancellationToken cancellationToken = default)
     {
         _exceptions.Add(new ExceptionEntry(skipContext.StepName, skipContext.StepIndex, skipContext.ExceptionMessage, skipContext.ExceptionDetail));
         return Task.CompletedTask;

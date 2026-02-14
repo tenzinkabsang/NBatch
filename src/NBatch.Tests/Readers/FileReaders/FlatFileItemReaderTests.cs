@@ -22,12 +22,12 @@ public class  FlatFileItemReaderTests
     public async Task MapIsCalledAsManyTimesAsChunkSize(int chunkSize, int expected)
     {
         var fileService = new Mock<IFileService>();
-        fileService.Setup(f => f.ReadLinesAsync(0, chunkSize))
+        fileService.Setup(f => f.ReadLinesAsync(0, chunkSize, It.IsAny<CancellationToken>()))
             .Returns(Enumerable.Range(0, chunkSize).ToAsyncEnumerable().Select(s => "item read"));
 
         var itemReader = new FlatFileItemReader<string>(_lineMapper.Object, fileService.Object);
 
-        await itemReader.ReadAsync(0, chunkSize);
+        (await itemReader.ReadAsync(0, chunkSize)).ToList();
 
         _lineMapper.Verify(m => m.MapToModel(It.IsAny<string>()), Times.Exactly(expected));
     }
@@ -40,14 +40,14 @@ public class  FlatFileItemReaderTests
     {
         const int CHUNK_SIZE = 10; /** Use same chunk size for all tests **/
         var fileService = new Mock<IFileService>();
-        fileService.Setup(f => f.ReadLinesAsync(0, CHUNK_SIZE))
+        fileService.Setup(f => f.ReadLinesAsync(0, CHUNK_SIZE, It.IsAny<CancellationToken>()))
             .Returns(Enumerable.Range(0, CHUNK_SIZE).ToAsyncEnumerable().Select(s => "item read"));
 
 
         var itemReader = new FlatFileItemReader<string>(_lineMapper.Object, fileService.Object);
         itemReader.LinesToSkip = linesToSkip;
 
-        await itemReader.ReadAsync(0, CHUNK_SIZE);
+        (await itemReader.ReadAsync(0, CHUNK_SIZE)).ToList();
 
         _lineMapper.Verify(m => m.MapToModel(It.IsAny<string>()), Times.Exactly(expected));
     }
@@ -56,12 +56,12 @@ public class  FlatFileItemReaderTests
     public async Task LineMapperIsNotCalledIfItemIsNullOrEmpty()
     {
         var fileService = new Mock<IFileService>();
-        fileService.Setup(f => f.ReadLinesAsync(0, 1))
+        fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
             .Returns(Enumerable.Empty<string>().ToAsyncEnumerable());
 
         var itemReader = new FlatFileItemReader<string>(_lineMapper.Object, fileService.Object);
 
-        await itemReader.ReadAsync(0, 1);
+        (await itemReader.ReadAsync(0, 1)).ToList();
 
         _lineMapper.Verify(m => m.MapToModel(It.IsAny<string>()), Times.Never());
     }
