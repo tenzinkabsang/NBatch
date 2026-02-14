@@ -11,7 +11,7 @@ public sealed class ReadFromFile_WriteToConsole
         var job = Job.CreateBuilder(jobName: "JOB-1", connectionString, DatabaseProvider.SqlServer)
             .AddStep("Import from file and print to console")
             .ReadFrom(FileReader(filePath))
-            .WriteTo(new ConsoleWriter<Product>())
+            .WriteTo(new ConsoleWriter<ProductLowercase>())
             .ProcessWith(new ProductLowercaseProcessor())
             .Build();
 

@@ -1,6 +1,6 @@
 namespace NBatch.Core.Repositories.Entities;
 
-internal sealed class BatchStepEntity
+internal sealed class StepEntity
 {
     public long Id { get; set; }
     public string StepName { get; set; } = string.Empty;

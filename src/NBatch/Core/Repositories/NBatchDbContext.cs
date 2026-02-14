@@ -5,48 +5,105 @@ namespace NBatch.Core.Repositories;
 
 internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options) : DbContext(options)
 {
-    public DbSet<BatchJobEntity> BatchJobs => Set<BatchJobEntity>();
-    public DbSet<BatchStepEntity> BatchSteps => Set<BatchStepEntity>();
-    public DbSet<BatchStepExceptionEntity> BatchStepExceptions => Set<BatchStepExceptionEntity>();
+    public DbSet<JobEntity> BatchJobs => Set<JobEntity>();
+    public DbSet<StepEntity> BatchSteps => Set<StepEntity>();
+    public DbSet<StepExceptionEntity> BatchStepExceptions => Set<StepExceptionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<BatchJobEntity>(entity =>
+        modelBuilder.HasDefaultSchema("nbatch");
+
+        modelBuilder.Entity<JobEntity>(entity =>
         {
-            entity.ToTable("BatchJob");
+            entity.ToTable("job");
             entity.HasKey(e => e.JobName);
-            entity.Property(e => e.JobName).HasMaxLength(100);
-            entity.Property(e => e.CreateDate);
+
+            entity.Property(e => e.JobName)
+            .HasColumnName("job_name")
+            .HasMaxLength(100);
+            
+            entity.Property(e => e.CreateDate)
+            .HasColumnName("create_date");
+            
+            entity.Property(e => e.LastRun)
+            .HasColumnName("last_run");
         });
 
-        modelBuilder.Entity<BatchStepEntity>(entity =>
+        modelBuilder.Entity<StepEntity>(entity =>
         {
-            entity.ToTable("BatchStep");
+            entity.ToTable("step");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.StepName).HasMaxLength(100);
-            entity.Property(e => e.JobName).HasMaxLength(100);
-            entity.Property(e => e.Error).HasDefaultValue(false);
-            entity.Property(e => e.Skipped).HasDefaultValue(false);
-            entity.HasOne<BatchJobEntity>()
+            
+            entity.Property(e => e.Id)
+            .HasColumnName("id")
+            .ValueGeneratedOnAdd();
+            
+            entity.Property(e => e.StepName)
+            .HasColumnName("step_name")
+            .HasMaxLength(100);
+            
+            entity.Property(e => e.JobName)
+            .HasColumnName("job_name")
+            .HasMaxLength(100);
+            
+            entity.Property(e => e.Error)
+            .HasColumnName("error")
+            .HasDefaultValue(false);
+            
+            entity.Property(e => e.Skipped)
+            .HasColumnName("skipped")
+            .HasDefaultValue(false);
+            
+            entity.Property(e => e.StepIndex)
+            .HasColumnName("step_index");
+            
+            entity.Property(e => e.NumberOfItemsProcessed)
+            .HasColumnName("number_of_items_processed");
+            
+            entity.Property(e => e.RunDate)
+            .HasColumnName("run_date");
+            
+            entity.HasOne<JobEntity>()
                 .WithMany()
                 .HasForeignKey(e => e.JobName);
             entity.HasIndex(e => e.StepName);
         });
 
-        modelBuilder.Entity<BatchStepExceptionEntity>(entity =>
+        modelBuilder.Entity<StepExceptionEntity>(entity =>
         {
-            entity.ToTable("BatchStepException");
+            entity.ToTable("step_exception");
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).ValueGeneratedOnAdd();
-            entity.Property(e => e.StepName).HasMaxLength(100);
-            entity.Property(e => e.JobName).HasMaxLength(100);
-            entity.Property(e => e.ExceptionMsg).HasMaxLength(500);
-            entity.Property(e => e.ExceptionDetails).HasMaxLength(1500);
-            entity.Property(e => e.CreateDate);
-            entity.HasOne<BatchJobEntity>()
+            
+            entity.Property(e => e.Id)
+            .HasColumnName("id")
+            .ValueGeneratedOnAdd();
+            
+            entity.Property(e => e.StepIndex)
+            .HasColumnName("step_index");
+            
+            entity.Property(e => e.StepName)
+            .HasColumnName("step_name")
+            .HasMaxLength(100);
+            
+            entity.Property(e => e.JobName)
+            .HasColumnName("job_name")
+            .HasMaxLength(100);
+            
+            entity.Property(e => e.ExceptionMsg)
+            .HasColumnName("exception_msg")
+            .HasMaxLength(500);
+            
+            entity.Property(e => e.ExceptionDetails)
+            .HasColumnName("exception_details")
+            .HasMaxLength(1500);
+            
+            entity.Property(e => e.CreateDate)
+            .HasColumnName("create_date");
+            
+            entity.HasOne<JobEntity>()
                 .WithMany()
                 .HasForeignKey(e => e.JobName);
+            
             entity.HasIndex(e => e.StepName);
         });
     }
@@ -58,7 +115,7 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
         _ = provider switch
         {
             DatabaseProvider.SqlServer => builder.UseSqlServer(connectionString),
-            DatabaseProvider.PostgreSql => builder.UseNpgsql(connectionString).UseSnakeCaseNamingConvention(),
+            DatabaseProvider.PostgreSql => builder.UseNpgsql(connectionString),
             DatabaseProvider.Sqlite => builder.UseSqlite(connectionString),
             _ => throw new ArgumentOutOfRangeException(nameof(provider))
         };

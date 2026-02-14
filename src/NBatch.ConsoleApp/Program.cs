@@ -13,8 +13,10 @@ var config = new ConfigurationBuilder()
     .Build();
 
 var jobDb = config["ConnectionStrings:JobDb"]!;
-var sourceDb = config["ConnectionStrings:AppDb"]!;
-var destinationDb = config["ConnectionStrings:AppDb"]!;
+var appDbConnString = config["ConnectionStrings:AppDb"]!;
+
+using var sourceDb = AppDbContext.Create(appDbConnString);
+using var destinationDb = AppDbContext.Create(appDbConnString);
 
 
 // UNCOMMENT each lines below for testing.
@@ -24,7 +26,8 @@ await ReadFromDb_SaveToDb.RunAsync(jobDb, sourceDb, destinationDb);
 
 await ReadFromDb_SaveToFile.RunAsync(jobDb, sourceDb, fileTargetPath);
 
-await ReadFromFile_SaveToDatabase.RunAsync(jobDb, sourceDb, fileSourcePath);
+using var destinationDb2 = AppDbContext.Create(appDbConnString);
+await ReadFromFile_SaveToDatabase.RunAsync(jobDb, destinationDb2, fileSourcePath);
 
 await ReadFromFile_WriteToConsole.RunAsync(jobDb, fileSourcePath);
 

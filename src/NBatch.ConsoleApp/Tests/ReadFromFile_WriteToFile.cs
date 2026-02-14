@@ -25,6 +25,6 @@ public sealed class ReadFromFile_WriteToFile
             .WithLinesToSkip(1)
             .Build();
 
-    private static IWriter<Product> FileWriter(string filePath)
-        => new FlatFileItemWriter<Product>(filePath);
+    private static IWriter<ProductLowercase> FileWriter(string filePath)
+        => new FlatFileItemWriter<ProductLowercase>(filePath);
 }

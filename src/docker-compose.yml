@@ -14,18 +14,19 @@ services:
       - MSSQL_SA_PASSWORD=@Password1234
     volumes:
       - sqlserver_data:/var/opt/mssql
+      - ./NBatch.ConsoleApp/Scripts:/scripts:ro
+    command: >
+      bash -c "
+      /opt/mssql/bin/sqlservr &
+      until /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b -o /dev/null 2>/dev/null; do
+        sleep 2;
+      done;
+      /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -i /scripts/init-db.sql;
+      wait
+      "
     healthcheck:
       test: /opt/mssql-tools*/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b -o /dev/null
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
-
-  nbatch.consoleapp:
-    build:
-      context: .
-      dockerfile: NBatch.ConsoleApp/Dockerfile
-    container_name: nbatch.consoleapp
-    depends_on:
-      nbatch.database:
-        condition: service_healthy

@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using NBatch.Core.Repositories.Entities;
 
 namespace NBatch.Core.Repositories;
@@ -37,12 +40,33 @@ internal sealed class EfJobRepository : IJobRepository
         {
             if (_initializedDatabases.ContainsKey(_connectionString)) return;
             await using var ctx = CreateContext();
-            await ctx.Database.EnsureCreatedAsync(cancellationToken);
+            var creator = (RelationalDatabaseCreator)ctx.Database.GetService<IDatabaseCreator>();
+            if (!await creator.ExistsAsync(cancellationToken))
+            {
+                await ctx.Database.EnsureCreatedAsync(cancellationToken);
+            }
+            else if (!await TablesExistAsync(ctx, cancellationToken))
+            {
+                await creator.CreateTablesAsync(cancellationToken);
+            }
             _initializedDatabases.TryAdd(_connectionString, true);
         }
         finally
         {
             _initLock.Release();
+        }
+    }
+
+    private static async Task<bool> TablesExistAsync(NBatchDbContext ctx, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ctx.BatchJobs.AnyAsync(cancellationToken);
+            return true;
+        }
+        catch (DbException)
+        {
+            return false;
         }
     }
 
@@ -59,11 +83,11 @@ internal sealed class EfJobRepository : IJobRepository
         }
         else
         {
-            ctx.BatchJobs.Add(new BatchJobEntity { JobName = _jobName, LastRun = DateTime.UtcNow });
+            ctx.BatchJobs.Add(new JobEntity { JobName = _jobName, LastRun = DateTime.UtcNow });
 
             foreach (var stepName in stepNames)
             {
-                ctx.BatchSteps.Add(new BatchStepEntity
+                ctx.BatchSteps.Add(new StepEntity
                 {
                     StepName = stepName,
                     JobName = _jobName,
@@ -79,7 +103,7 @@ internal sealed class EfJobRepository : IJobRepository
     public async Task<long> InsertStepAsync(string stepName, long stepIndex, CancellationToken cancellationToken = default)
     {
         await using var ctx = CreateContext();
-        var step = new BatchStepEntity
+        var step = new StepEntity
         {
             StepName = stepName,
             JobName = _jobName,
@@ -131,7 +155,7 @@ internal sealed class EfJobRepository : IJobRepository
     public async Task SaveExceptionInfoAsync(SkipContext skipContext, int currentCount, CancellationToken cancellationToken = default)
     {
         await using var ctx = CreateContext();
-        ctx.BatchStepExceptions.Add(new BatchStepExceptionEntity
+        ctx.BatchStepExceptions.Add(new StepExceptionEntity
         {
             StepIndex = skipContext.StepIndex,
             StepName = skipContext.StepName,

@@ -1,6 +1,6 @@
 namespace NBatch.Core.Repositories.Entities;
 
-internal sealed class BatchStepExceptionEntity
+internal sealed class StepExceptionEntity
 {
     public long Id { get; set; }
     public long StepIndex { get; set; }

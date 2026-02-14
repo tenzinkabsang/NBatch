@@ -12,11 +12,12 @@ public sealed class ReadFromFile_WriteToConsole_Lambda
             .AddStep("Import from file, uppercase with lambda, print to console")
             .ReadFrom(FileReader(filePath))
             .WriteTo(new ConsoleWriter<Product>())
-            .ProcessWith(p => p with
+            .ProcessWith(p => new Product
             {
                 Sku = p.Sku.ToUpper(),
                 Name = p.Name.ToUpper(),
-                Description = p.Description.ToUpper()
+                Description = p.Description.ToUpper(),
+                Price = p.Price
             })
             .Build();
 
