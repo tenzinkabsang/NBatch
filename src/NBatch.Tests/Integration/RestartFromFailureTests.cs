@@ -14,7 +14,7 @@ namespace NBatch.Tests.Integration;
 [TestFixture]
 internal sealed class RestartFromFailureTests
 {
-    private string _dbPath;
+    private string _dbPath = null!;
 
     [SetUp]
     public void BeforeEach()
