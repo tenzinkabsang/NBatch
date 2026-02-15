@@ -16,8 +16,9 @@
   <RepositoryType>git</RepositoryType>
   <PackageLicenseExpression>MIT</PackageLicenseExpression>
   <PackageReadmeFile>README.md</PackageReadmeFile>
-  <!-- Uncomment and set the path once you have a 128x128 PNG icon: -->
+  <!-- Uncomment and set the path once you have a 128x128 PNG icon:
   <PackageIcon>icon.png</PackageIcon>
+  -->
   <PackageReleaseNotes>v2.0.0 — Full rewrite: fluent builder API, tasklet steps, lambda support, multi-target (.NET 8/9/10), EF Core-based job store.</PackageReleaseNotes>
   <Copyright>Copyright (c) Tenzin Kabsang</Copyright>
 
@@ -74,8 +75,9 @@
   <!-- Files to embed in the .nupkg -->
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    <!-- Uncomment once you have an icon: -->
+    <!-- Uncomment once you have an icon:
      <None Include="..\..\icon.png" Pack="true" PackagePath="\" />
+    -->
   </ItemGroup>
 
 </Project>
