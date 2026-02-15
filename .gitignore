@@ -59,8 +59,6 @@ _ReSharper*/
 packages/
 *.nupkg
 
-!nuget/
-
 #ncrunch
 _NCrunch_*/
 *ncrunch*
@@ -81,4 +79,13 @@ log/
 
 src/.vs/*
 src/*/.vs/*
+
+# Project-specific ignores
+src/todo.md
+test_output.txt
+icon.png
+doc_old/
+lib/
+nuget/
+sql/
 
