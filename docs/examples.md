@@ -10,7 +10,7 @@ Real-world usage patterns for common batch processing scenarios.
 
 ---
 
-## CSV ? Database
+## CSV to Database
 
 Import a CSV file into a database with error tolerance and progress tracking.
 
@@ -34,7 +34,7 @@ await job.RunAsync();
 
 ---
 
-## Database ? File
+## Database to File
 
 Export database records to a flat file.
 
