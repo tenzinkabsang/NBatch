@@ -3,7 +3,7 @@
 [![NuGet Version](https://img.shields.io/nuget/v/NBatch.svg?style=flat)](https://www.nuget.org/packages/NBatch/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/NBatch.svg?style=flat)](https://www.nuget.org/packages/NBatch/)
 
-**A lightweight batch-processing framework for .NET.**
+**A lightweight batch processing framework for .NET — inspired by Spring Batch.**
 
 NBatch gives you a declarative, step-based pipeline for ETL jobs, data migrations, and scheduled tasks. You wire up readers, processors, and writers — NBatch handles chunking, error skipping, progress tracking, and restart-from-failure so you can focus on your business logic.
 
@@ -29,6 +29,19 @@ dotnet add package NBatch
 ---
 
 ## Examples
+
+```csharp
+var job = Job.CreateBuilder("ETL")
+    .UseJobStore(connStr)
+    .AddStep("extract-transform", step => step
+        .ReadFrom(new DbReader<Order>(...))
+        .WriteTo(new FileWriter<Order>(...))
+        .WithChunkSize(100))
+    .AddStep("notify", step => step
+        .Execute(() => SendEmail()))
+    .Build();
+```
+
 
 ### CSV → Database (with job store & skip policy)
 

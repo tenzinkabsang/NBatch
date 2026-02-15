@@ -24,6 +24,7 @@ public sealed class CsvReader<T> : IReader<T>
     private char _delimiter = ',';
     private string[]? _headers;
     private bool _headersResolved;
+    private bool _headersFromFile;
 
     /// <summary>Creates a reader for the specified file with a row-mapping function.</summary>
     /// <param name="filePath">Path to the delimited file.</param>
@@ -71,10 +72,11 @@ public sealed class CsvReader<T> : IReader<T>
 
                 _headers = headerLine?.Split(_delimiter).Select(h => h.Trim()).ToArray() ?? [];
                 _headersResolved = true;
+                _headersFromFile = true;
             }
 
             // When headers come from the first row, offset by 1 to skip the header line
-            long adjustedIndex = startIndex + 1;
+            long adjustedIndex = _headersFromFile ? startIndex + 1 : startIndex;
 
             var lines = await _fileService.ReadLinesAsync(adjustedIndex, chunkSize, cancellationToken)
                 .ToListAsync(cancellationToken);

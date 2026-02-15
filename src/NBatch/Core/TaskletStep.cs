@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
 using NBatch.Core.Interfaces;
 using NBatch.Core.Repositories;
@@ -14,19 +15,26 @@ internal sealed class TaskletStep(string stepName, ITasklet tasklet, IStepReposi
 
     public async Task<StepResult> ProcessAsync(CancellationToken cancellationToken = default)
     {
-        long stepId = await stepRepository.InsertStepAsync(Name, 0, cancellationToken);
+        Exception? failure = null;
         try
         {
             await tasklet.ExecuteAsync(cancellationToken);
-            await stepRepository.UpdateStepAsync(stepId, 0, error: false, skipped: false, cancellationToken);
-            logger.LogDebug("Tasklet '{StepName}' completed", Name);
-            return new StepResult(Name, true);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Tasklet '{StepName}' failed", Name);
-            await stepRepository.UpdateStepAsync(stepId, 0, error: true, skipped: false, cancellationToken);
-            throw;
+            failure = ex;
         }
+
+        long stepId = await stepRepository.InsertStepAsync(Name, 0, cancellationToken);
+        await stepRepository.UpdateStepAsync(stepId, 0, error: failure is not null, skipped: false, cancellationToken);
+
+        if (failure is not null)
+        {
+            logger.LogError(failure, "Tasklet '{StepName}' failed", Name);
+            ExceptionDispatchInfo.Throw(failure);
+        }
+
+        logger.LogDebug("Tasklet '{StepName}' completed", Name);
+        return new StepResult(Name, true);
     }
 }
