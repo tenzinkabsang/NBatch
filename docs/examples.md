@@ -104,7 +104,7 @@ await job.RunAsync();
 
 ## Lambda-Only Pipeline
 
-No custom classes needed � everything is inline.
+No custom classes needed -- everything is inline.
 
 ```csharp
 var job = Job.CreateBuilder("quick-job")
@@ -229,4 +229,4 @@ dotnet test
 
 ---
 
-[? Back to Home](.)
+[&larr; Back to Home](.)

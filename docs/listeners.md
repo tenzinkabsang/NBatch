@@ -22,7 +22,7 @@ public interface IJobListener
 }
 ```
 
-Both methods have **no-op defaults** � implement only what you need.
+Both methods have **no-op defaults** -- implement only what you need.
 
 ### Example
 
@@ -41,7 +41,7 @@ public class TimingListener : IJobListener
     public Task AfterJobAsync(JobResult result, CancellationToken ct)
     {
         _sw.Stop();
-        Console.WriteLine($"Job '{result.Name}' finished in {_sw.Elapsed} � Success: {result.Success}");
+        Console.WriteLine($"Job '{result.Name}' finished in {_sw.Elapsed} -- Success: {result.Success}");
         return Task.CompletedTask;
     }
 }
@@ -134,4 +134,4 @@ var job = Job.CreateBuilder("monitored-job")
 
 ---
 
-**Next:** [API Reference ?](api-reference)
+**Next:** [API Reference &rarr;](api-reference)

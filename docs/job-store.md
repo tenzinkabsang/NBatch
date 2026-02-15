@@ -59,8 +59,8 @@ The `DatabaseProvider` enum:
 ### Restart Flow
 
 ```
-Run 1:  Chunk 0 ? ? Chunk 1 ? ? Chunk 2 ? ? Chunk 3 ? (crash)
-Run 2:  Resumes from Chunk 3 ? Chunk 3 ? ? Chunk 4 ? ? Done ?
+Run 1:  Chunk 0 [ok] -> Chunk 1 [ok] -> Chunk 2 [ok] -> Chunk 3 [CRASH]
+Run 2:  Resumes from Chunk 3 -> Chunk 3 [ok] -> Chunk 4 [ok] -> Done!
 ```
 
 ---
@@ -74,7 +74,7 @@ If you **don't** call `.UseJobStore(...)`, NBatch uses an in-memory repository. 
 - Jobs where reprocessing is acceptable
 
 ```csharp
-// No .UseJobStore() � runs with in-memory tracking
+// No .UseJobStore() -- runs with in-memory tracking
 var job = Job.CreateBuilder("simple-job")
     .AddStep("work", step => step
         .ReadFrom(reader)
@@ -105,4 +105,4 @@ docker compose up -d
 
 ---
 
-**Next:** [Listeners ?](listeners)
+**Next:** [Listeners &rarr;](listeners)

@@ -33,19 +33,19 @@ A `Job` returns a [`JobResult`](api-reference#jobresult) containing the aggregat
 
 ## Step (Chunk-Oriented)
 
-A **Step** is a chunk-oriented pipeline that follows the **Reader ? Processor ? Writer** pattern:
+A **Step** is a chunk-oriented pipeline that follows the **Reader > Processor > Writer** pattern:
 
 ```
-????????????     ???????????????     ????????????
-?  Reader   ???????  Processor  ???????  Writer   ?
-? IReader<T>?     ?IProcessor   ?     ? IWriter<T>?
-????????????     ???????????????     ????????????
++------------+     +--------------+     +------------+
+|  Reader    |---->|  Processor   |---->|  Writer    |
+| IReader<T> |     | IProcessor   |     | IWriter<T> |
++------------+     +--------------+     +------------+
 ```
 
 Each iteration:
 
 1. The **Reader** reads a chunk of items (controlled by `ChunkSize`, default `10`).
-2. The **Processor** transforms each item (optional � if omitted, items pass through unchanged).
+2. The **Processor** transforms each item (optional -- if omitted, items pass through unchanged).
 3. The **Writer** persists the processed chunk to a destination.
 
 This loop repeats until the reader returns no more data.
@@ -105,7 +105,7 @@ public interface ITasklet
 
 ## The Pipeline Model
 
-A multi-step job executes its steps sequentially. Each step is independent � a chunk-oriented step can be followed by a tasklet, or vice versa:
+A multi-step job executes its steps sequentially. Each step is independent &mdash; a chunk-oriented step can be followed by a tasklet, or vice versa:
 
 ```csharp
 var job = Job.CreateBuilder("ETL")
@@ -147,4 +147,4 @@ Returned by `job.RunAsync()`:
 
 ---
 
-**Next:** [Readers & Writers ?](readers-writers)
+**Next:** [Readers & Writers &rarr;](readers-writers)

@@ -42,20 +42,20 @@ SkipPolicy.For<FlatFileParseException, FormatException, InvalidOperationExceptio
 
 ### No Skipping (Default)
 
-If you don't specify a skip policy, the step uses `SkipPolicy.None` � any exception aborts the step immediately.
+If you don't specify a skip policy, the step uses `SkipPolicy.None` -- any exception aborts the step immediately.
 
 ```csharp
-SkipPolicy.None  // default � no tolerance for errors
+SkipPolicy.None  // default -- no tolerance for errors
 ```
 
 ---
 
 ## How It Works
 
-1. During chunk processing, if an exception is thrown during read or process�
+1. During chunk processing, if an exception is thrown during read or process...
 2. NBatch checks if the exception type matches the skip policy.
-3. If it matches **and** the skip count is below the limit ? the item is skipped.
-4. If it doesn't match, or the limit is exceeded ? the exception propagates and the step fails.
+3. If it matches **and** the skip count is below the limit &mdash; the item is skipped.
+4. If it doesn't match, or the limit is exceeded &mdash; the exception propagates and the step fails.
 5. Skipped errors are persisted in the job store (when enabled) for auditing.
 
 ---
@@ -80,11 +80,11 @@ foreach (var step in result.Steps)
 
 ## Best Practices
 
-- **Be specific** about exception types � avoid `SkipPolicy.For<Exception>(...)` which swallows everything.
-- **Set reasonable limits** � a high skip count may mask a systemic problem in your data.
-- **Use listeners** to alert when skips occur � combine with [`IStepListener`](listeners) for monitoring.
+- **Be specific** about exception types -- avoid `SkipPolicy.For<Exception>(...)` which swallows everything.
+- **Set reasonable limits** -- a high skip count may mask a systemic problem in your data.
+- **Use listeners** to alert when skips occur -- combine with [`IStepListener`](listeners) for monitoring.
 - **Enable the job store** to persist skip details for post-mortem analysis.
 
 ---
 
-**Next:** [Job Store ?](job-store)
+**Next:** [Job Store &rarr;](job-store)

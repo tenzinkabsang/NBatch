@@ -35,14 +35,14 @@ var reader = new CsvReader<Product>("products.csv", row => new Product
 
 ### Options
 
-**Custom delimiter** � override the default comma:
+**Custom delimiter** -- override the default comma:
 
 ```csharp
 var reader = new CsvReader<Product>("data.tsv", mapFn)
     .WithDelimiter('\t');
 ```
 
-**Explicit headers** � provide column names instead of reading from the first row:
+**Explicit headers** -- provide column names instead of reading from the first row:
 
 ```csharp
 var reader = new CsvReader<Product>("data.csv", mapFn)
@@ -66,7 +66,7 @@ The mapping function receives a `CsvRow` with typed accessor methods:
 
 ## `DbReader<T>`
 
-Reads entities from any EF Core `DbContext` in paginated chunks. Provider-agnostic � works with SQL Server, PostgreSQL, SQLite, etc.
+Reads entities from any EF Core `DbContext` in paginated chunks. Provider-agnostic -- works with SQL Server, PostgreSQL, SQLite, etc.
 
 ```csharp
 var reader = new DbReader<Product>(dbContext, q => q.OrderBy(p => p.Id));
@@ -126,7 +126,7 @@ public interface IReader<TItem>
 }
 ```
 
-Implement this to read from any source � REST APIs, message queues, cloud storage, etc.
+Implement this to read from any source -- REST APIs, message queues, cloud storage, etc.
 
 ```csharp
 public class ApiReader<T> : IReader<T>
@@ -187,4 +187,4 @@ Or use a lambda:
 
 ---
 
-**Next:** [Skip Policies ?](skip-policies)
+**Next:** [Skip Policies &rarr;](skip-policies)

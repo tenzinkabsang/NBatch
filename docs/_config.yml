@@ -19,7 +19,7 @@ kramdown:
   syntax_highlighter: rouge
 
 # just-the-docs configuration
-color_scheme: dark
+color_scheme: light
 
 # Enable search
 search_enabled: true
