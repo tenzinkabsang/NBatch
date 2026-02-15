@@ -1,0 +1,32 @@
+title: NBatch
+description: A lightweight batch processing framework for .NET — inspired by Spring Batch.
+remote_theme: pages-themes/cayman@v0.2.0
+plugins:
+  - jekyll-remote-theme
+
+# GitHub Pages base URL — matches your repo name
+baseurl: /NBatch
+
+# Site metadata
+author: Tenzin Kabsang
+repository: tenzinkabsang/NBatch
+url: https://tenzinkabsang.github.io
+
+# Markdown rendering
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Default front matter
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+# Exclude files from the site
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - LICENSE

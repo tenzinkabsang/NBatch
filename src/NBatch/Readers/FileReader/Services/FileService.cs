@@ -6,34 +6,25 @@ internal sealed class FileService(string resourceUrl) : IFileService
 {
     public async IAsyncEnumerable<string> ReadLinesAsync(long startIndex, int chunkSize, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        int rowCounter = -1;
-        int chunkCounter = 0;
         using StreamReader reader = File.OpenText(resourceUrl);
-        string? input;
-        while ((input = await reader.ReadLineAsync(cancellationToken)) != null)
+
+        // Advance the reader to the desired starting line (skip lines 0 to startIndex-1).
+        for (long i = 0; i < startIndex; i++)
         {
-            // If the current row is less than the start index, then skip
-            if (RowAlreadyProcessed(startIndex, ref rowCounter))
-                continue;
+            // If we reach the end of the file before startIndex, exit early (nothing to yield).
+            if (await reader.ReadLineAsync(cancellationToken) is null)
+                yield break;
+        }
 
-            // If the specified chunk size is reached then we are done
-            if (HasReachedChunkSize(chunkSize, ref chunkCounter))
-                break;
+        // Yield up to chunkSize lines, starting from line startIndex.
+        for (int i = 0; i < chunkSize; i++)
+        {
+            // Read the next line; if end of file, stop yielding.
+            var line = await reader.ReadLineAsync(cancellationToken);
+            if (line is null)
+                yield break;
 
-            yield return input;
+            yield return line;
         }
     }
-
-    /// <summary>
-    /// Determines whether the current row has already been processed based on the specified starting index.
-    /// </summary>
-    private static bool RowAlreadyProcessed(long startIndex, ref int rowCounter)
-        => ++rowCounter < startIndex;
-
-    /// <summary>
-    /// Determines whether the current chunk counter has exceeded the specified chunk size.
-    /// </summary>
-    private static bool HasReachedChunkSize(int chunkSize, ref int chunkCounter)
-        => ++chunkCounter > chunkSize;
-
 }

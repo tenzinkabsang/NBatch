@@ -45,23 +45,17 @@ public sealed class Job
         await _jobRepository.CreateJobRecordAsync(_steps.Keys.ToList(), cancellationToken);
 
         List<StepResult> stepResults = [];
-        bool success = true;
 
         foreach (var (name, step) in _steps)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            _logger.LogInformation("Step '{StepName}' starting", name);
-
             var result = await ExecuteStepAsync(name, step, cancellationToken);
-            stepResults.Add(result);
-            success &= result.Success;
 
-            _logger.LogInformation(
-                "Step '{StepName}' completed — read {ItemsRead}, processed {ItemsProcessed}, skipped {ErrorsSkipped}",
-                name, result.ItemsRead, result.ItemsProcessed, result.ErrorsSkipped);
+            stepResults.Add(result);
         }
 
+        bool success = stepResults.TrueForAll(r => r.Success);
         var jobResult = new JobResult(_jobName, success, stepResults);
 
         await NotifyJobListenersAfterAsync(jobResult, cancellationToken);
@@ -82,6 +76,8 @@ public sealed class Job
 
     private async Task<StepResult> ExecuteStepAsync(string stepName, IStep step, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("Step '{StepName}' starting", stepName);
+
         await ExecuteStepListenersAsync(stepName,
             l => l.BeforeStepAsync(stepName, cancellationToken));
 
@@ -89,6 +85,10 @@ public sealed class Job
 
         await ExecuteStepListenersAsync(stepName,
             l => l.AfterStepAsync(result, cancellationToken));
+
+        _logger.LogInformation(
+            "Step '{StepName}' completed — read {ItemsRead}, processed {ItemsProcessed}, skipped {ErrorsSkipped}",
+            stepName, result.ItemsRead, result.ItemsProcessed, result.ErrorsSkipped);
 
         return result;
     }

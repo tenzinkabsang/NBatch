@@ -1,4 +1,5 @@
-﻿using NBatch.Core;
+﻿using Microsoft.Extensions.Logging;
+using NBatch.Core;
 using NBatch.Readers.FileReader;
 using NBatch.Writers.FileWriter;
 
@@ -6,10 +7,11 @@ namespace NBatch.ConsoleApp.Tests;
 
 public sealed class ReadFromFile_WriteToFile
 {
-    public static async Task RunAsync(string connectionString, string sourcePath, string destinationPath)
+    public static async Task RunAsync(string connectionString, string sourcePath, string destinationPath, ILogger logger)
     {
         var job = Job.CreateBuilder(jobName: "JOB1")
             .UseJobStore(connectionString, DatabaseProvider.SqlServer)
+            .WithLogger(logger)
             .AddStep("Import from file, lowercase the properties and save to file", step => step
                 .ReadFrom(new CsvReader<Product>(sourcePath, row => new Product
                 {

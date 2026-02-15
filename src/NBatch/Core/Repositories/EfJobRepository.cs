@@ -118,7 +118,7 @@ internal sealed class EfJobRepository : IJobRepository
     public async Task UpdateStepAsync(long stepId, int numberOfItemsProcessed, bool error, bool skipped, CancellationToken cancellationToken = default)
     {
         await using var ctx = CreateContext();
-        var step = await ctx.BatchSteps.FindAsync(new object[] { stepId }, cancellationToken);
+        var step = await ctx.BatchSteps.FindAsync([stepId], cancellationToken);
         if (step != null)
         {
             step.NumberOfItemsProcessed = numberOfItemsProcessed;
