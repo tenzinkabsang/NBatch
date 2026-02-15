@@ -1,10 +1,10 @@
 title: NBatch
-description: A lightweight batch processing framework for .NET — inspired by Spring Batch.
+description: A lightweight batch processing framework for .NET - inspired by Spring Batch.
 remote_theme: pages-themes/cayman@v0.2.0
 plugins:
   - jekyll-remote-theme
 
-# GitHub Pages base URL — matches your repo name
+# GitHub Pages base URL - matches your repo name
 baseurl: /NBatch
 
 # Site metadata
