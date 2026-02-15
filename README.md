@@ -5,6 +5,8 @@
 
 **A lightweight batch processing framework for .NET — inspired by Spring Batch.**
 
+📖 **[Full Documentation](https://tenzinkabsang.github.io/NBatch/)** — guides, API reference, and examples.
+
 NBatch gives you a declarative, step-based pipeline for ETL jobs, data migrations, and scheduled tasks. You wire up readers, processors, and writers — NBatch handles chunking, error skipping, progress tracking, and restart-from-failure so you can focus on your business logic.
 
 ### Highlights
