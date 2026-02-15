@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Skip Policies
+nav_order: 4
 ---
 
 # Skip Policies
@@ -41,17 +42,17 @@ SkipPolicy.For<FlatFileParseException, FormatException, InvalidOperationExceptio
 
 ### No Skipping (Default)
 
-If you don't specify a skip policy, the step uses `SkipPolicy.None` — any exception aborts the step immediately.
+If you don't specify a skip policy, the step uses `SkipPolicy.None` ï¿½ any exception aborts the step immediately.
 
 ```csharp
-SkipPolicy.None  // default — no tolerance for errors
+SkipPolicy.None  // default ï¿½ no tolerance for errors
 ```
 
 ---
 
 ## How It Works
 
-1. During chunk processing, if an exception is thrown during read or process…
+1. During chunk processing, if an exception is thrown during read or processï¿½
 2. NBatch checks if the exception type matches the skip policy.
 3. If it matches **and** the skip count is below the limit ? the item is skipped.
 4. If it doesn't match, or the limit is exceeded ? the exception propagates and the step fails.
@@ -79,9 +80,9 @@ foreach (var step in result.Steps)
 
 ## Best Practices
 
-- **Be specific** about exception types — avoid `SkipPolicy.For<Exception>(...)` which swallows everything.
-- **Set reasonable limits** — a high skip count may mask a systemic problem in your data.
-- **Use listeners** to alert when skips occur — combine with [`IStepListener`](listeners) for monitoring.
+- **Be specific** about exception types ï¿½ avoid `SkipPolicy.For<Exception>(...)` which swallows everything.
+- **Set reasonable limits** ï¿½ a high skip count may mask a systemic problem in your data.
+- **Use listeners** to alert when skips occur ï¿½ combine with [`IStepListener`](listeners) for monitoring.
 - **Enable the job store** to persist skip details for post-mortem analysis.
 
 ---

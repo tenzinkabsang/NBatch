@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Listeners
+nav_order: 6
 ---
 
 # Listeners
@@ -21,7 +22,7 @@ public interface IJobListener
 }
 ```
 
-Both methods have **no-op defaults** — implement only what you need.
+Both methods have **no-op defaults** ï¿½ implement only what you need.
 
 ### Example
 
@@ -40,7 +41,7 @@ public class TimingListener : IJobListener
     public Task AfterJobAsync(JobResult result, CancellationToken ct)
     {
         _sw.Stop();
-        Console.WriteLine($"Job '{result.Name}' finished in {_sw.Elapsed} — Success: {result.Success}");
+        Console.WriteLine($"Job '{result.Name}' finished in {_sw.Elapsed} ï¿½ Success: {result.Success}");
         return Task.CompletedTask;
     }
 }

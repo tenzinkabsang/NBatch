@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Examples
+nav_order: 8
 ---
 
 # Examples
@@ -103,7 +104,7 @@ await job.RunAsync();
 
 ## Lambda-Only Pipeline
 
-No custom classes needed — everything is inline.
+No custom classes needed ï¿½ everything is inline.
 
 ```csharp
 var job = Job.CreateBuilder("quick-job")

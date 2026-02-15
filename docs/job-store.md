@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Job Store
+nav_order: 5
 ---
 
 # Job Store
@@ -73,7 +74,7 @@ If you **don't** call `.UseJobStore(...)`, NBatch uses an in-memory repository. 
 - Jobs where reprocessing is acceptable
 
 ```csharp
-// No .UseJobStore() — runs with in-memory tracking
+// No .UseJobStore() ï¿½ runs with in-memory tracking
 var job = Job.CreateBuilder("simple-job")
     .AddStep("work", step => step
         .ReadFrom(reader)

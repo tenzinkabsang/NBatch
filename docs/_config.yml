@@ -1,6 +1,6 @@
 title: NBatch
 description: A lightweight batch processing framework for .NET - inspired by Spring Batch.
-remote_theme: pages-themes/cayman@v0.2.0
+remote_theme: just-the-docs/just-the-docs@v0.10.0
 plugins:
   - jekyll-remote-theme
 
@@ -17,6 +17,26 @@ markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
+
+# just-the-docs configuration
+color_scheme: dark
+
+# Enable search
+search_enabled: true
+search.button: true
+
+# Aux links (top-right)
+aux_links:
+  "NBatch on GitHub":
+    - "https://github.com/tenzinkabsang/NBatch"
+aux_links_new_tab: true
+
+# Footer
+footer_content: "NBatch &mdash; lightweight batch processing for .NET."
+
+# Back to top link
+back_to_top: true
+back_to_top_text: "Back to top"
 
 # Default front matter
 defaults:

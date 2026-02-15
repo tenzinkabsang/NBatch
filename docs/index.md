@@ -1,6 +1,8 @@
 ---
 layout: default
-title: NBatch — Lightweight Batch Processing for .NET
+title: Home
+nav_order: 1
+permalink: /
 ---
 
 <p align="center">
@@ -23,7 +25,7 @@ title: NBatch — Lightweight Batch Processing for .NET
 
 ## Why NBatch?
 
-Wire up **readers**, **processors**, and **writers** — NBatch handles chunking, error skipping, progress tracking, and restart-from-failure so you can focus on your business logic.
+Wire up **readers**, **processors**, and **writers** ï¿½ NBatch handles chunking, error skipping, progress tracking, and restart-from-failure so you can focus on your business logic.
 
 ### ? Highlights
 
@@ -151,4 +153,4 @@ await job.RunAsync();
 
 ## License
 
-[MIT](https://github.com/tenzinkabsang/NBatch/blob/main/LICENSE) — Copyright © Tenzin Kabsang
+[MIT](https://github.com/tenzinkabsang/NBatch/blob/main/LICENSE) ï¿½ Copyright ï¿½ Tenzin Kabsang
