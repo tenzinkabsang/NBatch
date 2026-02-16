@@ -11,7 +11,7 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   SOLUTION_DIR: src
-  PACKAGE_DIR: src/NBatch
+  NUPKG_DIR: nupkgs
 
 jobs:
   publish:
@@ -21,6 +21,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
@@ -50,13 +53,13 @@ jobs:
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Pack
-        run: dotnet pack -c Release --no-build -o nupkgs
-        working-directory: ${{ env.PACKAGE_DIR }}
+        run: dotnet pack -c Release --no-build -o ${{ env.NUPKG_DIR }} /p:Version=${{ env.VERSION }}
+        working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Push to NuGet
         run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-        working-directory: ${{ env.PACKAGE_DIR }}/nupkgs
+        working-directory: ${{ env.SOLUTION_DIR }}/${{ env.NUPKG_DIR }}
 
       - name: Push symbols to NuGet
         run: dotnet nuget push "*.snupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-        working-directory: ${{ env.PACKAGE_DIR }}/nupkgs
+        working-directory: ${{ env.SOLUTION_DIR }}/${{ env.NUPKG_DIR }}

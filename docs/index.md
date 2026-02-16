@@ -11,7 +11,10 @@ permalink: /
 
 <p align="center">
   <a href="https://www.nuget.org/packages/NBatch/">
-    <img src="https://img.shields.io/nuget/v/NBatch.svg?style=flat-square" alt="NuGet Version">
+    <img src="https://img.shields.io/nuget/v/NBatch.svg?style=flat-square" alt="NBatch NuGet Version">
+  </a>
+  <a href="https://www.nuget.org/packages/NBatch.EntityFrameworkCore/">
+    <img src="https://img.shields.io/nuget/v/NBatch.EntityFrameworkCore.svg?style=flat-square&label=NBatch.EntityFrameworkCore" alt="NBatch.EntityFrameworkCore NuGet Version">
   </a>
   <a href="https://www.nuget.org/packages/NBatch/">
     <img src="https://img.shields.io/nuget/dt/NBatch.svg?style=flat-square" alt="NuGet Downloads">
@@ -36,8 +39,18 @@ Wire up **readers**, **processors**, and **writers** &mdash; NBatch handles chun
 | **Restart from failure** | SQL-backed job store tracks progress so a crashed job resumes where it left off |
 | **Tasklet steps** | Fire-and-forget units of work (send an email, call an API, run a stored proc) |
 | **Lambda-friendly** | Processors and writers can be plain lambdas; no extra classes required |
+| **DI & hosted service** | First-class `IServiceCollection` integration with `AddNBatch()`, `RunOnce()`, and `RunEvery()` |
 | **Multi-target** | Supports **.NET 8**, **.NET 9**, and **.NET 10** |
-| **Provider-agnostic** | SQL Server, PostgreSQL, or SQLite for the job store; any EF Core provider for your data |
+| **Provider-agnostic** | SQL Server, PostgreSQL, SQLite, or MySQL for the job store; any EF Core provider for your data |
+
+---
+
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| [`NBatch`](https://www.nuget.org/packages/NBatch/) | Core framework &mdash; job builder, chunking, skip policies, readers, writers, DI, hosted service |
+| [`NBatch.EntityFrameworkCore`](https://www.nuget.org/packages/NBatch.EntityFrameworkCore/) | EF Core job store for restart-from-failure (SQL Server, PostgreSQL, SQLite, MySQL) |
 
 ---
 
@@ -47,13 +60,13 @@ Wire up **readers**, **processors**, and **writers** &mdash; NBatch handles chun
 
 ```bash
 dotnet add package NBatch
+dotnet add package NBatch.EntityFrameworkCore   # optional — only if you need persistent job tracking
 ```
 
 ### Your First Job
 
 ```csharp
 var job = Job.CreateBuilder("csv-to-db")
-    .UseJobStore(connStr)
     .AddStep("import", step => step
         .ReadFrom(new CsvReader<Product>(filePath, row => new Product
         {
@@ -69,6 +82,38 @@ var job = Job.CreateBuilder("csv-to-db")
 await job.RunAsync();
 ```
 
+### With SQL-Backed Job Store (Restart-from-Failure)
+
+```bash
+dotnet add package NBatch.EntityFrameworkCore
+```
+
+```csharp
+var job = Job.CreateBuilder("csv-to-db")
+    .UseJobStore(connStr, DatabaseProvider.SqlServer)   // from NBatch.EntityFrameworkCore
+    .AddStep("import", step => step
+        .ReadFrom(new CsvReader<Product>(filePath, mapFn))
+        .WriteTo(new DbWriter<Product>(dbContext))
+        .WithChunkSize(100))
+    .Build();
+
+await job.RunAsync();
+```
+
+### With Dependency Injection & Hosted Service
+
+```csharp
+builder.Services.AddNBatch(nbatch =>
+{
+    nbatch.AddJob("csv-import", (sp, job) => job
+        .AddStep("import", step => step
+            .ReadFrom(new CsvReader<Product>("data.csv", mapFn))
+            .WriteTo(new DbWriter<Product>(sp.GetRequiredService<AppDbContext>()))
+            .WithChunkSize(100)))
+        .RunEvery(TimeSpan.FromHours(6));
+});
+```
+
 ---
 
 ## Documentation
@@ -79,6 +124,7 @@ await job.RunAsync();
 | [Readers & Writers](readers-writers) | Built-in components for CSV, database, and flat-file I/O |
 | [Skip Policies](skip-policies) | Error tolerance and skip-limit configuration |
 | [Job Store](job-store) | SQL-backed progress tracking and restart-from-failure |
+| [DI & Hosted Service](dependency-injection) | `AddNBatch()`, `IJobRunner`, `RunOnce()`, `RunEvery()` |
 | [Listeners](listeners) | Job and step lifecycle hooks for logging and monitoring |
 | [API Reference](api-reference) | Interfaces, builders, and result types |
 | [Examples](examples) | Real-world usage patterns and recipes |
@@ -91,7 +137,6 @@ await job.RunAsync();
 
 ```csharp
 var job = Job.CreateBuilder("db-to-file")
-    .UseJobStore(connStr)
     .AddStep("export", step => step
         .ReadFrom(new DbReader<Product>(dbContext, q => q.OrderBy(p => p.Id)))
         .WriteTo(new FlatFileItemWriter<Product>("output.csv").WithToken(','))
@@ -105,7 +150,6 @@ await job.RunAsync();
 
 ```csharp
 var job = Job.CreateBuilder("ETL")
-    .UseJobStore(connStr)
     .AddStep("extract-transform", step => step
         .ReadFrom(new DbReader<Order>(sourceDb, q => q.OrderBy(o => o.Id)))
         .ProcessWith(o => new OrderDto { Id = o.Id, Total = o.Total })
@@ -137,6 +181,34 @@ var job = Job.CreateBuilder("quick-job")
     .Build();
 
 await job.RunAsync();
+```
+
+### Background Job with DI
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlServer(connStr));
+
+builder.Services.AddNBatch(nbatch =>
+{
+    // Run once on startup
+    nbatch.AddJob("seed-data", job => job
+        .AddStep("seed", step => step
+            .Execute(() => SeedDatabaseAsync())))
+        .RunOnce();
+
+    // Run every hour
+    nbatch.AddJob("hourly-sync", (sp, job) => job
+        .AddStep("sync", step => step
+            .ReadFrom(new DbReader<Order>(sp.GetRequiredService<AppDbContext>(), q => q.OrderBy(o => o.Id)))
+            .WriteTo(new FlatFileItemWriter<Order>("orders.csv"))
+            .WithChunkSize(200)))
+        .RunEvery(TimeSpan.FromHours(1));
+});
+
+var app = builder.Build();
+app.Run();
 ```
 
 ---
