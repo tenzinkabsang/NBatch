@@ -42,7 +42,7 @@ public sealed class Job
         _logger.LogInformation("Job '{JobName}' starting with {StepCount} step(s)", _jobName, _steps.Count);
 
         await NotifyJobListenersBeforeAsync(cancellationToken);
-        await _jobRepository.CreateJobRecordAsync(_steps.Keys.ToList(), cancellationToken);
+        _ = await _jobRepository.CreateJobRecordAsync(_steps.Keys.ToList(), cancellationToken);
 
         List<StepResult> stepResults = [];
 
@@ -53,6 +53,9 @@ public sealed class Job
             var result = await ExecuteStepAsync(name, step, cancellationToken);
 
             stepResults.Add(result);
+
+            if (!result.Success)
+                break;
         }
 
         bool success = stepResults.TrueForAll(r => r.Success);
@@ -81,7 +84,16 @@ public sealed class Job
         await ExecuteStepListenersAsync(stepName,
             l => l.BeforeStepAsync(stepName, cancellationToken));
 
-        var result = await step.ProcessAsync(cancellationToken);
+        StepResult result;
+        try
+        {
+            result = await step.ProcessAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Step '{StepName}' failed", stepName);
+            result = new StepResult(stepName, false);
+        }
 
         await ExecuteStepListenersAsync(stepName,
             l => l.AfterStepAsync(result, cancellationToken));

@@ -12,6 +12,7 @@ internal sealed class EfJobRepository : IJobRepository
     private readonly string _jobName;
     private readonly string _connectionString;
     private readonly DbContextOptions<NBatchDbContext> _options;
+    private long _executionId;
 
     private static readonly ConcurrentDictionary<string, bool> _initializedDatabases = new();
     private static readonly SemaphoreSlim _initLock = new(1, 1);
@@ -70,7 +71,7 @@ internal sealed class EfJobRepository : IJobRepository
         }
     }
 
-    public async Task CreateJobRecordAsync(ICollection<string> stepNames, CancellationToken cancellationToken = default)
+    public async Task<long> CreateJobRecordAsync(ICollection<string> stepNames, CancellationToken cancellationToken = default)
     {
         await EnsureDatabaseCreatedAsync(cancellationToken);
 
@@ -98,6 +99,11 @@ internal sealed class EfJobRepository : IJobRepository
         }
 
         await ctx.SaveChangesAsync(cancellationToken);
+
+        // Use the job's LastRun ticks as a stable execution identifier for this run.
+        // Exception counts are scoped to this value so skip budgets reset per execution.
+        _executionId = (job?.LastRun ?? DateTime.UtcNow).Ticks;
+        return _executionId;
     }
 
     public async Task<long> InsertStepAsync(string stepName, long stepIndex, CancellationToken cancellationToken = default)
@@ -132,7 +138,9 @@ internal sealed class EfJobRepository : IJobRepository
     {
         await using var ctx = CreateContext();
         return await ctx.BatchStepExceptions
-            .CountAsync(e => e.StepName == skipContext.StepName && e.JobName == _jobName, cancellationToken);
+            .CountAsync(e => e.StepName == skipContext.StepName
+                          && e.JobName == _jobName
+                          && e.ExecutionId == _executionId, cancellationToken);
     }
 
     public async Task<StepContext> GetStartIndexAsync(string stepName, CancellationToken cancellationToken = default)
@@ -148,11 +156,12 @@ internal sealed class EfJobRepository : IJobRepository
             StepName = stepName,
             JobName = _jobName,
             StepIndex = step?.StepIndex ?? 0,
-            NumberOfItemsProcessed = step?.NumberOfItemsProcessed ?? 0
+            NumberOfItemsProcessed = step?.NumberOfItemsProcessed ?? 0,
+            Error = step?.Error ?? false
         };
     }
 
-    public async Task SaveExceptionInfoAsync(SkipContext skipContext, int currentCount, CancellationToken cancellationToken = default)
+    public async Task SaveExceptionInfoAsync(SkipContext skipContext, CancellationToken cancellationToken = default)
     {
         await using var ctx = CreateContext();
         ctx.BatchStepExceptions.Add(new StepExceptionEntity
@@ -160,6 +169,7 @@ internal sealed class EfJobRepository : IJobRepository
             StepIndex = skipContext.StepIndex,
             StepName = skipContext.StepName,
             JobName = _jobName,
+            ExecutionId = _executionId,
             ExceptionMsg = skipContext.ExceptionMessage,
             ExceptionDetails = skipContext.ExceptionDetail
         });

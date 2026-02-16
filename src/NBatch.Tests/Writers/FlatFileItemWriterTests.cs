@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace NBatch.Tests.Writers;
 
 [TestFixture]
-public class FlatFileItemWriterTests
+internal class FlatFileItemWriterTests
 {
     [Test]
     public async Task CallsPropertyValueSerializerToReadAllPropValues()

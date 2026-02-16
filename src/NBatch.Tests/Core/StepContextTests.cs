@@ -4,12 +4,12 @@ using NUnit.Framework;
 namespace NBatch.Tests.Core;
 
 [TestFixture]
-class StepContextTests
+internal class StepContextTests
 {
     [Test]
     public void IfPreviousAttemptFailedThenItShouldRetryDuringRestart()
     {
-        var previous = new StepContext { NumberOfItemsProcessed = 0, StepIndex = 4 };
+        var previous = new StepContext { NumberOfItemsProcessed = 0, StepIndex = 4, Error = true };
 
         var current = StepContext.InitialRun(previous, chunkSize: 2);
 

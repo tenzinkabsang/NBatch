@@ -6,7 +6,7 @@ using NUnit.Framework;
 namespace NBatch.Tests.Readers.FileReaders;
 
 [TestFixture]
-public class CsvReaderTests
+internal class CsvReaderTests
 {
     private const string HeaderLine = "Name,Age,Score";
 

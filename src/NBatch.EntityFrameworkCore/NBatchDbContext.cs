@@ -88,6 +88,9 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             entity.Property(e => e.JobName)
             .HasColumnName("job_name")
             .HasMaxLength(100);
+
+            entity.Property(e => e.ExecutionId)
+            .HasColumnName("execution_id");
             
             entity.Property(e => e.ExceptionMsg)
             .HasColumnName("exception_msg")

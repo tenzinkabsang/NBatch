@@ -123,7 +123,8 @@ internal sealed class RestartFromFailureTests
                 .WithChunkSize(2))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
 
         // Only the first chunk (a, b) should have been written
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b" }));
@@ -206,7 +207,8 @@ internal sealed class RestartFromFailureTests
                 .WithChunkSize(2))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b" }));
 
         // Restart
@@ -243,7 +245,8 @@ internal sealed class RestartFromFailureTests
                 .WithChunkSize(2))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
         Assert.That(writer.Written, Is.Empty);
 
         // Restart — should retry from index 0
@@ -280,7 +283,8 @@ internal sealed class RestartFromFailureTests
                 .WithChunkSize(1))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
         Assert.That(writer.Written, Is.EqualTo(new[] { "a" }));
 
         // Restart — backs up to index 1 and continues
@@ -326,7 +330,7 @@ internal sealed class RestartFromFailureTests
     }
 
     [Test]
-    public void TaskletStep_failure_propagates_and_records_error()
+    public async Task TaskletStep_failure_propagates_and_records_error()
     {
         var connStr = UniqueConnectionString;
 
@@ -336,7 +340,8 @@ internal sealed class RestartFromFailureTests
                 .Execute(() => throw new InvalidOperationException("Cleanup failed")))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job.RunAsync());
+        var result = await job.RunAsync();
+        Assert.That(result.Success, Is.False);
     }
 
     [Test]
@@ -359,7 +364,8 @@ internal sealed class RestartFromFailureTests
                 .Execute(FailOnceThenSucceed))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
         Assert.That(callCount, Is.EqualTo(1));
 
         // Restart — should re-execute the tasklet
