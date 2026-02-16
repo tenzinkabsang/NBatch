@@ -15,7 +15,7 @@ public sealed class ReadFromFile_WriteToFile
             .AddStep("Import from file, lowercase the properties and save to file", step => step
                 .ReadFrom(new CsvReader<Product>(sourcePath, row => new Product
                 {
-                    Sku = row.GetString("ProductId"),
+                    Sku = row.GetString("Sku"),
                     Name = row.GetString("Name"),
                     Description = row.GetString("Description"),
                     Price = row.GetDecimal("Price")

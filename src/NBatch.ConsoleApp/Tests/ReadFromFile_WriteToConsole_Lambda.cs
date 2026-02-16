@@ -13,7 +13,7 @@ public sealed class ReadFromFile_WriteToConsole_Lambda
             .AddStep("Import from file, uppercase with lambda, print to console", step => step
                 .ReadFrom(new CsvReader<Product>(filePath, row => new Product
                 {
-                    Sku = row.GetString("ProductId"),
+                    Sku = row.GetString("Sku"),
                     Name = row.GetString("Name"),
                     Description = row.GetString("Description"),
                     Price = row.GetDecimal("Price")

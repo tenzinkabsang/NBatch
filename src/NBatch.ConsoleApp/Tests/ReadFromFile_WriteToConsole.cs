@@ -14,7 +14,7 @@ public sealed class ReadFromFile_WriteToConsole
             .AddStep("Import from file and print to console", step => step
                 .ReadFrom(new CsvReader<Product>(filePath, row => new Product
                 {
-                    Sku = row.GetString("ProductId"),
+                    Sku = row.GetString("Sku"),
                     Name = row.GetString("Name"),
                     Description = row.GetString("Description"),
                     Price = row.GetDecimal("Price")
@@ -26,7 +26,8 @@ public sealed class ReadFromFile_WriteToConsole
                     Description = p.Description.ToLower(),
                     Price = p.Price
                 })
-                .WriteTo(new ConsoleWriter<ProductLowercase>()))
+                .WriteTo(new ConsoleWriter<ProductLowercase>())
+                .WithChunkSize(5))
             .Build();
 
         await job.RunAsync();
