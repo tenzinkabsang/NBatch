@@ -29,10 +29,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NBatch\NBatch.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Tests\" />
+    <ProjectReference Include="..\NBatch.EntityFrameworkCore\NBatch.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
 </Project>

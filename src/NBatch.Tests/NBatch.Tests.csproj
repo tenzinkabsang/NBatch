@@ -34,6 +34,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NBatch\NBatch.csproj" />
+    <ProjectReference Include="..\NBatch.EntityFrameworkCore\NBatch.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
 </Project>
