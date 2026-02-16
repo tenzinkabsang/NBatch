@@ -20,7 +20,7 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
 
             entity.Property(e => e.JobName)
             .HasColumnName("job_name")
-            .HasMaxLength(100);
+            .HasMaxLength(500);
             
             entity.Property(e => e.CreateDate)
             .HasColumnName("create_date");
@@ -44,7 +44,7 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             
             entity.Property(e => e.JobName)
             .HasColumnName("job_name")
-            .HasMaxLength(100);
+            .HasMaxLength(500);
             
             entity.Property(e => e.Error)
             .HasColumnName("error")
@@ -83,11 +83,11 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             
             entity.Property(e => e.StepName)
             .HasColumnName("step_name")
-            .HasMaxLength(100);
+            .HasMaxLength(500);
             
             entity.Property(e => e.JobName)
             .HasColumnName("job_name")
-            .HasMaxLength(100);
+            .HasMaxLength(500);
 
             entity.Property(e => e.ExecutionId)
             .HasColumnName("execution_id");
@@ -98,7 +98,7 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             
             entity.Property(e => e.ExceptionDetails)
             .HasColumnName("exception_details")
-            .HasMaxLength(1500);
+            .HasMaxLength(5000);
             
             entity.Property(e => e.CreateDate)
             .HasColumnName("create_date");
