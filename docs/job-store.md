@@ -8,6 +8,12 @@ nav_order: 5
 
 The **job store** gives NBatch **restart-from-failure** capability. It tracks which chunks have been processed, so if a job crashes mid-way, the next run resumes where it left off instead of reprocessing everything.
 
+The job store lives in a separate package &mdash; install it alongside the core:
+
+```bash
+dotnet add package NBatch.EntityFrameworkCore
+```
+
 ---
 
 ## Enabling the Job Store
@@ -22,7 +28,7 @@ var job = Job.CreateBuilder("csv-import")
     .Build();
 ```
 
-NBatch will automatically create the required tracking tables (`BatchJob`, `BatchStep`, etc.) if they don't exist.
+NBatch will automatically create the required tracking tables (`nbatch.jobs`, `nbatch.steps`, `nbatch.step_exceptions`) if they don't exist.
 
 ---
 
@@ -37,15 +43,21 @@ NBatch will automatically create the required tracking tables (`BatchJob`, `Batc
 
 // SQLite
 .UseJobStore(connStr, DatabaseProvider.Sqlite)
+
+// MySQL / MariaDB (.NET 8 & 9 only)
+.UseJobStore(connStr, DatabaseProvider.MySql)
 ```
 
 The `DatabaseProvider` enum:
 
-| Value | Provider |
-|-------|----------|
-| `SqlServer` | Microsoft SQL Server |
-| `PostgreSql` | PostgreSQL via Npgsql |
-| `Sqlite` | SQLite |
+| Value | Provider | Notes |
+|-------|----------|-------|
+| `SqlServer` | Microsoft SQL Server | Default |
+| `PostgreSql` | PostgreSQL via Npgsql | |
+| `Sqlite` | SQLite | |
+| `MySql` | MySQL / MariaDB via Pomelo | .NET 8 &amp; .NET 9 only |
+
+> **Note:** MySQL support uses the [Pomelo.EntityFrameworkCore.MySql](https://github.com/PomeloFoundation/Pomelo.EntityFrameworkCore.MySql) provider, which does not yet support .NET 10. NBatch will throw `PlatformNotSupportedException` if you select `DatabaseProvider.MySql` on .NET 10.
 
 ---
 
@@ -61,6 +73,35 @@ The `DatabaseProvider` enum:
 ```
 Run 1:  Chunk 0 [ok] -> Chunk 1 [ok] -> Chunk 2 [ok] -> Chunk 3 [CRASH]
 Run 2:  Resumes from Chunk 3 -> Chunk 3 [ok] -> Chunk 4 [ok] -> Done!
+```
+
+### Schema
+
+All tracking tables are created under the `nbatch` schema:
+
+| Table | Purpose |
+|-------|---------|
+| `nbatch.jobs` | One row per job &mdash; name, creation date, last run |
+| `nbatch.steps` | One row per chunk processed &mdash; step index, items count, errors |
+| `nbatch.step_exceptions` | One row per skipped exception &mdash; type, message, stack trace |
+
+---
+
+## With Dependency Injection
+
+When using `AddNBatch()`, you can configure the job store inside the job builder:
+
+```csharp
+builder.Services.AddNBatch(nbatch =>
+{
+    nbatch.AddJob("csv-import", job => job
+        .UseJobStore(connStr, DatabaseProvider.PostgreSql)
+        .AddStep("import", step => step
+            .ReadFrom(reader)
+            .WriteTo(writer)
+            .WithChunkSize(100)))
+        .RunEvery(TimeSpan.FromHours(1));
+});
 ```
 
 ---
@@ -92,8 +133,9 @@ If you need to reprocess data from scratch, reset the tracking tables:
 
 ```sql
 -- Clear all tracking data
-DELETE FROM BatchStep;
-DELETE FROM BatchJob;
+DELETE FROM nbatch.step_exceptions;
+DELETE FROM nbatch.steps;
+DELETE FROM nbatch.jobs;
 ```
 
 Or drop and recreate the database if using Docker:
@@ -105,4 +147,4 @@ docker compose up -d
 
 ---
 
-**Next:** [Listeners &rarr;](listeners)
+**Next:** [DI & Hosted Service &rarr;](dependency-injection)

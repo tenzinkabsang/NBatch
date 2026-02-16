@@ -51,16 +51,16 @@ var reader = new CsvReader<Product>("data.csv", mapFn)
 
 ### `CsvRow` API
 
-The mapping function receives a `CsvRow` with typed accessor methods:
+The mapping function receives a `CsvRow` with typed accessor methods. Each method is available with both **name** and **index** overloads:
 
-| Method | Return Type |
-|--------|-------------|
-| `GetString("column")` | `string` |
-| `GetInt("column")` | `int` |
-| `GetDecimal("column")` | `decimal` |
-| `GetDouble("column")` | `double` |
-| `GetBool("column")` | `bool` |
-| `GetDateTime("column")` | `DateTime` |
+| Method | Return Type | Example |
+|--------|-------------|------|
+| `GetString("column")` | `string` | `row.GetString("Name")` or `row.GetString(0)` |
+| `GetInt("column")` | `int` | `row.GetInt("Quantity")` or `row.GetInt(1)` |
+| `GetLong("column")` | `long` | `row.GetLong("Id")` or `row.GetLong(0)` |
+| `GetDecimal("column")` | `decimal` | `row.GetDecimal("Price")` or `row.GetDecimal(2)` |
+| `GetDouble("column")` | `double` | `row.GetDouble("Weight")` or `row.GetDouble(3)` |
+| `GetBool("column")` | `bool` | `row.GetBool("Active")` or `row.GetBool(4)` |
 
 ---
 
@@ -154,13 +154,20 @@ public interface IWriter<TItem>
 
 ### Lambda Writers
 
-You can also skip implementing `IWriter<T>` and use a lambda directly:
+You can skip implementing `IWriter<T>` and use a lambda directly:
 
 ```csharp
+// Simple async lambda
 .WriteTo(async items =>
 {
     foreach (var item in items)
         Console.WriteLine(item);
+})
+
+// With CancellationToken
+.WriteTo(async (items, ct) =>
+{
+    await httpClient.PostAsJsonAsync("/api/products", items, ct);
 })
 ```
 
@@ -179,10 +186,18 @@ public interface IProcessor<TInput, TOutput>
 }
 ```
 
-Or use a lambda:
+Or use a lambda &mdash; synchronous or async:
 
 ```csharp
+// Synchronous lambda
 .ProcessWith(p => new ProductDto { Name = p.Name.ToUpper(), Price = p.Price })
+
+// Async lambda with CancellationToken
+.ProcessWith(async (p, ct) =>
+{
+    var rate = await exchangeService.GetRateAsync(ct);
+    return new ProductDto { Name = p.Name, Price = p.Price * rate };
+})
 ```
 
 ---

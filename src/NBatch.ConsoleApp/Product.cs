@@ -1,6 +1,6 @@
 ﻿namespace NBatch.ConsoleApp;
 
-public class Product
+public record Product
 {
     public int Id { get; set; }
     public string Sku { get; set; } = string.Empty;
@@ -9,7 +9,7 @@ public class Product
     public decimal Price { get; set; }
 }
 
-public class ProductLowercase
+public record ProductLowercase
 {
     public int Id { get; set; }
     public string Sku { get; set; } = string.Empty;

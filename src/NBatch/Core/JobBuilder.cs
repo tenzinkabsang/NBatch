@@ -11,28 +11,31 @@ namespace NBatch.Core;
 /// </summary>
 public sealed class JobBuilder
 {
-    private readonly string _jobName;
     private IJobRepository _jobRepository;
     private readonly Dictionary<string, IStep> _steps = [];
     private readonly Dictionary<string, List<IStepListener>> _stepListeners = [];
     private readonly List<IJobListener> _jobListeners = [];
     private ILogger _logger = NullLogger.Instance;
 
+    /// <summary>Gets the name of the job being built.</summary>
+    internal string JobName { get; }
+
     internal JobBuilder(string jobName)
     {
         ArgumentNullException.ThrowIfNull(jobName);
-        _jobName = jobName;
+        JobName = jobName;
         _jobRepository = new InMemoryJobRepository(jobName);
     }
 
-    /// <summary>Enables SQL-backed job tracking for restart-from-failure support.</summary>
-    /// <param name="connectionString">Database connection string.</param>
-    /// <param name="provider">The database provider to use.</param>
-    public JobBuilder UseJobStore(string connectionString, DatabaseProvider provider = DatabaseProvider.SqlServer)
+    /// <summary>
+    /// Sets the job repository implementation.
+    /// Used by provider packages (e.g. <c>NBatch.EntityFrameworkCore</c>) to inject
+    /// a persistent job store.
+    /// </summary>
+    internal void SetJobRepository(IJobRepository repository)
     {
-        ArgumentNullException.ThrowIfNull(connectionString);
-        _jobRepository = new EfJobRepository(_jobName, connectionString, provider);
-        return this;
+        ArgumentNullException.ThrowIfNull(repository);
+        _jobRepository = repository;
     }
 
     /// <summary>Sets the logger used for job and step diagnostics.</summary>
@@ -97,5 +100,5 @@ public sealed class JobBuilder
     }
 
     /// <summary>Creates the configured <see cref="Job"/> instance.</summary>
-    public Job Build() => new(_jobName, _steps, _jobRepository, _jobListeners, _stepListeners, _logger);
+    public Job Build() => new(JobName, _steps, _jobRepository, _jobListeners, _stepListeners, _logger);
 }

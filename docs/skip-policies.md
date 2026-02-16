@@ -83,7 +83,7 @@ foreach (var step in result.Steps)
 - **Be specific** about exception types -- avoid `SkipPolicy.For<Exception>(...)` which swallows everything.
 - **Set reasonable limits** -- a high skip count may mask a systemic problem in your data.
 - **Use listeners** to alert when skips occur -- combine with [`IStepListener`](listeners) for monitoring.
-- **Enable the job store** to persist skip details for post-mortem analysis.
+- **Enable the [job store](job-store)** to persist skip details for post-mortem analysis.
 
 ---
 

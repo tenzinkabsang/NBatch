@@ -12,9 +12,14 @@ internal sealed class PropertyValueSerializer(char token = ',') : IPropertyValue
         if (items is null)
             return [];
 
-        var props = items.First().GetType().GetProperties();
+        var materializedItems = items as IList<T> ?? items.ToList();
 
-        return items.Select(item =>
+        if (materializedItems.Count == 0)
+            return [];
+
+        var props = typeof(T).GetProperties();
+
+        return materializedItems.Select(item =>
             string.Join(Token, props.Select(p => p.GetValue(item))));
     }
 }

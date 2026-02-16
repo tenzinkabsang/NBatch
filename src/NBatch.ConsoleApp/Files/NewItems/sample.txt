@@ -1,10 +1,21 @@
-﻿ProductId,Name,Description,Price
-1111,C# For Dummies,The book you should avoid,800.00
-2222,Design Patterns,The worlds authority on software designs, 299.99
-3333,Java 8 In Depth,Finally Lambdas, 399.99
-4444,Effective Java,The best java book, 499.99
-5555,ASP.NET MVC 9,Not even Model View Controller, 599.99
-6666,Web API,Easy way to expose endpoints, 699.99
-7777,C++ In-Depth,Everything related to C++, 799.99
-8888,Scala Programming,Beautiful functional, 899.99
-9999,Reactive Extensions,Asynchrony at its best, 999.99
+﻿Sku,Name,Description,Price
+sku1111,C# For Dummies,The book you should avoid,800.00
+sku2222,Design Patterns,The worlds authority on software designs,299.99
+sku3333,Java 8 In Depth,Finally Lambdas,399.99
+sku4444,Effective Java,The best java book,499.99
+sku5555,ASP.NET,Not even Model View Controller,599.99
+sku6666,Web API,Easy way to expose endpoints,699.99
+sku7777,C++ In-Depth,Everything related to C++,799.99
+sku8888,Scala Programming,Beautiful functional,899.99
+sku9999,Reactive Extensions,Asynchrony at its best,999.99
+sku1010,Python Crash Course,A hands-on introduction to Python,349.99
+sku1111a,Clean Code,A handbook of agile software craftsmanship,449.99
+sku1212,Docker Deep Dive,Containers made simple,379.99
+sku1313,Kubernetes Up & Running,Orchestration for the modern cloud,529.99
+sku1414,SQL Performance Tuning,Optimize your queries like a pro,459.99
+sku1515,Go Programming,Concurrency made easy,359.99
+sku1616,Rust In Action,Safe systems programming,479.99
+sku1717,TypeScript Handbook,Typed JavaScript at scale,329.99
+sku1818,Machine Learning Basics,An introduction to ML concepts,749.99
+sku1919,Git Pro,Version control mastery,279.99
+sku2020,Azure Cloud Patterns,Building reliable cloud applications,599.99

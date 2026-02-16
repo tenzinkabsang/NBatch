@@ -117,6 +117,13 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             DatabaseProvider.SqlServer => builder.UseSqlServer(connectionString),
             DatabaseProvider.PostgreSql => builder.UseNpgsql(connectionString),
             DatabaseProvider.Sqlite => builder.UseSqlite(connectionString),
+#if NET8_0 || NET9_0
+            DatabaseProvider.MySql => builder.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)),
+#else
+            DatabaseProvider.MySql => throw new PlatformNotSupportedException(
+                "MySQL support requires Pomelo.EntityFrameworkCore.MySql, which does not yet support this .NET version. " +
+                "Use .NET 8 or .NET 9, or check for an updated Pomelo release."),
+#endif
             _ => throw new ArgumentOutOfRangeException(nameof(provider))
         };
 

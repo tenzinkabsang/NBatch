@@ -17,7 +17,7 @@ namespace NBatch.Readers.FileReader;
 /// </code>
 /// </para>
 /// </summary>
-public sealed class CsvReader<T> : IReader<T>
+public sealed class CsvReader<T> : IReader<T>, IDisposable
 {
     private readonly IFileService _fileService;
     private readonly Func<CsvRow, T> _map;
@@ -94,5 +94,12 @@ public sealed class CsvReader<T> : IReader<T>
         {
             throw new FlatFileParseException(ex);
         }
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (_fileService is IDisposable disposable)
+            disposable.Dispose();
     }
 }

@@ -10,6 +10,24 @@ NBatch is built around a small set of composable primitives. Understanding these
 
 ---
 
+## Packages
+
+NBatch is distributed as two NuGet packages:
+
+| Package | What's inside |
+|---------|---------------|
+| **`NBatch`** | Core framework &mdash; job builder, step pipeline, readers, writers, skip policies, DI integration, hosted service |
+| **`NBatch.EntityFrameworkCore`** | EF Core job store for restart-from-failure &mdash; SQL Server, PostgreSQL, SQLite, MySQL |
+
+Install the core package to get started. Add the EF Core package only if you need persistent job tracking:
+
+```bash
+dotnet add package NBatch
+dotnet add package NBatch.EntityFrameworkCore   # optional
+```
+
+---
+
 ## Job
 
 A **Job** is a named container of one or more **steps**, executed in order. You create jobs using the fluent builder API:
@@ -79,7 +97,7 @@ A **Tasklet** is a single unit of work that doesn't follow the reader/writer pat
     .Execute(() => SendNotificationAsync()))
 ```
 
-Tasklets support three signatures:
+Tasklets support four signatures:
 
 ```csharp
 // Simple async action
@@ -87,6 +105,9 @@ Tasklets support three signatures:
 
 // With cancellation token
 .Execute(async ct => await DoWorkAsync(ct))
+
+// Synchronous action
+.Execute(() => CleanUpTempFiles())
 
 // Implement ITasklet for full control
 .Execute(new MyTasklet())
@@ -120,6 +141,26 @@ var job = Job.CreateBuilder("ETL")
         .Execute(() => SendReportEmailAsync()))
     .Build();
 ```
+
+---
+
+## Dependency Injection
+
+NBatch integrates with `IServiceCollection` for DI-based applications. Register jobs with `AddNBatch()` and run them on-demand via `IJobRunner` or automatically via background workers.
+
+```csharp
+builder.Services.AddNBatch(nbatch =>
+{
+    nbatch.AddJob("csv-import", (sp, job) => job
+        .AddStep("import", step => step
+            .ReadFrom(new CsvReader<Product>("data.csv", mapFn))
+            .WriteTo(new DbWriter<Product>(sp.GetRequiredService<AppDbContext>()))
+            .WithChunkSize(100)))
+        .RunEvery(TimeSpan.FromHours(1));
+});
+```
+
+See [DI & Hosted Service](dependency-injection) for the full guide.
 
 ---
 
