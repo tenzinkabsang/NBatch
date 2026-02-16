@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NBatch.ConsoleApp;
-using NBatch.ConsoleApp.Tests;
+using NBatch.ConsoleApp.Demos;
 using Serilog;
 
 var config = new ConfigurationBuilder()
@@ -16,85 +16,92 @@ Log.Logger = new LoggerConfiguration()
 using var loggerFactory = LoggerFactory.Create(builder => builder.AddSerilog(dispose: false));
 var logger = loggerFactory.CreateLogger("NBatch");
 
-var fileSourcePath = PathUtil.GetPath(@"Files\NewItems\sample.txt");
-var fileTargetPath = PathUtil.GetPath(@"Files\Processed\target.txt");
+var csvPath = PathUtil.GetPath(@"Files\NewItems\sample.txt");
+var outputPath = PathUtil.GetPath(@"Files\Processed\target.txt");
 
 var jobDb = config["ConnectionStrings:JobDb"]!;
-var appDbConnString = config["ConnectionStrings:AppDb"]!;
+var appDb = config["ConnectionStrings:AppDb"]!;
 
 while (true)
 {
     Console.WriteLine();
-    Console.WriteLine("╔══════════════════════════════════════════╗");
-    Console.WriteLine("║            NBatch Test Runner            ║");
-    Console.WriteLine("╠══════════════════════════════════════════╣");
-    Console.WriteLine("║  1. DB   -> DB                           ║");
-    Console.WriteLine("║  2. DB   -> File                         ║");
-    Console.WriteLine("║  3. File -> DB                           ║");
-    Console.WriteLine("║  4. File -> Console                      ║");
-    Console.WriteLine("║  5. File -> File                         ║");
-    Console.WriteLine("║  6. File -> Console (lambda, no SQL)     ║");
-    Console.WriteLine("║  7. File -> Console (DI)                 ║");
-    Console.WriteLine("║  8. File -> Console (DI + ServiceProvider)║");
-    Console.WriteLine("║  0. Exit                                 ║");
-    Console.WriteLine("╚══════════════════════════════════════════╝");
-    Console.Write("Select a test to run: ");
+    Console.WriteLine("╔═══════════════════════════════════════════════════════╗");
+    Console.WriteLine("║                  NBatch Demo Runner                  ║");
+    Console.WriteLine("╠═══════════════════════════════════════════════════════╣");
+    Console.WriteLine("║                                                       ║");
+    Console.WriteLine("║  No database required:                                ║");
+    Console.WriteLine("║    1. CSV → Console         (minimal API, lambdas)    ║");
+    Console.WriteLine("║    2. CSV → File            (FlatFileItemWriter)      ║");
+    Console.WriteLine("║    3. CSV → Console         (SkipPolicy error handling)║");
+    Console.WriteLine("║    4. Tasklet Steps          (Action + async tasklets)║");
+    Console.WriteLine("║                                                       ║");
+    Console.WriteLine("║  Requires SQL Server (docker-compose up):             ║");
+    Console.WriteLine("║    5. DB  → DB              (DbReader, DbWriter)      ║");
+    Console.WriteLine("║    6. CSV → DB              (restart-from-failure)    ║");
+    Console.WriteLine("║                                                       ║");
+    Console.WriteLine("║  Dependency Injection:                                ║");
+    Console.WriteLine("║    7. DI + IJobRunner       (AddNBatch, IServiceProvider)║");
+    Console.WriteLine("║    8. BackgroundService      (RunOnce, RunEvery)      ║");
+    Console.WriteLine("║                                                       ║");
+    Console.WriteLine("║    0. Exit                                            ║");
+    Console.WriteLine("╚═══════════════════════════════════════════════════════╝");
+    Console.Write("Select a demo: ");
 
     var choice = Console.ReadLine()?.Trim();
 
     if (choice is "0" or null)
         break;
 
+    Console.WriteLine();
+
     try
     {
         switch (choice)
         {
             case "1":
-                using (var src = AppDbContext.Create(appDbConnString))
-                using (var dst = AppDbContext.Create(appDbConnString))
-                    await ReadFromDb_SaveToDb.RunAsync(jobDb, src, dst, logger);
+                await Demo01_CsvToConsole.RunAsync(csvPath, logger);
                 break;
 
             case "2":
-                using (var src = AppDbContext.Create(appDbConnString))
-                    await ReadFromDb_SaveToFile.RunAsync(jobDb, src, fileTargetPath, logger);
+                await Demo02_CsvToFile.RunAsync(csvPath, outputPath, logger);
                 break;
 
             case "3":
-                using (var dst = AppDbContext.Create(appDbConnString))
-                    await ReadFromFile_SaveToDatabase.RunAsync(jobDb, dst, fileSourcePath, logger);
+                await Demo03_SkipPolicy.RunAsync(csvPath, logger);
                 break;
 
             case "4":
-                await ReadFromFile_WriteToConsole.RunAsync(jobDb, fileSourcePath, logger);
+                await Demo04_TaskletSteps.RunAsync(outputPath, logger);
                 break;
 
             case "5":
-                await ReadFromFile_WriteToFile.RunAsync(jobDb, fileSourcePath, fileTargetPath, logger);
+                await Demo05_DbToDb.RunAsync(jobDb, appDb, logger);
                 break;
 
             case "6":
-                await ReadFromFile_WriteToConsole_Lambda.RunAsync(fileSourcePath, logger);
+                await Demo06_CsvToDb.RunAsync(jobDb, appDb, csvPath, logger);
                 break;
 
             case "7":
-                await DI_ReadFromFile_WriteToConsole.RunAsync(fileSourcePath);
+                await Demo07_DependencyInjection.RunAsync(csvPath, loggerFactory);
                 break;
 
             case "8":
-                await DI_ReadFromFile_WriteToConsole_WithServiceProvider.RunAsync(fileSourcePath, loggerFactory);
+                await Demo08_BackgroundService.RunAsync(csvPath);
                 break;
 
             default:
-                Console.WriteLine("Invalid selection.");
+                Console.WriteLine("  Invalid selection.");
                 continue;
         }
 
-        Console.WriteLine("Done.");
+        Console.WriteLine();
+        Console.WriteLine("  ✓ Demo complete.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Error: {ex.Message}");
+        Console.WriteLine($"  ✗ Error: {ex.Message}");
     }
 }
+
 

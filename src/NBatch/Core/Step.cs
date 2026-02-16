@@ -57,33 +57,49 @@ internal class Step<TInput, TOutput> : IStep
         if (ctx.StepIndex > 0)
             _logger.LogInformation("Step '{StepName}' resuming from index {StepIndex}", Name, ctx.StepIndex);
 
-        while (ctx.HasNext)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var readResult = await ReadChunkAsync(ctx, cancellationToken);
-
-            if (readResult.Outcome == ReadOutcome.EndOfData)
-                break;
-
-            if (readResult.Outcome == ReadOutcome.ReadError)
+            while (ctx.HasNext)
             {
-                ctx = readResult.Context;
-            }
-            else
-            {
-                long stepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, cancellationToken);
-                ctx = await ProcessChunkAsync(ctx, stepId, readResult.Items, cancellationToken);
-            }
+                cancellationToken.ThrowIfCancellationRequested();
 
-            totalRead += ctx.NumberOfItemsReceived;
-            totalProcessed += ctx.NumberOfItemsProcessed;
+                var readResult = await ReadChunkAsync(ctx, cancellationToken);
 
-            if (ctx.Skip)
-                totalSkipped++;
+                if (readResult.Outcome == ReadOutcome.EndOfData)
+                    break;
+
+                if (readResult.Outcome == ReadOutcome.ReadError)
+                {
+                    ctx = readResult.Context;
+                }
+                else
+                {
+                    long stepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, cancellationToken);
+                    ctx = await ProcessChunkAsync(ctx, stepId, readResult.Items, cancellationToken);
+                }
+
+                totalRead += ctx.NumberOfItemsReceived;
+                totalProcessed += ctx.NumberOfItemsProcessed;
+
+                if (ctx.Skip)
+                    totalSkipped++;
+            }
+        }
+        finally
+        {
+            await DisposeIfNeededAsync(_reader);
+            await DisposeIfNeededAsync(_writer);
         }
 
         return new StepResult(Name, true, totalRead, totalProcessed, totalSkipped);
+    }
+
+    private static async ValueTask DisposeIfNeededAsync(object component)
+    {
+        if (component is IAsyncDisposable asyncDisposable)
+            await asyncDisposable.DisposeAsync();
+        else if (component is IDisposable disposable)
+            disposable.Dispose();
     }
 
     /// <summary>

@@ -2,7 +2,7 @@ namespace NBatch.Core;
 
 /// <summary>
 /// Configures batch jobs for dependency injection.
-/// Passed to <see cref="ServiceCollectionExtensions.AddNBatch"/>.
+/// Passed to <see cref="Microsoft.Extensions.DependencyInjection.ServiceCollectionExtensions.AddNBatch"/>.
 /// </summary>
 public sealed class NBatchBuilder
 {

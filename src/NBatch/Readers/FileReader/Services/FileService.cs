@@ -2,29 +2,52 @@
 
 namespace NBatch.Readers.FileReader.Services;
 
-internal sealed class FileService(string resourceUrl) : IFileService
+internal sealed class FileService(string resourceUrl) : IFileService, IDisposable
 {
+    private StreamReader? _reader;
+    private long _currentLine;
+
     public async IAsyncEnumerable<string> ReadLinesAsync(long startIndex, int chunkSize, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        using StreamReader reader = File.OpenText(resourceUrl);
-
-        // Advance the reader to the desired starting line (skip lines 0 to startIndex-1).
-        for (long i = 0; i < startIndex; i++)
+        // First call:       _reader is null → open the file.
+        // Backward seek:    startIndex < _currentLine → reset and reopen.
+        // Sequential chunk: _reader is open and _currentLine == startIndex → skip this block entirely.
+        if (_reader is null || startIndex < _currentLine)
         {
-            // If we reach the end of the file before startIndex, exit early (nothing to yield).
-            if (await reader.ReadLineAsync(cancellationToken) is null)
-                yield break;
+            Reset();
+            _reader = File.OpenText(resourceUrl);
+            _currentLine = 0;
         }
 
-        // Yield up to chunkSize lines, starting from line startIndex.
+        // For sequential chunks, _currentLine already equals startIndex so this loop is a no-op.
+        // For forward skips (e.g., gap between header read and first data chunk), this advances
+        // the reader from its current position — not from line 0.
+        while (_currentLine < startIndex)
+        {
+            if (await _reader.ReadLineAsync(cancellationToken) is null)
+                yield break;
+
+            _currentLine++;
+        }
+
+        // Yield up to chunkSize lines from the current position.
         for (int i = 0; i < chunkSize; i++)
         {
-            // Read the next line; if end of file, stop yielding.
-            var line = await reader.ReadLineAsync(cancellationToken);
+            var line = await _reader.ReadLineAsync(cancellationToken);
             if (line is null)
                 yield break;
 
+            _currentLine++;
             yield return line;
         }
     }
+
+    private void Reset()
+    {
+        _reader?.Dispose();
+        _reader = null;
+        _currentLine = 0;
+    }
+
+    public void Dispose() => Reset();
 }
