@@ -32,6 +32,12 @@ internal sealed class StepBuilderReadFrom(JobBuilder jobBuilder, string stepName
         ArgumentNullException.ThrowIfNull(action);
         return new TaskletStepBuilder(jobBuilder, stepName, new DelegateTasklet(action));
     }
+
+    public ITaskletStepBuilder Execute(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        return new TaskletStepBuilder(jobBuilder, stepName, new DelegateTasklet(_ => { action(); return Task.CompletedTask; }));
+    }
 }
 
 internal sealed class StepBuilderProcess<TInput>(JobBuilder jobBuilder, string stepName, IReader<TInput> reader) : IStepBuilderProcess<TInput>
@@ -48,6 +54,12 @@ internal sealed class StepBuilderProcess<TInput>(JobBuilder jobBuilder, string s
         return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, reader, new DelegateProcessor<TInput, TOutput>(processor));
     }
 
+    public IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, CancellationToken, Task<TOutput>> processor)
+    {
+        ArgumentNullException.ThrowIfNull(processor);
+        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, reader, new DelegateProcessor<TInput, TOutput>(processor));
+    }
+
     public IStepBuilderOptions WriteTo(IWriter<TInput> writer)
     {
         ArgumentNullException.ThrowIfNull(writer);
@@ -55,6 +67,12 @@ internal sealed class StepBuilderProcess<TInput>(JobBuilder jobBuilder, string s
     }
 
     public IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, Task> writeAction)
+    {
+        ArgumentNullException.ThrowIfNull(writeAction);
+        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, reader, null, new DelegateWriter<TInput>(writeAction));
+    }
+
+    public IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, CancellationToken, Task> writeAction)
     {
         ArgumentNullException.ThrowIfNull(writeAction);
         return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, reader, null, new DelegateWriter<TInput>(writeAction));
@@ -74,6 +92,12 @@ internal sealed class StepBuilderWriteTo<TInput, TOutput>(
     }
 
     public IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, Task> writeAction)
+    {
+        ArgumentNullException.ThrowIfNull(writeAction);
+        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, reader, processor, new DelegateWriter<TOutput>(writeAction));
+    }
+
+    public IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, CancellationToken, Task> writeAction)
     {
         ArgumentNullException.ThrowIfNull(writeAction);
         return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, reader, processor, new DelegateWriter<TOutput>(writeAction));
@@ -108,6 +132,7 @@ internal sealed class StepBuilderOptions<TInput, TOutput>(
 
     public IStepBuilderOptions WithChunkSize(int chunkSize)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(chunkSize, 1);
         _chunkSize = chunkSize;
         return this;
     }

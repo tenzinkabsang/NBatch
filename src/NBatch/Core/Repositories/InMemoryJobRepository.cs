@@ -1,16 +1,18 @@
+using System.Collections.Concurrent;
+
 namespace NBatch.Core.Repositories;
 
 internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
 {
     private long _nextId;
-    private readonly Dictionary<long, StepEntry> _steps = [];
-    private readonly List<ExceptionEntry> _exceptions = [];
+    private readonly ConcurrentDictionary<long, StepEntry> _steps = new();
+    private readonly ConcurrentBag<ExceptionEntry> _exceptions = [];
 
     public Task CreateJobRecordAsync(ICollection<string> stepNames, CancellationToken cancellationToken = default)
     {
         foreach (var stepName in stepNames)
         {
-            long id = ++_nextId;
+            long id = Interlocked.Increment(ref _nextId);
             _steps[id] = new StepEntry(stepName, StepIndex: 0, NumberOfItemsProcessed: 0);
         }
         return Task.CompletedTask;
@@ -35,7 +37,7 @@ internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
 
     public Task<long> InsertStepAsync(string stepName, long stepIndex, CancellationToken cancellationToken = default)
     {
-        long id = ++_nextId;
+        long id = Interlocked.Increment(ref _nextId);
         _steps[id] = new StepEntry(stepName, stepIndex, NumberOfItemsProcessed: 0);
         return Task.FromResult(id);
     }

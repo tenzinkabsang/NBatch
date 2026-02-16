@@ -15,6 +15,8 @@ public interface IStepBuilderReadFrom
     ITaskletStepBuilder Execute(Func<Task> action);
     /// <inheritdoc cref="Execute(ITasklet)" />
     ITaskletStepBuilder Execute(Func<CancellationToken, Task> action);
+    /// <inheritdoc cref="Execute(ITasklet)" />
+    ITaskletStepBuilder Execute(Action action);
 }
 
 /// <summary>
@@ -26,10 +28,14 @@ public interface IStepBuilderProcess<TInput>
     IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(IProcessor<TInput, TOutput> processor);
     /// <inheritdoc cref="ProcessWith{TOutput}(IProcessor{TInput, TOutput})" />
     IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, TOutput> processor);
+    /// <inheritdoc cref="ProcessWith{TOutput}(IProcessor{TInput, TOutput})" />
+    IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, CancellationToken, Task<TOutput>> processor);
     /// <summary>Writes items directly without processing.</summary>
     IStepBuilderOptions WriteTo(IWriter<TInput> writer);
     /// <inheritdoc cref="WriteTo(IWriter{TInput})" />
     IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, Task> writeAction);
+    /// <inheritdoc cref="WriteTo(IWriter{TInput})" />
+    IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, CancellationToken, Task> writeAction);
 }
 
 /// <summary>
@@ -41,6 +47,8 @@ public interface IStepBuilderWriteTo<TOutput>
     IStepBuilderOptions WriteTo(IWriter<TOutput> writer);
     /// <inheritdoc cref="WriteTo(IWriter{TOutput})" />
     IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, Task> writeAction);
+    /// <inheritdoc cref="WriteTo(IWriter{TOutput})" />
+    IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, CancellationToken, Task> writeAction);
 }
 
 /// <summary>

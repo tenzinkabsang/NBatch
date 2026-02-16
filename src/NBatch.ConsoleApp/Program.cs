@@ -34,6 +34,8 @@ while (true)
     Console.WriteLine("║  4. File -> Console                      ║");
     Console.WriteLine("║  5. File -> File                         ║");
     Console.WriteLine("║  6. File -> Console (lambda, no SQL)     ║");
+    Console.WriteLine("║  7. File -> Console (DI)                 ║");
+    Console.WriteLine("║  8. File -> Console (DI + ServiceProvider)║");
     Console.WriteLine("║  0. Exit                                 ║");
     Console.WriteLine("╚══════════════════════════════════════════╝");
     Console.Write("Select a test to run: ");
@@ -73,6 +75,14 @@ while (true)
 
             case "6":
                 await ReadFromFile_WriteToConsole_Lambda.RunAsync(fileSourcePath, logger);
+                break;
+
+            case "7":
+                await DI_ReadFromFile_WriteToConsole.RunAsync(fileSourcePath);
+                break;
+
+            case "8":
+                await DI_ReadFromFile_WriteToConsole_WithServiceProvider.RunAsync(fileSourcePath, loggerFactory);
                 break;
 
             default:
