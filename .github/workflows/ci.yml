@@ -46,8 +46,21 @@ jobs:
         run: dotnet build -c Release --no-restore /p:ContinuousIntegrationBuild=true /warnaserror
         working-directory: ${{ env.SOLUTION_DIR }}
 
-      - name: Test
-        run: dotnet test -c Release --no-build --logger "trx;LogFileName=results.trx"
+      - name: Test (Unit)
+        run: dotnet test -c Release --no-build --filter "Category!=Docker" --logger "trx;LogFileName=unit-results.trx"
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Start SQL Server (docker-compose)
+        run: docker compose up -d --wait
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Test (Integration / Docker)
+        run: dotnet test -c Release --no-build --filter "Category=Docker" --logger "trx;LogFileName=integration-results.trx"
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Stop SQL Server (docker-compose)
+        if: always()
+        run: docker compose down -v
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Upload test results
@@ -55,4 +68,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: ${{ env.SOLUTION_DIR }}/**/results.trx
+          path: ${{ env.SOLUTION_DIR }}/**/*.trx
