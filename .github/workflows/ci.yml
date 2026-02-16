@@ -47,7 +47,7 @@ jobs:
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Test
-        run: dotnet test -c Release --no-build --logger "trx;LogFileName=results.trx"
+        run: dotnet test -c Release --no-build --filter "Category!=Docker" --logger "trx;LogFileName=results.trx"
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Upload test results
@@ -55,4 +55,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: ${{ env.SOLUTION_DIR }}/**/results.trx
+          path: ${{ env.SOLUTION_DIR }}/**/*.trx

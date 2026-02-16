@@ -14,6 +14,9 @@ internal sealed class StepContext
     public int ChunkSize { get; set; }
     public bool Skip { get; set; }
 
+    /// <summary>Whether the last chunk ended with an unrecoverable error.</summary>
+    public bool Error { get; set; }
+
     /// <summary>Whether this is the first iteration of the processing loop.</summary>
     public bool FirstIteration { get; set; }
 
@@ -25,8 +28,8 @@ internal sealed class StepContext
     public StepContext() { }
 
     /// <summary>
-    /// Creates the initial context for a step run. If the previous run failed
-    /// (zero items processed), backs up one chunk to retry.
+    /// Creates the initial context for a step run. If the previous run failed,
+    /// backs up one chunk to retry.
     /// </summary>
     public static StepContext InitialRun(StepContext previous, int chunkSize)
     {
@@ -59,7 +62,7 @@ internal sealed class StepContext
 
     private static long BackUpIfPreviousFailed(StepContext ctx, int chunkSize)
     {
-        if (ctx.NumberOfItemsProcessed == 0 && ctx.StepIndex - chunkSize >= 0)
+        if (ctx.Error && ctx.StepIndex - chunkSize >= 0)
             return ctx.StepIndex - chunkSize;
 
         return ctx.StepIndex;

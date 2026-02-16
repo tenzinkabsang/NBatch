@@ -29,12 +29,15 @@ public sealed class SkipPolicy
         if (_skippableExceptions.Length == 0 || _skipLimit == 0)
             return false;
 
-        int exceptionCount = await stepRepository.GetExceptionCountAsync(skipContext, cancellationToken);
-
-        if (exceptionCount >= _skipLimit || !_skippableExceptions.Contains(skipContext.ExceptionType))
+        if (!_skippableExceptions.Contains(skipContext.ExceptionType))
             return false;
 
-        await stepRepository.SaveExceptionInfoAsync(skipContext, exceptionCount, cancellationToken);
+        int exceptionCount = await stepRepository.GetExceptionCountAsync(skipContext, cancellationToken);
+
+        if (exceptionCount >= _skipLimit)
+            return false;
+
+        await stepRepository.SaveExceptionInfoAsync(skipContext, cancellationToken);
         return true;
     }
 

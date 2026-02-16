@@ -123,7 +123,8 @@ internal sealed class RestartFromFailureTests
                 .WithChunkSize(2))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
 
         // Only the first chunk (a, b) should have been written
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b" }));
@@ -206,7 +207,8 @@ internal sealed class RestartFromFailureTests
                 .WithChunkSize(2))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b" }));
 
         // Restart
@@ -243,7 +245,8 @@ internal sealed class RestartFromFailureTests
                 .WithChunkSize(2))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
         Assert.That(writer.Written, Is.Empty);
 
         // Restart — should retry from index 0
@@ -280,7 +283,8 @@ internal sealed class RestartFromFailureTests
                 .WithChunkSize(1))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
         Assert.That(writer.Written, Is.EqualTo(new[] { "a" }));
 
         // Restart — backs up to index 1 and continues
@@ -326,7 +330,7 @@ internal sealed class RestartFromFailureTests
     }
 
     [Test]
-    public void TaskletStep_failure_propagates_and_records_error()
+    public async Task TaskletStep_failure_propagates_and_records_error()
     {
         var connStr = UniqueConnectionString;
 
@@ -336,7 +340,8 @@ internal sealed class RestartFromFailureTests
                 .Execute(() => throw new InvalidOperationException("Cleanup failed")))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job.RunAsync());
+        var result = await job.RunAsync();
+        Assert.That(result.Success, Is.False);
     }
 
     [Test]
@@ -359,7 +364,8 @@ internal sealed class RestartFromFailureTests
                 .Execute(FailOnceThenSucceed))
             .Build();
 
-        Assert.ThrowsAsync<InvalidOperationException>(() => job1.RunAsync());
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
         Assert.That(callCount, Is.EqualTo(1));
 
         // Restart — should re-execute the tasklet
@@ -470,6 +476,152 @@ internal sealed class RestartFromFailureTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(1));
+    }
+
+    #endregion
+
+    #region 5 — Skip budget resets per execution
+
+    [Test]
+    public async Task Skip_budget_resets_on_new_run()
+    {
+        // Run 1: 3 items, processor fails on every item, skip limit 3 ? all 3 skipped, job succeeds.
+        // Run 2: different job name to start fresh. Same skip limit ? budget should be 3 (not 0 left from run 1).
+        // This proves exception counts are scoped per execution, not global.
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c" };
+        var skipPolicy = new SkipPolicy([typeof(TimeoutException)], skipLimit: 3);
+
+        var job1 = Job.CreateBuilder("skip-reset-run1")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .ProcessWith(new FailNTimesProcessor<string>(failCount: int.MaxValue))
+                .WriteTo(new CollectingWriter<string>())
+                .WithSkipPolicy(skipPolicy)
+                .WithChunkSize(1))
+            .Build();
+
+        var result1 = await job1.RunAsync();
+
+        Assert.That(result1.Success, Is.True);
+        Assert.That(result1.Steps[0].ErrorsSkipped, Is.EqualTo(3));
+
+        // Run 2: fresh job name, same DB ? proves budget is per-execution, not shared across the DB.
+        var job2 = Job.CreateBuilder("skip-reset-run2")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .ProcessWith(new FailNTimesProcessor<string>(failCount: int.MaxValue))
+                .WriteTo(new CollectingWriter<string>())
+                .WithSkipPolicy(skipPolicy)
+                .WithChunkSize(1))
+            .Build();
+
+        var result2 = await job2.RunAsync();
+
+        // Skip budget should be independent — all 3 skipped again.
+        Assert.That(result2.Success, Is.True);
+        Assert.That(result2.Steps[0].ErrorsSkipped, Is.EqualTo(3));
+    }
+
+    [Test]
+    public async Task Skip_limit_exceeded_fails_the_step()
+    {
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c", "d" };
+
+        // Processor fails on every item. Skip limit is 2, but we have 4 items ? third failure exceeds limit.
+        var processor = new FailNTimesProcessor<string>(failCount: int.MaxValue);
+        var skipPolicy = new SkipPolicy([typeof(TimeoutException)], skipLimit: 2);
+
+        var job = Job.CreateBuilder("skip-exceed")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .ProcessWith(processor)
+                .WriteTo(new CollectingWriter<string>())
+                .WithSkipPolicy(skipPolicy)
+                .WithChunkSize(1))
+            .Build();
+
+        var result = await job.RunAsync();
+
+        Assert.That(result.Success, Is.False);
+    }
+
+    [Test]
+    public async Task Non_matching_exception_type_is_not_skipped()
+    {
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a" };
+
+        // Skip policy is for TimeoutException, but processor throws InvalidOperationException.
+        var job = Job.CreateBuilder("skip-mismatch")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .ProcessWith<string>((string s) => throw new InvalidOperationException("wrong type"))
+                .WriteTo(new CollectingWriter<string>())
+                .WithSkipPolicy(SkipPolicy.For<TimeoutException>(maxSkips: 10))
+                .WithChunkSize(1))
+            .Build();
+
+        var result = await job.RunAsync();
+
+        Assert.That(result.Success, Is.False);
+    }
+
+    #endregion
+
+    #region 6 — Skipped chunk does not trigger retry on restart
+
+    [Test]
+    public async Task Skipped_chunk_does_not_cause_backup_on_restart()
+    {
+        // Run 1: 3 items, chunk size 1.
+        // Item at index 1 fails and is skipped. Items at 0 and 2 succeed.
+        // On restart, the step should NOT back up to re-process index 1 (it was skipped, not failed).
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c" };
+        int processorCalls = 0;
+
+        var job1 = Job.CreateBuilder("skip-no-backup")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .ProcessWith((string s) =>
+                {
+                    processorCalls++;
+                    if (s == "b") throw new FormatException("bad item");
+                    return s;
+                })
+                .WriteTo(new CollectingWriter<string>())
+                .WithSkipPolicy(SkipPolicy.For<FormatException>(maxSkips: 5))
+                .WithChunkSize(1))
+            .Build();
+
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.True);
+        Assert.That(result1.Steps[0].ErrorsSkipped, Is.EqualTo(1));
+
+        // Run 2: restart. The reader should start past all previously processed data.
+        var writer2 = new CollectingWriter<string>();
+        processorCalls = 0;
+
+        var job2 = Job.CreateBuilder("skip-no-backup")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .WriteTo(writer2)
+                .WithChunkSize(1))
+            .Build();
+
+        var result2 = await job2.RunAsync();
+
+        Assert.That(result2.Success, Is.True);
+        // All data was already processed in run 1 (2 written + 1 skipped), nothing new to process.
+        Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(0));
     }
 
     #endregion

@@ -170,7 +170,7 @@ internal class Step<TInput, TOutput> : IStep
         var skipContext = new SkipContext(ctx.StepName, ctx.NextStepIndex, ex);
         bool skipped = await _skipPolicy.IsSatisfiedByAsync(_stepRepository, skipContext, cancellationToken);
 
-        await _stepRepository.UpdateStepAsync(stepId, 0, error: true, skipped, cancellationToken);
+        await _stepRepository.UpdateStepAsync(stepId, 0, error: !skipped, skipped, cancellationToken);
 
         if (skipped)
         {

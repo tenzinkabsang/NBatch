@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace NBatch.Tests.Readers.FileReaders;
 
 [TestFixture]
-public class FileServiceTests
+internal class FileServiceTests
 {
     private string _tempFile = null!;
 
