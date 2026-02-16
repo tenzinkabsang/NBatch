@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NBatch.Core;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -11,6 +13,9 @@ public static class ServiceCollectionExtensions
     /// Registers NBatch services and configures batch jobs.
     /// <para>
     /// Jobs are built lazily when <see cref="IJobRunner.RunAsync"/> is called.
+    /// Jobs with a schedule (<see cref="JobRegistration.RunOnce"/> or
+    /// <see cref="JobRegistration.RunEvery"/>) are also executed automatically
+    /// by a background worker.
     /// </para>
     /// <example>
     /// <code>
@@ -20,7 +25,8 @@ public static class ServiceCollectionExtensions
     ///         .AddStep("import", step => step
     ///             .ReadFrom(new CsvReader&lt;Product&gt;("data.csv", mapFn))
     ///             .WriteTo(new DbWriter&lt;Product&gt;(dbContext))
-    ///             .WithChunkSize(100)));
+    ///             .WithChunkSize(100)))
+    ///         .RunEvery(TimeSpan.FromHours(6));
     /// });
     /// </code>
     /// </example>
@@ -37,6 +43,19 @@ public static class ServiceCollectionExtensions
         configure(builder);
 
         services.AddSingleton<IJobRunner>(sp => new JobRunner(builder.Factories, sp));
+
+        foreach (var registration in builder.Registrations)
+        {
+            if (!registration.IsScheduled)
+                continue;
+
+            var captured = registration;
+            services.AddSingleton<IHostedService>(sp => new NBatchJobWorkerService(
+                sp.GetRequiredService<IJobRunner>(),
+                captured.JobName,
+                captured,
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger($"NBatch.Worker.{captured.JobName}")));
+        }
 
         return services;
     }

@@ -7,11 +7,13 @@ namespace NBatch.Core;
 public sealed class NBatchBuilder
 {
     internal Dictionary<string, Func<IServiceProvider, Job>> Factories { get; } = [];
+    internal List<JobRegistration> Registrations { get; } = [];
 
     /// <summary>Registers a named job.</summary>
     /// <param name="jobName">A unique name that identifies this job.</param>
     /// <param name="configure">A delegate that configures the job via <see cref="JobBuilder"/>.</param>
-    public NBatchBuilder AddJob(string jobName, Action<JobBuilder> configure)
+    /// <returns>A <see cref="JobRegistration"/> that can optionally configure a schedule.</returns>
+    public JobRegistration AddJob(string jobName, Action<JobBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(jobName);
         ArgumentNullException.ThrowIfNull(configure);
@@ -23,7 +25,9 @@ public sealed class NBatchBuilder
             return builder.Build();
         };
 
-        return this;
+        var registration = new JobRegistration(jobName);
+        Registrations.Add(registration);
+        return registration;
     }
 
     /// <summary>
@@ -31,7 +35,8 @@ public sealed class NBatchBuilder
     /// </summary>
     /// <param name="jobName">A unique name that identifies this job.</param>
     /// <param name="configure">A delegate that receives <see cref="IServiceProvider"/> and <see cref="JobBuilder"/>.</param>
-    public NBatchBuilder AddJob(string jobName, Action<IServiceProvider, JobBuilder> configure)
+    /// <returns>A <see cref="JobRegistration"/> that can optionally configure a schedule.</returns>
+    public JobRegistration AddJob(string jobName, Action<IServiceProvider, JobBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(jobName);
         ArgumentNullException.ThrowIfNull(configure);
@@ -43,6 +48,8 @@ public sealed class NBatchBuilder
             return builder.Build();
         };
 
-        return this;
+        var registration = new JobRegistration(jobName);
+        Registrations.Add(registration);
+        return registration;
     }
 }
