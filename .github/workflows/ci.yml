@@ -50,6 +50,19 @@ jobs:
         run: dotnet test -c Release --no-build --filter "Category!=Docker" --logger "trx;LogFileName=results.trx"
         working-directory: ${{ env.SOLUTION_DIR }}
 
+      - name: Start SQL Server (docker-compose)
+        run: docker compose up -d --wait
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Integration Tests (Docker)
+        run: dotnet test -c Release --no-build --filter "Category=Docker" --logger "trx;LogFileName=integration-results.trx"
+        working-directory: ${{ env.SOLUTION_DIR }}
+
+      - name: Stop SQL Server (docker-compose)
+        if: always()
+        run: docker compose down -v
+        working-directory: ${{ env.SOLUTION_DIR }}
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4

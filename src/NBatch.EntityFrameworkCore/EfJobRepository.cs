@@ -44,7 +44,24 @@ internal sealed class EfJobRepository : IJobRepository
             var creator = (RelationalDatabaseCreator)ctx.Database.GetService<IDatabaseCreator>();
             if (!await creator.ExistsAsync(cancellationToken))
             {
-                await ctx.Database.EnsureCreatedAsync(cancellationToken);
+                try
+                {
+                    await ctx.Database.EnsureCreatedAsync(cancellationToken);
+                }
+                catch (DbException)
+                {
+                    // Another process (e.g. a parallel call) may have
+                    // created the database between our ExistsAsync check and the
+                    // CREATE DATABASE call. If the database now exists, ensure
+                    // tables are present; otherwise, re-throw.
+                    if (!await creator.ExistsAsync(cancellationToken))
+                        throw;
+
+                    if (!await TablesExistAsync(ctx, cancellationToken))
+                    {
+                        await creator.CreateTablesAsync(cancellationToken);
+                    }
+                }
             }
             else if (!await TablesExistAsync(ctx, cancellationToken))
             {
