@@ -1,4 +1,4 @@
-﻿using System.Runtime.ExceptionServices;
+using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
 using NBatch.Core.Interfaces;
 using NBatch.Core.Repositories;
@@ -113,9 +113,9 @@ internal class Step<TInput, TOutput> : IStep
         {
             items = (await _reader.ReadAsync(ctx.StepIndex, ChunkSize, cancellationToken)).ToList();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            long errorStepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, cancellationToken);
+            long errorStepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, CancellationToken.None);
             var errorCtx = await HandleErrorAsync(ctx, errorStepId, 0, ex, cancellationToken);
             return new ChunkReadResult(ReadOutcome.ReadError, [], errorCtx);
         }
@@ -147,14 +147,18 @@ internal class Step<TInput, TOutput> : IStep
                 await _writer.WriteAsync(processedItems, cancellationToken);
 
             int itemsWritten = processedItems.Count;
-            await _stepRepository.UpdateStepAsync(stepId, itemsWritten, error: false, skipped: false, cancellationToken);
+
+            // Commit progress with a non-cancellable token: the writer has already
+            // persisted the data, so we must record the advance to prevent duplicate
+            // processing on restart.
+            await _stepRepository.UpdateStepAsync(stepId, itemsWritten, error: false, skipped: false, CancellationToken.None);
 
             _logger.LogDebug("Step '{StepName}' chunk at index {Index} — read {Read}, wrote {Wrote}",
                 Name, ctx.StepIndex, itemsRead, itemsWritten);
 
             return StepContext.Increment(ctx, itemsRead, itemsWritten, skipped: false);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return await HandleErrorAsync(ctx, stepId, itemsRead, ex, cancellationToken);
         }
@@ -167,10 +171,13 @@ internal class Step<TInput, TOutput> : IStep
     private async Task<StepContext> HandleErrorAsync(
         StepContext ctx, long stepId, int itemsRead, Exception ex, CancellationToken cancellationToken)
     {
+        // Use CancellationToken.None for repository calls: error recording is
+        // best-effort bookkeeping that must not be defeated by a concurrently
+        // cancelled token.
         var skipContext = new SkipContext(ctx.StepName, ctx.NextStepIndex, ex);
-        bool skipped = await _skipPolicy.IsSatisfiedByAsync(_stepRepository, skipContext, cancellationToken);
+        bool skipped = await _skipPolicy.IsSatisfiedByAsync(_stepRepository, skipContext, CancellationToken.None);
 
-        await _stepRepository.UpdateStepAsync(stepId, 0, error: !skipped, skipped, cancellationToken);
+        await _stepRepository.UpdateStepAsync(stepId, 0, error: !skipped, skipped, CancellationToken.None);
 
         if (skipped)
         {
