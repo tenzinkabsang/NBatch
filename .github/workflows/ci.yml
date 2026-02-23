@@ -55,7 +55,7 @@ jobs:
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Integration Tests (Docker)
-        run: dotnet test -c Release --no-build --filter "Category=Docker" --logger "trx;LogFileName=integration-results.trx" -- RunConfiguration.DisableParallelization=true
+        run: dotnet test -c Release --no-build --framework net10.0 --filter "Category=Docker" --logger "trx;LogFileName=integration-results.trx"
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Stop databases (docker-compose)

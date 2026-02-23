@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
@@ -38,6 +38,14 @@
     <ProjectReference Include="..\NBatch.EntityFrameworkCore\NBatch.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
-  <!-- Integration tests hit a shared SQL Server instance; compile only for a single TFM to avoid cross-process races. -->
+  <!-- Docker integration tests hit a shared SQL Server / PostgreSQL instance;
+       compile them only for a single TFM to avoid cross-process races when
+       dotnet test runs all target frameworks in parallel. -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
+    <Compile Remove="Integration\CrossDatabaseEtlTests.cs" />
+    <Compile Remove="Integration\SqlServerIntegrationTests.cs" />
+    <Compile Remove="Integration\PostgreSqlIntegrationTests.cs" />
+    <Compile Remove="Integration\Fixtures\**" />
+  </ItemGroup>
 
 </Project>
