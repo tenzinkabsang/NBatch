@@ -41,20 +41,30 @@ var job = Job.CreateBuilder("ETL")
 var job = Job.CreateBuilder("csv-import")
     .UseJobStore(connStr, DatabaseProvider.SqlServer)   // optional — enables restart-from-failure
     .AddStep("import", step => step
-        .ReadFrom(new CsvReader<Product>("products.csv", row => new Product
-        {
-            Name  = row.GetString("Name"),
-            Price = row.GetDecimal("Price")
-        }))
+        .ReadFrom(new CsvReader<Product>("data.csv", mapFn)
         .ProcessWith(p => new Product { Name = p.Name.ToUpper(), Price = p.Price })
         .WriteTo(new DbWriter<Product>(dbContext))
         .WithSkipPolicy(SkipPolicy.For<FormatException>(maxSkips: 5))
         .WithChunkSize(100))
     .AddStep("notify", step => step
-        .Execute(() => SendEmailAsync()))
+        .Execute(() => SendEmail()))
     .Build();
 
 await job.RunAsync();
+```
+
+### With Dependency Injection & Hosted Service
+
+```csharp
+builder.Services.AddNBatch(nbatch =>
+{
+    nbatch.AddJob("csv-import", (sp, job) => job
+        .AddStep("import", step => step
+            .ReadFrom(new CsvReader<Product>("data.csv", mapFn))
+            .WriteTo(new DbWriter<Product>(sp.GetRequiredService<AppDbContext>()))
+            .WithChunkSize(100)))
+        .RunEvery(TimeSpan.FromHours(1));
+});
 ```
 
 ## Highlights
