@@ -49,7 +49,7 @@ jobs:
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Test
-        run: dotnet test -c Release --no-build
+        run: dotnet test -c Release --no-build --filter "Category!=Docker" 
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Pack
