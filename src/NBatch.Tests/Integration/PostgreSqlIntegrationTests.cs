@@ -25,9 +25,10 @@ internal sealed class PostgreSqlIntegrationTests
         "Host=localhost;Port=5432;Database=nbatch_integration;Username=nbatch;Password=Password1234;";
 
     [SetUp]
-    public void BeforeEach()
+    public async Task BeforeEach()
     {
         EfJobRepository.ResetInitializationCache();
+        await TruncateEtlTableAsync();
     }
 
     #region Helpers
@@ -434,8 +435,6 @@ internal sealed class PostgreSqlIntegrationTests
     [Test]
     public async Task Large_dataset_db_to_db_etl_within_PostgreSql()
     {
-        await TruncateEtlTableAsync();
-
         await using var readCtx = new TestDbContext(PgOptions);
 
         var job = Job.CreateBuilder(UniqueJobName())
@@ -468,8 +467,6 @@ internal sealed class PostgreSqlIntegrationTests
         var first = await verifyCtx.TestRecordEtls.OrderBy(r => r.Id).FirstAsync();
         Assert.That(first.Code, Is.EqualTo("REC-00001"));
         Assert.That(first.Value, Is.EqualTo(1.23m * 2));
-
-        await TruncateEtlTableAsync();
     }
 
     #endregion

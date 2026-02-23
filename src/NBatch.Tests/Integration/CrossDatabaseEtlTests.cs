@@ -35,15 +35,11 @@ internal sealed class CrossDatabaseEtlTests
         => TestDbContext.ForPostgreSql(PostgreSqlConnectionString);
 
     [SetUp]
-    public void BeforeEach()
+    public async Task BeforeEach()
     {
         EfJobRepository.ResetInitializationCache();
-    }
 
-    [TearDown]
-    public async Task AfterEach()
-    {
-        // Clean ETL destination tables in both databases
+        // Clean ETL destination tables in both databases before each test
         await using var sqlCtx = new TestDbContext(SqlServerOptions);
         await sqlCtx.Database.ExecuteSqlRawAsync("DELETE FROM TestRecordEtl");
 

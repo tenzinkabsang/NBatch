@@ -25,9 +25,10 @@ internal sealed class SqlServerIntegrationTests
         "Server=localhost,1433;Database=NBatch_IntegrationTests;User Id=sa;Password=@Password1234;TrustServerCertificate=True;";
 
     [SetUp]
-    public void BeforeEach()
+    public async Task BeforeEach()
     {
         EfJobRepository.ResetInitializationCache();
+        await TruncateEtlTableAsync();
     }
 
     #region Helpers
@@ -671,8 +672,6 @@ internal sealed class SqlServerIntegrationTests
     [Test]
     public async Task Large_dataset_db_to_db_etl_within_SqlServer()
     {
-        await TruncateEtlTableAsync();
-
         await using var readCtx = new TestDbContext(SqlServerOptions);
 
         var job = Job.CreateBuilder(UniqueJobName())
@@ -706,8 +705,6 @@ internal sealed class SqlServerIntegrationTests
         var first = await verifyCtx.TestRecordEtls.OrderBy(r => r.Id).FirstAsync();
         Assert.That(first.Code, Is.EqualTo("REC-00001"));
         Assert.That(first.Value, Is.EqualTo(1.23m * 2));
-
-        await TruncateEtlTableAsync();
     }
 
     #endregion
