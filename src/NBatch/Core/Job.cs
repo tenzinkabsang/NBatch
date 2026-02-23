@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using NBatch.Core.Interfaces;
 using NBatch.Core.Repositories;
 
@@ -46,16 +46,24 @@ public sealed class Job
 
         List<StepResult> stepResults = [];
 
-        foreach (var (name, step) in _steps)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            foreach (var (name, step) in _steps)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-            var result = await ExecuteStepAsync(name, step, cancellationToken);
+                var result = await ExecuteStepAsync(name, step, cancellationToken);
 
-            stepResults.Add(result);
+                stepResults.Add(result);
 
-            if (!result.Success)
-                break;
+                if (!result.Success)
+                    break;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Job '{JobName}' was cancelled", _jobName);
+            throw;
         }
 
         bool success = stepResults.TrueForAll(r => r.Success);

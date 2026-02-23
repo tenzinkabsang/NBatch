@@ -2,6 +2,7 @@ name: nbatch
 
 volumes:
   sqlserver_data:
+  postgres_data:
 
 services:
   nbatch.database:
@@ -15,6 +16,7 @@ services:
     volumes:
       - sqlserver_data:/var/opt/mssql
       - ./NBatch.ConsoleApp/Scripts:/scripts:ro
+      - ./NBatch.Tests/Scripts:/test-scripts:ro
     command: >
       bash -c "
       /opt/mssql/bin/sqlservr &
@@ -22,11 +24,32 @@ services:
         sleep 2;
       done;
       /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -i /scripts/init-db.sql;
+      /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -i /test-scripts/init-sqlserver.sql;
+      touch /tmp/init-complete;
       wait
       "
     healthcheck:
-      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" -b -o /dev/null
+      test: test -f /tmp/init-complete && /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" -b -o /dev/null
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 60s
+
+  nbatch.postgres:
+    image: postgres:16
+    container_name: nbatch.postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=nbatch
+      - POSTGRES_PASSWORD=Password1234
+      - POSTGRES_DB=nbatch_integration
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./NBatch.Tests/Scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: pg_isready -U nbatch -d nbatch_integration
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
