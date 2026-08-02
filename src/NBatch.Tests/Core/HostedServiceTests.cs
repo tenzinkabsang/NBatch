@@ -189,7 +189,7 @@ internal sealed class HostedServiceTests
                     .WriteTo(new CountingWriter<string>())))
                 .RunEvery(TimeSpan.FromMinutes(30));
 
-            // No schedule — should not be registered as hosted service
+            // No schedule â€” should not be registered as hosted service
             nbatch.AddJob("job-c", job => job
                 .AddStep("s1", step => step
                     .ReadFrom(new ListReader<string>(["c"]))
@@ -328,7 +328,7 @@ internal sealed class HostedServiceTests
         await Task.Delay(200, cts.Token);
         await host.StopAsync(cts.Token);
 
-        // Should not throw — clean shutdown
+        // Should not throw â€” clean shutdown
         Assert.That(writer.WriteCount, Is.GreaterThanOrEqualTo(1));
     }
 

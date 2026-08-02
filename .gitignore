@@ -1,4 +1,4 @@
-S junk files
+# OS junk files
 [Tt]humbs.db
 *.DS_Store
 
@@ -83,7 +83,8 @@ src/*/.vs/*
 # Project-specific ignores
 src/todo.md
 test_output.txt
-icon.png
+nupkgs/
+*.snupkg
 doc_old/
 lib/
 nuget/

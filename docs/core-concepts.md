@@ -16,14 +16,14 @@ NBatch is distributed as two NuGet packages:
 
 | Package | What's inside |
 |---------|---------------|
-| **`NBatch`** | Core framework &mdash; job builder, step pipeline, readers, writers, skip policies, DI integration, hosted service |
-| **`NBatch.EntityFrameworkCore`** | EF Core job store for restart-from-failure &mdash; SQL Server, PostgreSQL, SQLite, MySQL |
+| **`NBatch`** | Core framework &mdash; job builder, step pipeline, `CsvReader`, `FlatFileItemWriter`, skip policies, DI integration, hosted service. No EF Core dependency. |
+| **`NBatch.EntityFrameworkCore`** | `DbReader`/`DbWriter` and the EF Core job store for restart-from-failure &mdash; SQL Server, PostgreSQL, SQLite, MySQL |
 
-Install the core package to get started. Add the EF Core package only if you need persistent job tracking:
+Install the core package to get started. Add the EF Core package if you read/write databases or need persistent job tracking:
 
 ```bash
 dotnet add package NBatch
-dotnet add package NBatch.EntityFrameworkCore   # optional
+dotnet add package NBatch.EntityFrameworkCore   # DbReader/DbWriter + job store
 ```
 
 ---
@@ -173,8 +173,9 @@ Returned by `job.RunAsync()`:
 | Property | Type | Description |
 |----------|------|-------------|
 | `Name` | `string` | The job name |
-| `Success` | `bool` | `true` if all steps succeeded |
+| `Success` | `bool` | `true` if all steps succeeded and the run was not cancelled |
 | `Steps` | `IReadOnlyList<StepResult>` | Per-step results |
+| `Cancelled` | `bool` | `true` when the run was cancelled |
 
 ### `StepResult`
 
@@ -184,7 +185,7 @@ Returned by `job.RunAsync()`:
 | `Success` | `bool` | Whether the step completed successfully |
 | `ItemsRead` | `int` | Total items read by the reader |
 | `ItemsProcessed` | `int` | Total items written successfully |
-| `ErrorsSkipped` | `int` | Items skipped via the skip policy |
+| `ErrorsSkipped` | `int` | Individual items skipped via the skip policy |
 
 ---
 

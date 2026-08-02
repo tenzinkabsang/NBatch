@@ -12,18 +12,22 @@ NBatch ships with built-in readers and writers for common data sources. You can 
 
 ## Built-in Components
 
-| Component | Direction | Description |
-|-----------|-----------|-------------|
-| `CsvReader<T>` | Read | Delimited text files (CSV, TSV, pipe) |
-| `DbReader<T>` | Read | Any EF Core `DbContext` with pagination |
-| `DbWriter<T>` | Write | Any EF Core `DbContext` |
-| `FlatFileItemWriter<T>` | Write | Serializes objects to delimited text |
+| Component | Package | Direction | Description |
+|-----------|---------|-----------|-------------|
+| `CsvReader<T>` | `NBatch` | Read | Delimited text files (CSV, TSV, pipe) |
+| `DbReader<T>` | `NBatch.EntityFrameworkCore` | Read | Any EF Core `DbContext` with pagination |
+| `DbWriter<T>` | `NBatch.EntityFrameworkCore` | Write | Any EF Core `DbContext` |
+| `FlatFileItemWriter<T>` | `NBatch` | Write | Serializes objects to delimited text |
 
 ---
 
 ## `CsvReader<T>`
 
 Reads items from a delimited text file. Automatically parses headers from the first row.
+
+Fields may be quoted (RFC 4180): a quoted field can contain the delimiter, and `""`
+inside a quoted field is an escaped literal quote. Embedded newlines inside quoted
+fields are **not** supported — the reader is line-based. Values are trimmed.
 
 ```csharp
 var reader = new CsvReader<Product>("products.csv", row => new Product
@@ -62,17 +66,28 @@ The mapping function receives a `CsvRow` with typed accessor methods. Each metho
 | `GetDouble("column")` | `double` | `row.GetDouble("Weight")` or `row.GetDouble(3)` |
 | `GetBool("column")` | `bool` | `row.GetBool("Active")` or `row.GetBool(4)` |
 
+### Error behavior
+
+- A line that fails to parse or map throws a `FlatFileParseException` whose **`LineNumber`**
+  is the 1-based line in the file, with the original error as `InnerException`. Skip
+  policies for either the wrapper or the inner type (e.g. `FormatException`) match it.
+- Duplicate header names are rejected with a clear error.
+- A **missing file** throws `FileNotFoundException` — file I/O errors are never wrapped
+  as parse errors, so they are not accidentally skippable.
+
 ---
 
 ## `DbReader<T>`
 
 Reads entities from any EF Core `DbContext` in paginated chunks. Provider-agnostic -- works with SQL Server, PostgreSQL, SQLite, etc.
 
+> Lives in the **`NBatch.EntityFrameworkCore`** package (namespace `NBatch.Readers.DbReader`).
+
 ```csharp
 var reader = new DbReader<Product>(dbContext, q => q.OrderBy(p => p.Id));
 ```
 
-The `queryBuilder` parameter applies ordering (and optional filtering) to the queryable. **An `OrderBy` clause is required** for deterministic pagination.
+The `queryBuilder` parameter applies ordering (and optional filtering) to the queryable. **A deterministic `OrderBy` clause is required**: pagination — and the item-level re-reads performed when a chunk fails under a [skip policy](skip-policies) — rely on stable row positions.
 
 ```csharp
 // With filtering
@@ -85,7 +100,9 @@ var reader = new DbReader<Order>(dbContext, q => q
 
 ## `DbWriter<T>`
 
-Writes entities to any EF Core `DbContext`. Calls `AddRange` followed by `SaveChangesAsync`.
+Writes entities to any EF Core `DbContext`. Calls `AddRange` followed by `SaveChangesAsync`, then **detaches** the written entities so the change tracker stays flat on long-running jobs (entities you track separately on a shared context are untouched).
+
+> Lives in the **`NBatch.EntityFrameworkCore`** package (namespace `NBatch.Writers.DbWriter`).
 
 ```csharp
 var writer = new DbWriter<Product>(dbContext);
@@ -127,6 +144,11 @@ public interface IReader<TItem>
 ```
 
 Implement this to read from any source -- REST APIs, message queues, cloud storage, etc.
+
+> **Contract:** `ReadAsync` must honor `startIndex` (random access). When a chunk fails
+> under a skip policy, NBatch re-reads the chunk range one item at a time
+> (`ReadAsync(index, 1)`) to isolate the failing positions — a forward-only reader that
+> ignores `startIndex` will misbehave there and on restarts.
 
 ```csharp
 public class ApiReader<T> : IReader<T>

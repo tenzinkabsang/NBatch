@@ -4,10 +4,10 @@ using NBatch.Core;
 namespace NBatch.ConsoleApp.Demos;
 
 /// <summary>
-/// DEMO 4 � Tasklet Steps
+/// DEMO 4 — Tasklet Steps
 ///
 /// Shows fire-and-forget units of work that don't follow the
-/// reader ? processor ? writer pattern. Two steps:
+/// reader → processor → writer pattern. Two steps:
 ///   Step 1: synchronous Action tasklet (cleanup)
 ///   Step 2: async Func&lt;Task&gt; tasklet (simulated API call)
 ///
@@ -45,6 +45,6 @@ public static class Demo04_TaskletSteps
         var result = await job.RunAsync();
 
         Console.WriteLine();
-        Console.WriteLine($"  Job '{result.Name}' � Success: {result.Success}, Steps: {result.Steps.Count}");
+        Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success}, Steps: {result.Steps.Count}");
     }
 }

@@ -8,7 +8,7 @@ using Serilog;
 namespace NBatch.ConsoleApp.Demos;
 
 /// <summary>
-/// DEMO 8 — BackgroundService with RunOnce / RunEvery
+/// DEMO 8 â€” BackgroundService with RunOnce / RunEvery
 ///
 /// Builds a full .NET Generic Host with two scheduled NBatch jobs:
 ///   - "startup-import" runs once on startup (RunOnce)
@@ -74,7 +74,7 @@ public static class Demo08_BackgroundService
         }
         catch (OperationCanceledException)
         {
-            // Expected — host shut down after 10 seconds
+            // Expected â€” host shut down after 10 seconds
         }
 
         Console.WriteLine();

@@ -58,6 +58,12 @@ var job = Job.CreateBuilder("my-job")
     .Build();
 ```
 
+> `AfterJobAsync` fires on **every** outcome — success, failure, and cancellation
+> (with `result.Cancelled == true`, before `RunAsync` rethrows the
+> `OperationCanceledException`). Note that an exception thrown from a listener on the
+> cancellation path will mask the `OperationCanceledException`, so keep listeners
+> exception-safe.
+
 ---
 
 ## Step Listeners

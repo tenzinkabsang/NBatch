@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NBatch.Core.Exceptions;
 using NBatch.Core.Interfaces;
@@ -8,13 +8,21 @@ namespace NBatch.Core;
 
 /// <summary>
 /// Fluent builder for configuring and creating a <see cref="Job"/>.
+/// Configuration order does not matter: steps registered before
+/// <c>UseJobStore</c> or <see cref="WithLogger"/> still receive the final
+/// repository and logger, which are bound when <see cref="Build"/> is called.
 /// </summary>
 public sealed class JobBuilder
 {
-    private IJobRepository _jobRepository;
-    private readonly Dictionary<string, IStep> _steps = [];
-    private readonly Dictionary<string, List<IStepListener>> _stepListeners = [];
+    private sealed record StepDefinition(
+        string Name,
+        Func<IJobRepository, ILogger, IStep> Factory,
+        List<IStepListener> Listeners);
+
+    private readonly List<StepDefinition> _stepDefinitions = [];
+    private readonly HashSet<string> _stepNames = [];
     private readonly List<IJobListener> _jobListeners = [];
+    private IJobRepository? _jobRepository;
     private ILogger _logger = NullLogger.Instance;
 
     /// <summary>Gets the name of the job being built.</summary>
@@ -24,7 +32,6 @@ public sealed class JobBuilder
     {
         ArgumentNullException.ThrowIfNull(jobName);
         JobName = jobName;
-        _jobRepository = new InMemoryJobRepository(jobName);
     }
 
     /// <summary>
@@ -56,7 +63,7 @@ public sealed class JobBuilder
         return this;
     }
 
-    /// <summary>Adds a named step to the job.</summary>
+    /// <summary>Adds a named step to the job. Steps execute in registration order.</summary>
     /// <param name="stepName">A unique name for this step.</param>
     /// <param name="configure">A delegate that configures the step pipeline.</param>
     public JobBuilder AddStep(string stepName, Func<IStepBuilderReadFrom, IStepBuilderFinal> configure)
@@ -79,26 +86,41 @@ public sealed class JobBuilder
         int chunkSize,
         List<IStepListener> stepListeners)
     {
-        if (_steps.ContainsKey(stepName))
+        if (!_stepNames.Add(stepName))
             throw new DuplicateStepNameException();
 
-        var step = new Step<TInput, TOutput>(stepName, reader, processor, writer, _jobRepository, _logger, skipPolicy, chunkSize);
-        _steps.Add(step.Name, step);
-        if (stepListeners.Count > 0)
-            _stepListeners[stepName] = stepListeners;
+        _stepDefinitions.Add(new StepDefinition(
+            stepName,
+            (repository, logger) => new Step<TInput, TOutput>(
+                stepName, reader, processor, writer, repository, logger, skipPolicy, chunkSize),
+            stepListeners));
     }
 
     internal void RegisterTaskletStep(string stepName, ITasklet tasklet, List<IStepListener> stepListeners)
     {
-        if (_steps.ContainsKey(stepName))
+        if (!_stepNames.Add(stepName))
             throw new DuplicateStepNameException();
 
-        var step = new TaskletStep(stepName, tasklet, _jobRepository, _logger);
-        _steps.Add(step.Name, step);
-        if (stepListeners.Count > 0)
-            _stepListeners[stepName] = stepListeners;
+        _stepDefinitions.Add(new StepDefinition(
+            stepName,
+            (repository, logger) => new TaskletStep(stepName, tasklet, repository, logger),
+            stepListeners));
     }
 
     /// <summary>Creates the configured <see cref="Job"/> instance.</summary>
-    public Job Build() => new(JobName, _steps, _jobRepository, _jobListeners, _stepListeners, _logger);
+    public Job Build()
+    {
+        var repository = _jobRepository ?? new InMemoryJobRepository(JobName);
+        var steps = new List<IStep>(_stepDefinitions.Count);
+        var stepListeners = new Dictionary<string, List<IStepListener>>();
+
+        foreach (var definition in _stepDefinitions)
+        {
+            steps.Add(definition.Factory(repository, _logger));
+            if (definition.Listeners.Count > 0)
+                stepListeners[definition.Name] = definition.Listeners;
+        }
+
+        return new Job(JobName, steps, repository, _jobListeners, stepListeners, _logger);
+    }
 }

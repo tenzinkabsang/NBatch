@@ -45,7 +45,7 @@ jobs:
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Build
-        run: dotnet build -c Release --no-restore /p:ContinuousIntegrationBuild=true /warnaserror
+        run: dotnet build -c Release --no-restore /p:ContinuousIntegrationBuild=true /p:Version=${{ env.VERSION }} /warnaserror
         working-directory: ${{ env.SOLUTION_DIR }}
 
       - name: Test

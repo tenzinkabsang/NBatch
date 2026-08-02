@@ -27,6 +27,9 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             
             entity.Property(e => e.LastRun)
             .HasColumnName("last_run");
+
+            entity.Property(e => e.LastRunSuccess)
+            .HasColumnName("last_run_success");
         });
 
         modelBuilder.Entity<StepEntity>(entity =>

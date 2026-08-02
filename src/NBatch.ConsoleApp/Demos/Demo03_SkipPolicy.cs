@@ -5,11 +5,12 @@ using NBatch.Readers.FileReader;
 namespace NBatch.ConsoleApp.Demos;
 
 /// <summary>
-/// DEMO 3 — Skip Policy
+/// DEMO 3 â€” Skip Policy
 ///
 /// Intentionally throws on items priced above $700 to demonstrate
-/// SkipPolicy.For&lt;T&gt;() — the job continues processing remaining items
-/// and reports skipped errors in the result.
+/// SkipPolicy.For&lt;T&gt;() â€” skipping is item-level: only the failing items
+/// are skipped, the rest of each chunk is still written, and the job
+/// reports the skipped count in the result.
 ///
 /// Features: SkipPolicy.For&lt;T&gt;(), error tolerance, WithChunkSize
 /// </summary>
@@ -37,7 +38,7 @@ public static class Demo03_SkipPolicy
                 .WriteTo(items =>
                 {
                     foreach (var item in items)
-                        Console.WriteLine($"    ? {item.Name} — ${item.Price}");
+                        Console.WriteLine($"    âœ“ {item.Name} â€” ${item.Price}");
                     return Task.CompletedTask;
                 })
                 .WithSkipPolicy(SkipPolicy.For<InvalidOperationException>(maxSkips: 10))
@@ -47,7 +48,7 @@ public static class Demo03_SkipPolicy
         var result = await job.RunAsync();
 
         Console.WriteLine();
-        Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success}");
+        Console.WriteLine($"  Job '{result.Name}' â€” Success: {result.Success}");
         foreach (var step in result.Steps)
             Console.WriteLine($"    Step '{step.Name}': Read={step.ItemsRead}, Processed={step.ItemsProcessed}, Skipped={step.ErrorsSkipped}");
     }

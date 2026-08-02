@@ -24,12 +24,37 @@ public sealed class SkipPolicy
         _skipLimit = skipLimit;
     }
 
-    internal async Task<bool> IsSatisfiedByAsync(IStepRepository stepRepository, SkipContext skipContext, CancellationToken cancellationToken = default)
+    private const int MaxInnerExceptionDepth = 10;
+
+    /// <summary>
+    /// Whether the exception is of a skippable type. Matches subclasses
+    /// (e.g. a policy for <see cref="IOException"/> matches <see cref="FileNotFoundException"/>)
+    /// and walks the <see cref="Exception.InnerException"/> chain so wrapped errors
+    /// (e.g. a parse exception wrapping a <see cref="FormatException"/>) also match.
+    /// </summary>
+    internal bool Matches(Exception exception)
     {
         if (_skippableExceptions.Length == 0 || _skipLimit == 0)
             return false;
 
-        if (!_skippableExceptions.Contains(skipContext.ExceptionType))
+        var current = exception;
+        for (int depth = 0; current is not null && depth <= MaxInnerExceptionDepth; depth++)
+        {
+            var thrownType = current.GetType();
+            foreach (var skippable in _skippableExceptions)
+            {
+                if (skippable.IsAssignableFrom(thrownType))
+                    return true;
+            }
+            current = current.InnerException;
+        }
+
+        return false;
+    }
+
+    internal async Task<bool> IsSatisfiedByAsync(IStepRepository stepRepository, SkipContext skipContext, CancellationToken cancellationToken = default)
+    {
+        if (!Matches(skipContext.Exception))
             return false;
 
         int exceptionCount = await stepRepository.GetExceptionCountAsync(skipContext, cancellationToken);

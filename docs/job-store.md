@@ -6,7 +6,7 @@ nav_order: 5
 
 # Job Store
 
-The **job store** gives NBatch **restart-from-failure** capability. It tracks which chunks have been processed, so if a job crashes mid-way, the next run resumes where it left off instead of reprocessing everything.
+The **job store** gives NBatch **restart-from-failure** capability. It tracks which chunks have been processed, so if a job crashes mid-way, the next run resumes where it left off instead of reprocessing everything. After a **successful** run the job automatically resets, so the next run starts fresh — a scheduled job reprocesses on every interval.
 
 The job store lives in a separate package &mdash; install it alongside the core:
 
@@ -63,17 +63,32 @@ The `DatabaseProvider` enum:
 
 ## How It Works
 
-1. When a job starts, NBatch creates a **job record** in the tracking database.
+1. When a job starts, NBatch creates or updates a **job record** in the tracking database and marks the run as in-flight.
 2. Before each chunk is processed, NBatch inserts a **step record** with the current chunk index.
 3. After each chunk completes, the step record is updated with success/failure status.
-4. On the next run, NBatch queries the last successful chunk index and **resumes from there**.
+4. When the run finishes, the outcome is recorded on the job record.
+5. On the next run, that outcome decides between **reset** and **resume**:
+
+| Previous run | Next run |
+|--------------|----------|
+| Completed successfully | **Starts fresh** — step progress resets to the beginning, tasklets run again |
+| Failed | Resumes; the failed chunk backs up one chunk and retries; tasklets that already completed are skipped |
+| Crashed mid-run | Resumes from the last recorded chunk |
+| Cancelled | Resumes; the chunk that was aborted is retried |
 
 ### Restart Flow
 
 ```
 Run 1:  Chunk 0 [ok] -> Chunk 1 [ok] -> Chunk 2 [ok] -> Chunk 3 [CRASH]
 Run 2:  Resumes from Chunk 3 -> Chunk 3 [ok] -> Chunk 4 [ok] -> Done!
+Run 3:  Previous run succeeded -> starts fresh from Chunk 0
 ```
+
+Because a failed run may retry a partially processed chunk, delivery is **at-least-once**:
+writers should be idempotent or tolerate re-written items.
+
+> **Note:** Running the same job concurrently (two hosts, or a manual run overlapping a
+> scheduled one) is not supported — both runs would read and advance the same progress.
 
 ### Schema
 
@@ -81,9 +96,17 @@ All tracking tables are created under the `nbatch` schema:
 
 | Table | Purpose |
 |-------|---------|
-| `nbatch.jobs` | One row per job &mdash; name, creation date, last run |
+| `nbatch.jobs` | One row per job &mdash; name, creation date, last run, last run outcome |
 | `nbatch.steps` | One row per chunk processed &mdash; step index, items count, errors |
-| `nbatch.step_exceptions` | One row per skipped exception &mdash; type, message, stack trace |
+| `nbatch.step_exceptions` | One row per skipped item &mdash; item index, message, stack trace |
+
+### Upgrading from NBatch 2.x
+
+Version 3 adds a `last_run_success` column to `nbatch.jobs`. NBatch adds it automatically
+(and idempotently) the first time it touches an existing 2.x database. If your database user
+cannot run DDL, apply it manually — see the [CHANGELOG](https://github.com/tenzinkabsang/NBatch/blob/main/CHANGELOG.md)
+for the per-provider `ALTER TABLE` statements. The first v3 run against a v2 database
+resumes (old behavior); auto-reset applies from the next completed run onward.
 
 ---
 
@@ -129,7 +152,9 @@ var job = Job.CreateBuilder("simple-job")
 
 ## Resetting the Job Store
 
-If you need to reprocess data from scratch, reset the tracking tables:
+A successful run resets automatically, so manual resets are rarely needed. To force a
+**failed** job to start from scratch instead of resuming (e.g. after fixing bad source
+data), clear the tracking tables:
 
 ```sql
 -- Clear all tracking data

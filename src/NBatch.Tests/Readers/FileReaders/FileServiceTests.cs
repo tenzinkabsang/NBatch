@@ -87,7 +87,7 @@ internal class FileServiceTests
 
         // Read chunk starting at line 5
         var first = await service.ReadLinesAsync(5, 2).ToListAsync();
-        // Now request an earlier line — must reset the reader
+        // Now request an earlier line â€” must reset the reader
         var second = await service.ReadLinesAsync(1, 2).ToListAsync();
 
         Assert.That(first, Is.EqualTo(new[] { "line5", "line6" }));
@@ -99,7 +99,7 @@ internal class FileServiceTests
     {
         using var service = new FileService(_tempFile);
 
-        // Read chunk 0–2, then skip ahead to 6
+        // Read chunk 0â€“2, then skip ahead to 6
         var chunk1 = await service.ReadLinesAsync(0, 3).ToListAsync();
         var chunk2 = await service.ReadLinesAsync(6, 3).ToListAsync();
 
@@ -136,15 +136,15 @@ internal class FileServiceTests
     {
         // Simulates exactly what CsvReader does:
         //   1. Read line 0 (header)
-        //   2. Read lines 1–3 (chunk 0, adjustedIndex = startIndex + 1)
-        //   3. Read lines 4–6 (chunk 1)
+        //   2. Read lines 1â€“3 (chunk 0, adjustedIndex = startIndex + 1)
+        //   3. Read lines 4â€“6 (chunk 1)
         using var service = new FileService(_tempFile);
 
-        // Header read — CsvReader reads (0, 1)
+        // Header read â€” CsvReader reads (0, 1)
         var header = await service.ReadLinesAsync(0, 1).ToListAsync();
-        // Chunk 0 — CsvReader reads (adjustedIndex=1, chunkSize=3)
+        // Chunk 0 â€” CsvReader reads (adjustedIndex=1, chunkSize=3)
         var chunk0 = await service.ReadLinesAsync(1, 3).ToListAsync();
-        // Chunk 1 — CsvReader reads (adjustedIndex=4, chunkSize=3)
+        // Chunk 1 â€” CsvReader reads (adjustedIndex=4, chunkSize=3)
         var chunk1 = await service.ReadLinesAsync(4, 3).ToListAsync();
 
         Assert.That(header, Is.EqualTo(new[] { "header" }));
@@ -161,7 +161,7 @@ internal class FileServiceTests
 
         // Service1 reads chunk 0
         var s1chunk = await service1.ReadLinesAsync(0, 3).ToListAsync();
-        // Service2 reads chunk 0 independently — not affected by service1's position
+        // Service2 reads chunk 0 independently â€” not affected by service1's position
         var s2chunk = await service2.ReadLinesAsync(0, 3).ToListAsync();
 
         Assert.That(s1chunk, Is.EqualTo(new[] { "header", "line1", "line2" }));
@@ -192,9 +192,9 @@ internal class FileServiceTests
         using var reader = new CsvReader<(string Name, int Age)>(_tempFile,
             row => (row.GetString("Name"), row.GetInt("Age")));
 
-        // Chunk 0: lines 1–2 (startIndex=0, chunkSize=2, adjustedIndex=1)
+        // Chunk 0: lines 1â€“2 (startIndex=0, chunkSize=2, adjustedIndex=1)
         var chunk0 = (await reader.ReadAsync(0, 2)).ToList();
-        // Chunk 1: lines 3–4 (startIndex=2, chunkSize=2, adjustedIndex=3)
+        // Chunk 1: lines 3â€“4 (startIndex=2, chunkSize=2, adjustedIndex=3)
         var chunk1 = (await reader.ReadAsync(2, 2)).ToList();
         // Chunk 2: line 5 only (startIndex=4, chunkSize=2, adjustedIndex=5)
         var chunk2 = (await reader.ReadAsync(4, 2)).ToList();

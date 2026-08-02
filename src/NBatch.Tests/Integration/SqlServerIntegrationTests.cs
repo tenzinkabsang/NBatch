@@ -4,6 +4,7 @@ using NBatch.Core.Interfaces;
 using NBatch.Core.Repositories;
 using NBatch.Readers.DbReader;
 using NBatch.Tests.Integration.Fixtures;
+using NBatch.Writers.DbWriter;
 using NUnit.Framework;
 
 namespace NBatch.Tests.Integration;
@@ -78,6 +79,21 @@ internal sealed class SqlServerIntegrationTests
         {
             if (++_calls <= failCount)
                 throw new TimeoutException($"Transient failure #{_calls}");
+            return Task.FromResult(input);
+        }
+    }
+
+    /// <summary>
+    /// A processor that deterministically fails for specific items. Preferred over
+    /// call-counting processors: the scan re-invokes the processor for items of a
+    /// failed chunk, so failures must be keyed to the item, not the call number.
+    /// </summary>
+    private sealed class FailForItemsProcessor<T>(Func<T, bool> shouldFail) : IProcessor<T, T>
+    {
+        public Task<T> ProcessAsync(T input, CancellationToken cancellationToken = default)
+        {
+            if (shouldFail(input))
+                throw new TimeoutException($"Simulated failure for item '{input}'");
             return Task.FromResult(input);
         }
     }
@@ -216,7 +232,7 @@ internal sealed class SqlServerIntegrationTests
     public async Task Skip_policy_works_with_SqlServer()
     {
         var data = new[] { "a", "b" };
-        var processor = new FailNTimesProcessor<string>(failCount: 1);
+        var processor = new FailForItemsProcessor<string>(s => s == "a");
         var skipPolicy = new SkipPolicy([typeof(TimeoutException)], skipLimit: 2);
         var writer = new CollectingWriter<string>();
 
@@ -260,13 +276,13 @@ internal sealed class SqlServerIntegrationTests
         Assert.That(result1.Success, Is.True);
         Assert.That(result1.Steps[0].ErrorsSkipped, Is.EqualTo(2));
 
-        // Run 2: budget should reset. Resumes from index 2, items at indices 2-3
-        // fail and are skipped using the freshly reset budget.
-        var data2 = new[] { "a", "b", "c", "d" };
+        // Run 2: the successful run auto-reset the job, and the skip budget is
+        // per-execution. Both items fail again — if the budget carried over from
+        // run 1 (already 2/2 used), the first failure would abort the step.
         var job2 = Job.CreateBuilder(jobName)
             .UseJobStore(ConnectionString, DatabaseProvider.SqlServer)
             .AddStep("step1", step => step
-                .ReadFrom(new ListReader<string>(data2))
+                .ReadFrom(new ListReader<string>(data))
                 .ProcessWith(new FailNTimesProcessor<string>(failCount: int.MaxValue))
                 .WriteTo(new CollectingWriter<string>())
                 .WithSkipPolicy(skipPolicy)
@@ -303,9 +319,9 @@ internal sealed class SqlServerIntegrationTests
         Assert.That(result1.Success, Is.False);
         Assert.That(writer1.Written, Is.Empty);
 
-        // Run 2: processor fails once then succeeds.
+        // Run 2: only item "b" still fails.
         //   Resumes from index 1 (backed up from error at index 2).
-        //   index 1 ("b") → fails (call #1) → budget reset, skipped (budget 0/1)
+        //   index 1 ("b") → fails → budget reset, skipped (budget 1/1)
         //   index 2 ("c") → succeeds → written
         //   index 3 ("d") → succeeds → written
         var writer2 = new CollectingWriter<string>();
@@ -313,7 +329,7 @@ internal sealed class SqlServerIntegrationTests
             .UseJobStore(ConnectionString, DatabaseProvider.SqlServer)
             .AddStep("step1", step => step
                 .ReadFrom(new ListReader<string>(data))
-                .ProcessWith(new FailNTimesProcessor<string>(failCount: 1))
+                .ProcessWith(new FailForItemsProcessor<string>(s => s == "b"))
                 .WriteTo(writer2)
                 .WithSkipPolicy(skipPolicy)
                 .WithChunkSize(1))
@@ -369,7 +385,7 @@ internal sealed class SqlServerIntegrationTests
     #region 6 — Completed job produces zero items on re-run
 
     [Test]
-    public async Task Completed_job_produces_zero_items_on_rerun_with_SqlServer()
+    public async Task Completed_job_auto_resets_and_reprocesses_on_rerun_with_SqlServer()
     {
         var data = new[] { "a", "b", "c" };
         var jobName = UniqueJobName();
@@ -387,7 +403,7 @@ internal sealed class SqlServerIntegrationTests
         Assert.That(result1.Success, Is.True);
         Assert.That(writer1.Written, Is.EqualTo(new[] { "a", "b", "c" }));
 
-        // Run 2: same job name → should resume past all data.
+        // Run 2: same job name → the successful run auto-reset, so everything reprocesses.
         var writer2 = new CollectingWriter<string>();
         var job2 = Job.CreateBuilder(jobName)
             .UseJobStore(ConnectionString, DatabaseProvider.SqlServer)
@@ -399,8 +415,8 @@ internal sealed class SqlServerIntegrationTests
 
         var result2 = await job2.RunAsync();
         Assert.That(result2.Success, Is.True);
-        Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(0));
-        Assert.That(writer2.Written, Is.Empty);
+        Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(3));
+        Assert.That(writer2.Written, Is.EqualTo(new[] { "a", "b", "c" }));
     }
 
     #endregion
@@ -642,10 +658,11 @@ internal sealed class SqlServerIntegrationTests
         await using var ctx = new TestDbContext(SqlServerOptions);
         var writer = new CollectingWriter<TestRecord>();
 
-        // Processor fails on first 3 items, then succeeds.
-        // With chunk size 1 and skip limit 5, first 3 chunks are skipped.
+        // Processor deterministically fails for the first 3 record codes.
+        // With chunk size 1 and skip limit 5, those 3 items are skipped.
         var skipPolicy = new SkipPolicy([typeof(TimeoutException)], skipLimit: 5);
-        var processor = new FailNTimesProcessor<TestRecord>(failCount: 3);
+        var failingCodes = new HashSet<string> { "REC-00001", "REC-00002", "REC-00003" };
+        var processor = new FailForItemsProcessor<TestRecord>(r => failingCodes.Contains(r.Code));
 
         // Use a small filtered subset (first 10 records) to keep the test fast
         var job = Job.CreateBuilder(UniqueJobName())
@@ -707,6 +724,47 @@ internal sealed class SqlServerIntegrationTests
         Assert.That(first.Value, Is.EqualTo(1.23m * 2));
     }
 
+    [Test]
+    public async Task DbWriter_detaches_entities_after_write_SqlServer()
+    {
+        // A long-running job must not accumulate entities in the change tracker:
+        // after the run, the shared write context should track nothing.
+        await using var readCtx = new TestDbContext(SqlServerOptions);
+        await using var writeCtx = new TestDbContext(SqlServerOptions);
+
+        var job = Job.CreateBuilder(UniqueJobName())
+            .UseJobStore(ConnectionString, DatabaseProvider.SqlServer)
+            .AddStep("etl", step => step
+                .ReadFrom(new DbReader<TestRecord>(readCtx, q => q.OrderBy(r => r.Id).Take(100)))
+                .ProcessWith(r => new TestRecordEtl
+                {
+                    Code = r.Code,
+                    Value = r.Value,
+                    Category = r.Category
+                })
+                .WriteTo(new DbWriter<TestRecordEtl>(writeCtx))
+                .WithChunkSize(10))
+            .Build();
+
+        var result = await job.RunAsync();
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(100));
+        Assert.That(writeCtx.ChangeTracker.Entries().Count(), Is.EqualTo(0),
+            "DbWriter must detach written entities so the tracker does not grow");
+    }
+
+    [Test]
+    public void DbReader_rejects_start_index_beyond_int_max()
+    {
+        using var ctx = new TestDbContext(SqlServerOptions);
+        var reader = new DbReader<TestRecord>(ctx, q => q.OrderBy(r => r.Id));
+
+        // The guard throws before any query is issued.
+        Assert.ThrowsAsync<ArgumentOutOfRangeException>(
+            () => reader.ReadAsync((long)int.MaxValue + 1, 10));
+    }
+
     #endregion
 
     #region 11 — Cancellation
@@ -740,7 +798,7 @@ internal sealed class SqlServerIntegrationTests
     #region 12 — Completed DB job produces zero items on re-run
 
     [Test]
-    public async Task Completed_db_job_produces_zero_items_on_rerun_SqlServer()
+    public async Task Completed_db_job_auto_resets_and_reprocesses_on_rerun_SqlServer()
     {
         var jobName = UniqueJobName();
 
@@ -760,7 +818,7 @@ internal sealed class SqlServerIntegrationTests
             Assert.That(writer1.Written, Has.Count.EqualTo(50_000));
         }
 
-        // Run 2: same job name → resumes past all data, reads 0 items
+        // Run 2: same job name → the successful run auto-reset, so all rows reprocess.
         var writer2 = new CollectingWriter<TestRecord>();
         await using (var ctx2 = new TestDbContext(SqlServerOptions))
         {
@@ -774,8 +832,8 @@ internal sealed class SqlServerIntegrationTests
 
             var result2 = await job2.RunAsync();
             Assert.That(result2.Success, Is.True);
-            Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(0));
-            Assert.That(writer2.Written, Is.Empty);
+            Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(50_000));
+            Assert.That(writer2.Written, Has.Count.EqualTo(50_000));
         }
     }
 

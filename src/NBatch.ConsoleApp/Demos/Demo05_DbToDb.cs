@@ -7,7 +7,7 @@ using NBatch.Writers.DbWriter;
 namespace NBatch.ConsoleApp.Demos;
 
 /// <summary>
-/// DEMO 5 — DB ? DB with Job Store  (requires SQL Server via docker-compose)
+/// DEMO 5 â€” DB â†’ DB with Job Store  (requires SQL Server via docker-compose)
 ///
 /// Reads products from SQL Server, lowercases all fields via IProcessor,
 /// writes to a destination table. Uses UseJobStore for restart-from-failure tracking.
@@ -34,7 +34,7 @@ public static class Demo05_DbToDb
 
         var result = await job.RunAsync();
 
-        Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success}");
+        Console.WriteLine($"  Job '{result.Name}' â€” Success: {result.Success}");
         foreach (var step in result.Steps)
             Console.WriteLine($"    Step '{step.Name}': Read={step.ItemsRead}, Processed={step.ItemsProcessed}, Skipped={step.ErrorsSkipped}");
     }

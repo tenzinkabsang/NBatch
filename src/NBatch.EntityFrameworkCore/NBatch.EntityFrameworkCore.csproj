@@ -8,7 +8,7 @@
 
     <!-- NuGet package metadata -->
     <PackageId>NBatch.EntityFrameworkCore</PackageId>
-    <Version>2.0.0</Version>
+    <Version>3.0.0</Version>
     <Authors>Tenzin Kabsang</Authors>
     <Description>Entity Framework Core-based job store for NBatch. Provides SQL Server, PostgreSQL, SQLite, and MySQL/MariaDB support for persistent job tracking and restart-from-failure.</Description>
     <PackageTags>batch;etl;nbatch;efcore;sqlserver;postgresql;sqlite;mysql;mariadb;jobstore</PackageTags>
@@ -17,7 +17,8 @@
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>v2.0.0 — EF Core job store split from core NBatch package.</PackageReleaseNotes>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReleaseNotes>v3.0.0 â€” DbReader/DbWriter now live in this package (namespaces unchanged). Job-completion tracking (last_run_success) with automatic idempotent schema upgrade for v2 databases; completed jobs auto-reset on the next run. DbWriter detaches written entities after each save.</PackageReleaseNotes>
     <Copyright>Copyright (c) Tenzin Kabsang</Copyright>
 
     <!-- Build quality -->
@@ -38,6 +39,7 @@
 
   <!-- net8.0 -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.24" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.24" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.24" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
@@ -46,17 +48,25 @@
 
   <!-- net9.0 -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.13" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
   </ItemGroup>
 
-  <!-- net10.0 (Pomelo.EntityFrameworkCore.MySql does not yet support EF Core 10 — will be added when available) -->
+  <!-- net10.0 (Pomelo.EntityFrameworkCore.MySql does not yet support EF Core 10 â€” will be added when available) -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- Pins SQLitePCLRaw above 2.1.11 (transitive via the Sqlite provider),
+       which has a known high-severity vulnerability (GHSA-2m69-gcr7-jv3q). -->
+  <ItemGroup>
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
   </ItemGroup>
 
   <ItemGroup>
@@ -72,6 +82,7 @@
   <!-- Files to embed in the .nupkg -->
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

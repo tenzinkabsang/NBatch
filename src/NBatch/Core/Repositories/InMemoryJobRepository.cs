@@ -6,19 +6,36 @@ internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
 {
     private long _nextId;
     private long _executionId;
+    private bool? _lastRunSuccess;
     private readonly ConcurrentDictionary<long, StepEntry> _steps = new();
-    private readonly ConcurrentBag<ExceptionEntry> _exceptions = [];
+    private ConcurrentBag<ExceptionEntry> _exceptions = [];
 
     public Task<long> CreateJobRecordAsync(ICollection<string> stepNames, CancellationToken cancellationToken = default)
     {
-        _executionId = Interlocked.Increment(ref _nextId);
-
-        foreach (var stepName in stepNames)
+        // First run, or the previous run completed successfully: start fresh.
+        // A failed (or crashed/cancelled) previous run keeps its progress so the
+        // new run resumes — matching the persistent job-store contract.
+        if (_lastRunSuccess != false)
         {
-            long id = Interlocked.Increment(ref _nextId);
-            _steps[id] = new StepEntry(stepName, StepIndex: 0, NumberOfItemsProcessed: 0);
+            _steps.Clear();
+            _exceptions = [];
+
+            foreach (var stepName in stepNames)
+            {
+                long id = Interlocked.Increment(ref _nextId);
+                _steps[id] = new StepEntry(stepName, StepIndex: 0, NumberOfItemsProcessed: 0);
+            }
         }
+
+        _lastRunSuccess = null; // in-flight
+        _executionId = Interlocked.Increment(ref _nextId);
         return Task.FromResult(_executionId);
+    }
+
+    public Task MarkJobCompleteAsync(bool success, CancellationToken cancellationToken = default)
+    {
+        _lastRunSuccess = success;
+        return Task.CompletedTask;
     }
 
     public Task<StepContext> GetStartIndexAsync(string stepName, CancellationToken cancellationToken = default)

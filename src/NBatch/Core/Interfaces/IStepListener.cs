@@ -2,7 +2,7 @@ namespace NBatch.Core.Interfaces;
 
 /// <summary>
 /// Receives callbacks before and after a step executes.
-/// Implement only the methods you need — both have no-op defaults.
+/// Implement only the methods you need â€” both have no-op defaults.
 /// </summary>
 public interface IStepListener
 {

@@ -82,6 +82,21 @@ internal sealed class PostgreSqlIntegrationTests
         }
     }
 
+    /// <summary>
+    /// A processor that deterministically fails for specific items. Preferred over
+    /// call-counting processors: the scan re-invokes the processor for items of a
+    /// failed chunk, so failures must be keyed to the item, not the call number.
+    /// </summary>
+    private sealed class FailForItemsProcessor<T>(Func<T, bool> shouldFail) : IProcessor<T, T>
+    {
+        public Task<T> ProcessAsync(T input, CancellationToken cancellationToken = default)
+        {
+            if (shouldFail(input))
+                throw new TimeoutException($"Simulated failure for item '{input}'");
+            return Task.FromResult(input);
+        }
+    }
+
     private sealed class FailAfterNItemsProcessor<T>(int succeedCount) : IProcessor<T, T>
     {
         private int _processed;
@@ -180,7 +195,7 @@ internal sealed class PostgreSqlIntegrationTests
     public async Task Skip_policy_works_with_PostgreSql()
     {
         var data = new[] { "a", "b" };
-        var processor = new FailNTimesProcessor<string>(failCount: 1);
+        var processor = new FailForItemsProcessor<string>(s => s == "a");
         var skipPolicy = new SkipPolicy([typeof(TimeoutException)], skipLimit: 2);
         var writer = new CollectingWriter<string>();
 
@@ -538,10 +553,10 @@ internal sealed class PostgreSqlIntegrationTests
 
     #endregion
 
-    #region 10 — Completed DB job produces zero items on re-run (PostgreSQL)
+    #region 10 — Completed DB job auto-resets on re-run (PostgreSQL)
 
     [Test]
-    public async Task Completed_db_job_produces_zero_items_on_rerun_PostgreSql()
+    public async Task Completed_db_job_auto_resets_and_reprocesses_on_rerun_PostgreSql()
     {
         var jobName = UniqueJobName();
 
@@ -574,8 +589,9 @@ internal sealed class PostgreSqlIntegrationTests
 
             var result2 = await job2.RunAsync();
             Assert.That(result2.Success, Is.True);
-            Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(0));
-            Assert.That(writer2.Written, Is.Empty);
+            // The successful first run auto-reset the job → everything reprocesses.
+            Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(50_000));
+            Assert.That(writer2.Written, Has.Count.EqualTo(50_000));
         }
     }
 

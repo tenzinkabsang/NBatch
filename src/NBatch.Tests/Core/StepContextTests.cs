@@ -32,7 +32,7 @@ internal class StepContextTests
         var current = StepContext.Increment(previous,
             itemsReceived: 1,
             itemsProcessed: 1,
-            skipped: false);
+            itemsSkipped: 0);
         Assert.That(current.StepIndex, Is.EqualTo(6));
     }
 
@@ -114,19 +114,20 @@ internal class StepContextTests
     {
         var previous = new StepContext { StepName = "import", StepIndex = 0, ChunkSize = 10 };
 
-        var current = StepContext.Increment(previous, itemsReceived: 5, itemsProcessed: 5, skipped: false);
+        var current = StepContext.Increment(previous, itemsReceived: 5, itemsProcessed: 5, itemsSkipped: 0);
 
         Assert.That(current.StepName, Is.EqualTo("import"));
     }
 
     [Test]
-    public void Increment_sets_skip_flag()
+    public void Increment_sets_skip_flag_and_item_count()
     {
         var previous = new StepContext { StepIndex = 0, ChunkSize = 5 };
 
-        var current = StepContext.Increment(previous, itemsReceived: 5, itemsProcessed: 0, skipped: true);
+        var current = StepContext.Increment(previous, itemsReceived: 5, itemsProcessed: 3, itemsSkipped: 2);
 
         Assert.That(current.Skip, Is.True);
+        Assert.That(current.NumberOfItemsSkipped, Is.EqualTo(2));
         Assert.That(current.HasNext, Is.True);
     }
 

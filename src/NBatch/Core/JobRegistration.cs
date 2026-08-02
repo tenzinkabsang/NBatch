@@ -4,7 +4,7 @@ namespace NBatch.Core;
 /// Represents a registered job and allows configuring its execution schedule.
 /// Returned by <see cref="NBatchBuilder.AddJob(string, Action{JobBuilder})"/>.
 /// <para>
-/// Jobs without a schedule are on-demand only — triggered via <see cref="IJobRunner.RunAsync"/>.
+/// Jobs without a schedule are on-demand only â€” triggered via <see cref="IJobRunner.RunAsync"/>.
 /// </para>
 /// </summary>
 public sealed class JobRegistration

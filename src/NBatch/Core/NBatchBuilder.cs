@@ -18,6 +18,9 @@ public sealed class NBatchBuilder
         ArgumentNullException.ThrowIfNull(jobName);
         ArgumentNullException.ThrowIfNull(configure);
 
+        if (Factories.ContainsKey(jobName))
+            throw new ArgumentException($"A job named '{jobName}' is already registered.", nameof(jobName));
+
         Factories[jobName] = _ =>
         {
             var builder = new JobBuilder(jobName);
@@ -40,6 +43,9 @@ public sealed class NBatchBuilder
     {
         ArgumentNullException.ThrowIfNull(jobName);
         ArgumentNullException.ThrowIfNull(configure);
+
+        if (Factories.ContainsKey(jobName))
+            throw new ArgumentException($"A job named '{jobName}' is already registered.", nameof(jobName));
 
         Factories[jobName] = sp =>
         {

@@ -1,7 +1,8 @@
 -- =============================================================================
 -- Product table & seed data for the NBatch console app samples.
--- NBatch tracking tables (BatchJob, BatchStep, etc.) are created automatically
--- by EfJobRepository via EnsureCreatedAsync — no script needed for those.
+-- NBatch tracking tables (nbatch.jobs, nbatch.steps, nbatch.step_exceptions)
+-- are created automatically
+-- by EfJobRepository via EnsureCreatedAsync â€” no script needed for those.
 --
 -- Run against SQL Server after docker-compose up:
 --   sqlcmd -S localhost -U sa -P @Password1234 -i init-db.sql

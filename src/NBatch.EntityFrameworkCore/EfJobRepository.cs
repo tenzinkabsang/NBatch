@@ -11,6 +11,7 @@ internal sealed class EfJobRepository : IJobRepository
 {
     private readonly string _jobName;
     private readonly string _connectionString;
+    private readonly DatabaseProvider _provider;
     private readonly DbContextOptions<NBatchDbContext> _options;
     private long _executionId;
 
@@ -27,6 +28,7 @@ internal sealed class EfJobRepository : IJobRepository
     {
         _jobName = jobName;
         _connectionString = connectionString;
+        _provider = provider;
         _options = NBatchDbContext.CreateOptions(connectionString, provider);
     }
 
@@ -67,6 +69,7 @@ internal sealed class EfJobRepository : IJobRepository
             {
                 await creator.CreateTablesAsync(cancellationToken);
             }
+            await EnsureSchemaUpgradedAsync(ctx, cancellationToken);
             _initializedDatabases.TryAdd(_connectionString, true);
         }
         finally
@@ -79,7 +82,7 @@ internal sealed class EfJobRepository : IJobRepository
     {
         try
         {
-            await ctx.BatchJobs.AnyAsync(cancellationToken);
+            await ctx.BatchSteps.AnyAsync(cancellationToken);
             return true;
         }
         catch (DbException)
@@ -88,39 +91,108 @@ internal sealed class EfJobRepository : IJobRepository
         }
     }
 
+    /// <summary>
+    /// Idempotent, additive schema upgrade for databases created by NBatch 2.x:
+    /// adds the <c>last_run_success</c> column to the jobs table if it is missing.
+    /// Runs once per process per connection string, inside the init lock.
+    /// </summary>
+    private async Task EnsureSchemaUpgradedAsync(NBatchDbContext ctx, CancellationToken cancellationToken)
+    {
+        switch (_provider)
+        {
+            case DatabaseProvider.SqlServer:
+                await ctx.Database.ExecuteSqlRawAsync(
+                    "IF COL_LENGTH('nbatch.jobs', 'last_run_success') IS NULL " +
+                    "ALTER TABLE [nbatch].[jobs] ADD [last_run_success] bit NULL;", cancellationToken);
+                break;
+
+            case DatabaseProvider.PostgreSql:
+                await ctx.Database.ExecuteSqlRawAsync(
+                    "ALTER TABLE nbatch.jobs ADD COLUMN IF NOT EXISTS last_run_success boolean;", cancellationToken);
+                break;
+
+            case DatabaseProvider.Sqlite:
+                // The SQLite provider ignores the default schema, so the table is "jobs".
+                var columns = await ctx.Database
+                    .SqlQueryRaw<string>("SELECT name AS \"Value\" FROM pragma_table_info('jobs')")
+                    .ToListAsync(cancellationToken);
+                if (!columns.Contains("last_run_success"))
+                    await ctx.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE jobs ADD COLUMN last_run_success INTEGER NULL;", cancellationToken);
+                break;
+
+            case DatabaseProvider.MySql:
+                // Pomelo ignores the default schema; MySQL lacks ADD COLUMN IF NOT EXISTS.
+                var count = await ctx.Database
+                    .SqlQueryRaw<long>(
+                        "SELECT COUNT(*) AS `Value` FROM information_schema.COLUMNS " +
+                        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'jobs' " +
+                        "AND COLUMN_NAME = 'last_run_success'")
+                    .FirstAsync(cancellationToken);
+                if (count == 0)
+                    await ctx.Database.ExecuteSqlRawAsync(
+                        "ALTER TABLE jobs ADD COLUMN last_run_success tinyint(1) NULL;", cancellationToken);
+                break;
+        }
+    }
+
     public async Task<long> CreateJobRecordAsync(ICollection<string> stepNames, CancellationToken cancellationToken = default)
     {
         await EnsureDatabaseCreatedAsync(cancellationToken);
 
         await using var ctx = CreateContext();
+        var now = DateTime.UtcNow;
         var job = await ctx.BatchJobs.FindAsync(new object[] { _jobName }, cancellationToken);
 
-        if (job != null)
+        if (job is null)
         {
-            job.LastRun = DateTime.UtcNow;
+            ctx.BatchJobs.Add(new JobEntity { JobName = _jobName, LastRun = now });
+            AddFreshStepRows(ctx, stepNames);
         }
         else
         {
-            ctx.BatchJobs.Add(new JobEntity { JobName = _jobName, LastRun = DateTime.UtcNow });
+            // A successfully completed previous run auto-resets: fresh index-0 rows
+            // become the latest state, so every step starts from the beginning.
+            // A failed/crashed/cancelled run (false or null) keeps its rows → resume.
+            bool lastRunSucceeded = job.LastRunSuccess == true;
+            job.LastRun = now;
+            job.LastRunSuccess = null; // in-flight; a crash leaves null → next run resumes
 
-            foreach (var stepName in stepNames)
-            {
-                ctx.BatchSteps.Add(new StepEntity
-                {
-                    StepName = stepName,
-                    JobName = _jobName,
-                    StepIndex = 0,
-                    NumberOfItemsProcessed = 0
-                });
-            }
+            if (lastRunSucceeded)
+                AddFreshStepRows(ctx, stepNames);
         }
 
         await ctx.SaveChangesAsync(cancellationToken);
 
-        // Use the job's LastRun ticks as a stable execution identifier for this run.
+        // Use the run's start ticks as a stable execution identifier.
         // Exception counts are scoped to this value so skip budgets reset per execution.
-        _executionId = (job?.LastRun ?? DateTime.UtcNow).Ticks;
+        _executionId = now.Ticks;
         return _executionId;
+    }
+
+    public async Task MarkJobCompleteAsync(bool success, CancellationToken cancellationToken = default)
+    {
+        await using var ctx = CreateContext();
+        var job = await ctx.BatchJobs.FindAsync(new object[] { _jobName }, cancellationToken);
+        if (job is null)
+            return;
+
+        job.LastRunSuccess = success;
+        await ctx.SaveChangesAsync(cancellationToken);
+    }
+
+    private void AddFreshStepRows(NBatchDbContext ctx, ICollection<string> stepNames)
+    {
+        foreach (var stepName in stepNames)
+        {
+            ctx.BatchSteps.Add(new StepEntity
+            {
+                StepName = stepName,
+                JobName = _jobName,
+                StepIndex = 0,
+                NumberOfItemsProcessed = 0
+            });
+        }
     }
 
     public async Task<long> InsertStepAsync(string stepName, long stepIndex, CancellationToken cancellationToken = default)

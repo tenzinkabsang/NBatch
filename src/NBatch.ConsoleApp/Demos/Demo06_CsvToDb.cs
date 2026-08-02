@@ -6,11 +6,16 @@ using NBatch.Writers.DbWriter;
 namespace NBatch.ConsoleApp.Demos;
 
 /// <summary>
-/// DEMO 6 — CSV ? DB with restart-from-failure  (requires SQL Server via docker-compose)
+/// DEMO 6 â€” CSV â†’ DB with restart-from-failure  (requires SQL Server via docker-compose)
 ///
 /// Reads a CSV file, transforms to lowercase, writes to SQL Server.
 /// Uses UseJobStore so if the job fails mid-way, re-running it
-/// resumes from the last successful chunk — not from the beginning.
+/// resumes from the last successful chunk â€” not from the beginning.
+/// After a successful run the job auto-resets, so running the demo
+/// again re-imports the whole file.
+///
+/// Malformed CSV lines throw FlatFileParseException (with the line number),
+/// which the skip policy tolerates up to 3 times.
 ///
 /// Features: CsvReader, DbWriter, UseJobStore (restart-from-failure), SkipPolicy, multi-step
 /// </summary>
@@ -45,7 +50,7 @@ public static class Demo06_CsvToDb
 
         var result = await job.RunAsync();
 
-        Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success}");
+        Console.WriteLine($"  Job '{result.Name}' â€” Success: {result.Success}");
         foreach (var step in result.Steps)
             Console.WriteLine($"    Step '{step.Name}': Read={step.ItemsRead}, Processed={step.ItemsProcessed}, Skipped={step.ErrorsSkipped}");
     }

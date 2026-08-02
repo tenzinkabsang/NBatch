@@ -14,12 +14,12 @@ NBatch gives you a declarative, step-based pipeline for ETL jobs, data migration
 
 | Package | Description |
 |---------|-------------|
-| [`NBatch`](https://www.nuget.org/packages/NBatch/) | Core framework — interfaces, chunking, skip policies, `CsvReader`, `DbReader`/`DbWriter`, DI, hosted service |
-| [`NBatch.EntityFrameworkCore`](https://www.nuget.org/packages/NBatch.EntityFrameworkCore/) | EF Core job store for restart-from-failure (SQL Server, PostgreSQL, SQLite, MySQL/MariaDB) |
+| [`NBatch`](https://www.nuget.org/packages/NBatch/) | Core framework — interfaces, chunking, skip policies, `CsvReader`, `FlatFileItemWriter`, DI, hosted service. No EF Core dependency. |
+| [`NBatch.EntityFrameworkCore`](https://www.nuget.org/packages/NBatch.EntityFrameworkCore/) | `DbReader`/`DbWriter` + EF Core job store for restart-from-failure (SQL Server, PostgreSQL, SQLite, MySQL/MariaDB) |
 
 ```bash
 dotnet add package NBatch
-dotnet add package NBatch.EntityFrameworkCore   # only if you need persistent job tracking
+dotnet add package NBatch.EntityFrameworkCore   # DbReader/DbWriter + persistent job tracking
 ```
 
 ## Examples
@@ -41,7 +41,7 @@ var job = Job.CreateBuilder("ETL")
 var job = Job.CreateBuilder("csv-import")
     .UseJobStore(connStr, DatabaseProvider.SqlServer)   // optional — enables restart-from-failure
     .AddStep("import", step => step
-        .ReadFrom(new CsvReader<Product>("data.csv", mapFn)
+        .ReadFrom(new CsvReader<Product>("data.csv", mapFn))
         .ProcessWith(p => new Product { Name = p.Name.ToUpper(), Price = p.Price })
         .WriteTo(new DbWriter<Product>(dbContext))
         .WithSkipPolicy(SkipPolicy.For<FormatException>(maxSkips: 5))
@@ -70,8 +70,8 @@ builder.Services.AddNBatch(nbatch =>
 ## Highlights
 
 - **Chunk-oriented processing** — read, transform, and write in configurable batches
-- **Skip policies** — skip malformed records instead of aborting the job
-- **Restart from failure** — SQL-backed job store resumes where a crashed job left off
+- **Item-level skip policies** — skip malformed records instead of aborting the job; the rest of the chunk is still written
+- **Restart from failure** — SQL-backed job store resumes where a crashed job left off; completed jobs auto-reset for the next run
 - **Tasklet steps** — fire-and-forget work (send an email, call an API, run a stored proc)
 - **Lambda-friendly** — processors and writers can be plain lambdas; no extra classes needed
 - **DI & hosted service** — `AddNBatch()`, `RunOnce()`, `RunEvery()` for background jobs

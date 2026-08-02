@@ -1,9 +1,10 @@
-﻿using NBatch.Core.Interfaces;
+using NBatch.Core.Interfaces;
 
 namespace NBatch.Core;
 
 /// <summary>The result of a completed job, including per-step details.</summary>
 /// <param name="Name">The job name.</param>
-/// <param name="Success">Whether all steps completed successfully.</param>
+/// <param name="Success">Whether every executed step succeeded and the run was not cancelled.</param>
 /// <param name="Steps">Results for each step in execution order.</param>
-public record JobResult(string Name, bool Success, IReadOnlyList<StepResult> Steps);
+/// <param name="Cancelled">Whether the run was cancelled before completing.</param>
+public record JobResult(string Name, bool Success, IReadOnlyList<StepResult> Steps, bool Cancelled = false);

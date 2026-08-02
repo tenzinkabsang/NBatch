@@ -198,8 +198,12 @@ Inject `IJobRunner` into controllers, endpoints, or services to trigger jobs on 
 public record JobResult(
     string Name,
     bool Success,
-    IReadOnlyList<StepResult> Steps);
+    IReadOnlyList<StepResult> Steps,
+    bool Cancelled = false);
 ```
+
+`Cancelled` is true when the run was cancelled; job listeners still receive the result
+before `RunAsync` rethrows the `OperationCanceledException`.
 
 #### `StepResult`
 
@@ -212,6 +216,8 @@ public record StepResult(
     int ErrorsSkipped = 0);
 ```
 
+`ErrorsSkipped` counts individual skipped **items**.
+
 ---
 
 ### `SkipPolicy`
@@ -223,15 +229,19 @@ public record StepResult(
 | `SkipPolicy.For<T1, T2>(int maxSkips)` | Skip for two exception types |
 | `SkipPolicy.For<T1, T2, T3>(int maxSkips)` | Skip for three exception types |
 
+Matching includes subclasses of the given types and walks each thrown exception's
+inner-exception chain (up to 10 levels). See [Skip Policies](skip-policies) for the
+item-level scan behavior.
+
 ---
 
 ### Built-in Components
 
 | Class | Type | Package | Description |
 |-------|------|---------|-------------|
-| `CsvReader<T>` | Reader | `NBatch` | Delimited file reader with header parsing |
-| `DbReader<T>` | Reader | `NBatch` | EF Core paginated reader |
-| `DbWriter<T>` | Writer | `NBatch` | EF Core bulk writer |
+| `CsvReader<T>` | Reader | `NBatch` | Delimited file reader with header parsing and RFC 4180 quoting |
+| `DbReader<T>` | Reader | `NBatch.EntityFrameworkCore` | EF Core paginated reader |
+| `DbWriter<T>` | Writer | `NBatch.EntityFrameworkCore` | EF Core bulk writer (detaches entities after save) |
 | `FlatFileItemWriter<T>` | Writer | `NBatch` | Delimited file writer |
 
 ---

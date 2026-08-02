@@ -43,7 +43,7 @@ internal sealed class NBatchJobWorkerService(
             logger.LogDebug("NBatch worker executing job '{JobName}'", jobName);
             var result = await jobRunner.RunAsync(jobName, ct);
             logger.LogInformation(
-                "NBatch worker job '{JobName}' completed — success: {Success}",
+                "NBatch worker job '{JobName}' completed â€” success: {Success}",
                 jobName, result.Success);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -52,7 +52,7 @@ internal sealed class NBatchJobWorkerService(
             // The next interval will retry. OperationCanceledException is
             // excluded so graceful shutdown propagates correctly.
             logger.LogError(ex,
-                "NBatch worker job '{JobName}' failed — will retry after interval",
+                "NBatch worker job '{JobName}' failed â€” will retry after interval",
                 jobName);
         }
     }

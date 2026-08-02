@@ -101,12 +101,12 @@ internal sealed class RestartFromFailureTests
 
     #endregion
 
-    #region 1 � Job restart from a failed chunk
+    #region 1 — Job restart from a failed chunk
 
     [Test]
     public async Task Job_restart_resumes_from_failed_chunk()
     {
-        // Arrange: 6 items, chunk size 2 ? 3 chunks (0,2,4).
+        // Arrange: 6 items, chunk size 2 → 3 chunks (0,2,4).
         // The reader fails on chunk index 2 during the first run.
         var data = new[] { "a", "b", "c", "d", "e", "f" };
         var connStr = UniqueConnectionString;
@@ -114,7 +114,7 @@ internal sealed class RestartFromFailureTests
         var failReader = new FailOnceAtIndexReader<string>(data, failAtIndex: 2);
         var writer = new CollectingWriter<string>();
 
-        // Run 1 � should fail on the second chunk
+        // Run 1 — should fail on the second chunk
         var job1 = Job.CreateBuilder("restart-job")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
             .AddStep("step1", step => step
@@ -129,7 +129,7 @@ internal sealed class RestartFromFailureTests
         // Only the first chunk (a, b) should have been written
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b" }));
 
-        // Run 2 � same job name, same connection string ? should restart from failed chunk
+        // Run 2 — same job name, same connection string → should restart from failed chunk
         // FailOnceAtIndexReader already flipped _hasFailed, so it won't throw again.
         var job2 = Job.CreateBuilder("restart-job")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
@@ -147,9 +147,10 @@ internal sealed class RestartFromFailureTests
     }
 
     [Test]
-    public async Task Job_restart_processes_zero_items_when_all_chunks_completed()
+    public async Task Job_rerun_after_success_auto_resets_and_reprocesses()
     {
-        // Arrange: complete a job fully, then restart � should process nothing new
+        // Arrange: complete a job fully, then run it again — the job store resets
+        // after a successful run, so the second run reprocesses from the beginning.
         var data = new[] { "x", "y" };
         var connStr = UniqueConnectionString;
 
@@ -167,7 +168,7 @@ internal sealed class RestartFromFailureTests
         Assert.That(result1.Success, Is.True);
         Assert.That(writer.Written, Is.EqualTo(new[] { "x", "y" }));
 
-        // Run 2 � nothing left to process
+        // Run 2 — starts fresh from index 0
         var writer2 = new CollectingWriter<string>();
         var job2 = Job.CreateBuilder("done-job")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
@@ -180,19 +181,20 @@ internal sealed class RestartFromFailureTests
         var result2 = await job2.RunAsync();
 
         Assert.That(result2.Success, Is.True);
-        Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(0));
+        Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(2));
+        Assert.That(writer2.Written, Is.EqualTo(new[] { "x", "y" }));
     }
 
     #endregion
 
-    #region 2 � StepContext.RetryPreviousIfFailed with various offsets
+    #region 2 — StepContext.RetryPreviousIfFailed with various offsets
 
     [Test]
     public async Task RetryPreviousIfFailed_backs_up_one_chunk_on_restart()
     {
-        // 4 items, chunk size 2 ? chunks at index 0 and 2.
-        // Fail at index 2 ? on restart, RetryPreviousIfFailed should back up to index 2
-        // (StepIndex=4, NumberOfItemsProcessed=0 ? 4-2=2).
+        // 4 items, chunk size 2 → chunks at index 0 and 2.
+        // Fail at index 2 → on restart, RetryPreviousIfFailed should back up to index 2
+        // (StepIndex=4, NumberOfItemsProcessed=0 → 4-2=2).
         var data = new[] { "a", "b", "c", "d" };
         var connStr = UniqueConnectionString;
 
@@ -230,7 +232,7 @@ internal sealed class RestartFromFailureTests
     [Test]
     public async Task RetryPreviousIfFailed_stays_at_zero_when_first_chunk_fails()
     {
-        // Fail on the very first chunk ? can't back up below 0.
+        // Fail on the very first chunk → can't back up below 0.
         var data = new[] { "a", "b" };
         var connStr = UniqueConnectionString;
 
@@ -249,7 +251,7 @@ internal sealed class RestartFromFailureTests
         Assert.That(result1.Success, Is.False);
         Assert.That(writer.Written, Is.Empty);
 
-        // Restart � should retry from index 0
+        // Restart — should retry from index 0
         var job2 = Job.CreateBuilder("retry-zero")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
             .AddStep("step1", step => step
@@ -267,8 +269,8 @@ internal sealed class RestartFromFailureTests
     [Test]
     public async Task RetryPreviousIfFailed_with_chunk_size_1()
     {
-        // Chunk size 1: fail at index 1 ? backs up to index 0 on restart
-        // (StepIndex=2, chunkSize=1, NumberOfItemsProcessed=0 ? 2-1=1)
+        // Chunk size 1: fail at index 1 → backs up to index 0 on restart
+        // (StepIndex=2, chunkSize=1, NumberOfItemsProcessed=0 → 2-1=1)
         var data = new[] { "a", "b", "c" };
         var connStr = UniqueConnectionString;
 
@@ -287,7 +289,7 @@ internal sealed class RestartFromFailureTests
         Assert.That(result1.Success, Is.False);
         Assert.That(writer.Written, Is.EqualTo(new[] { "a" }));
 
-        // Restart � backs up to index 1 and continues
+        // Restart — backs up to index 1 and continues
         var job2 = Job.CreateBuilder("retry-cs1")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
             .AddStep("step1", step => step
@@ -305,7 +307,7 @@ internal sealed class RestartFromFailureTests
 
     #endregion
 
-    #region 3 � TaskletStep error handling
+    #region 3 — TaskletStep error handling
 
     [Test]
     public async Task TaskletStep_success_is_recorded()
@@ -368,7 +370,7 @@ internal sealed class RestartFromFailureTests
         Assert.That(result1.Success, Is.False);
         Assert.That(callCount, Is.EqualTo(1));
 
-        // Restart � should re-execute the tasklet
+        // Restart — should re-execute the tasklet
         var job2 = Job.CreateBuilder("tasklet-restart")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
             .AddStep("cleanup", step => step
@@ -383,30 +385,33 @@ internal sealed class RestartFromFailureTests
 
     #endregion
 
-    #region 4 � EfJobRepository with in-memory SQLite provider
+    #region 4 — EfJobRepository with in-memory SQLite provider
 
     [Test]
     public async Task EfJobRepository_persists_step_progress_across_runs()
     {
+        // Progress must survive across independent repository instances (as it would
+        // across process restarts). Run 1 fails mid-way; a brand-new builder + repository
+        // against the same database resumes instead of starting over.
         var connStr = UniqueConnectionString;
         var data = new[] { "a", "b", "c", "d" };
 
+        var failReader = new FailOnceAtIndexReader<string>(data, failAtIndex: 2);
         var writer1 = new CollectingWriter<string>();
 
-        // Run 1: process all 4 items in 2 chunks
         var job1 = Job.CreateBuilder("ef-persist")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
             .AddStep("step1", step => step
-                .ReadFrom(new ListReader<string>(data))
+                .ReadFrom(failReader)
                 .WriteTo(writer1)
                 .WithChunkSize(2))
             .Build();
 
         var result1 = await job1.RunAsync();
-        Assert.That(result1.Success, Is.True);
-        Assert.That(writer1.Written, Is.EqualTo(new[] { "a", "b", "c", "d" }));
+        Assert.That(result1.Success, Is.False);
+        Assert.That(writer1.Written, Is.EqualTo(new[] { "a", "b" }));
 
-        // Run 2: same job name ? repository shows step already completed (reader returns empty)
+        // Run 2: fresh Job + EfJobRepository instances, same database → resumes at index 2
         var writer2 = new CollectingWriter<string>();
         var job2 = Job.CreateBuilder("ef-persist")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
@@ -418,8 +423,7 @@ internal sealed class RestartFromFailureTests
 
         var result2 = await job2.RunAsync();
         Assert.That(result2.Success, Is.True);
-        // The reader starts from the last saved index, which is past the data ? 0 items
-        Assert.That(writer2.Written, Is.Empty);
+        Assert.That(writer2.Written, Is.EqualTo(new[] { "c", "d" }));
     }
 
     [Test]
@@ -480,13 +484,13 @@ internal sealed class RestartFromFailureTests
 
     #endregion
 
-    #region 5 � Skip budget resets per execution
+    #region 5 — Skip budget resets per execution
 
     [Test]
     public async Task Skip_budget_resets_on_new_run()
     {
-        // Run 1: 3 items, processor fails on every item, skip limit 3 ? all 3 skipped, job succeeds.
-        // Run 2: different job name to start fresh. Same skip limit ? budget should be 3 (not 0 left from run 1).
+        // Run 1: 3 items, processor fails on every item, skip limit 3 → all 3 skipped, job succeeds.
+        // Run 2: different job name to start fresh. Same skip limit → budget should be 3 (not 0 left from run 1).
         // This proves exception counts are scoped per execution, not global.
         var connStr = UniqueConnectionString;
         var data = new[] { "a", "b", "c" };
@@ -507,7 +511,7 @@ internal sealed class RestartFromFailureTests
         Assert.That(result1.Success, Is.True);
         Assert.That(result1.Steps[0].ErrorsSkipped, Is.EqualTo(3));
 
-        // Run 2: fresh job name, same DB ? proves budget is per-execution, not shared across the DB.
+        // Run 2: fresh job name, same DB → proves budget is per-execution, not shared across the DB.
         var job2 = Job.CreateBuilder("skip-reset-run2")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
             .AddStep("step1", step => step
@@ -520,7 +524,7 @@ internal sealed class RestartFromFailureTests
 
         var result2 = await job2.RunAsync();
 
-        // Skip budget should be independent � all 3 skipped again.
+        // Skip budget should be independent — all 3 skipped again.
         Assert.That(result2.Success, Is.True);
         Assert.That(result2.Steps[0].ErrorsSkipped, Is.EqualTo(3));
     }
@@ -531,7 +535,7 @@ internal sealed class RestartFromFailureTests
         var connStr = UniqueConnectionString;
         var data = new[] { "a", "b", "c", "d" };
 
-        // Processor fails on every item. Skip limit is 2, but we have 4 items ? third failure exceeds limit.
+        // Processor fails on every item. Skip limit is 2, but we have 4 items → third failure exceeds limit.
         var processor = new FailNTimesProcessor<string>(failCount: int.MaxValue);
         var skipPolicy = new SkipPolicy([typeof(TimeoutException)], skipLimit: 2);
 
@@ -574,17 +578,17 @@ internal sealed class RestartFromFailureTests
 
     #endregion
 
-    #region 6 � Skipped chunk does not trigger retry on restart
+    #region 6 — Skipped chunk does not trigger retry on restart
 
     [Test]
     public async Task Skipped_chunk_does_not_cause_backup_on_restart()
     {
-        // Run 1: 3 items, chunk size 1.
-        // Item at index 1 fails and is skipped. Items at 0 and 2 succeed.
-        // On restart, the step should NOT back up to re-process index 1 (it was skipped, not failed).
+        // Run 1: step1 skips item "b" and SUCCEEDS, but a later tasklet step fails,
+        // so the job fails and the next run resumes (no auto-reset).
+        // On resume, step1 must NOT back up to re-process the skipped index —
+        // a skip is final, only errors trigger backup.
         var connStr = UniqueConnectionString;
         var data = new[] { "a", "b", "c" };
-        int processorCalls = 0;
 
         var job1 = Job.CreateBuilder("skip-no-backup")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
@@ -592,22 +596,23 @@ internal sealed class RestartFromFailureTests
                 .ReadFrom(new ListReader<string>(data))
                 .ProcessWith((string s) =>
                 {
-                    processorCalls++;
                     if (s == "b") throw new FormatException("bad item");
                     return s;
                 })
                 .WriteTo(new CollectingWriter<string>())
                 .WithSkipPolicy(SkipPolicy.For<FormatException>(maxSkips: 5))
                 .WithChunkSize(1))
+            .AddStep("flaky-tasklet", step => step
+                .Execute(() => throw new InvalidOperationException("first run fails")))
             .Build();
 
         var result1 = await job1.RunAsync();
-        Assert.That(result1.Success, Is.True);
+        Assert.That(result1.Success, Is.False);
+        Assert.That(result1.Steps[0].Success, Is.True);
         Assert.That(result1.Steps[0].ErrorsSkipped, Is.EqualTo(1));
 
-        // Run 2: restart. The reader should start past all previously processed data.
+        // Run 2: resume. step1 starts past all previously processed data (skip is not retried).
         var writer2 = new CollectingWriter<string>();
-        processorCalls = 0;
 
         var job2 = Job.CreateBuilder("skip-no-backup")
             .UseJobStore(connStr, DatabaseProvider.Sqlite)
@@ -615,13 +620,281 @@ internal sealed class RestartFromFailureTests
                 .ReadFrom(new ListReader<string>(data))
                 .WriteTo(writer2)
                 .WithChunkSize(1))
+            .AddStep("flaky-tasklet", step => step
+                .Execute(() => { }))
             .Build();
 
         var result2 = await job2.RunAsync();
 
         Assert.That(result2.Success, Is.True);
-        // All data was already processed in run 1 (2 written + 1 skipped), nothing new to process.
+        // All step1 data was handled in run 1 (2 written + 1 skipped) — nothing new to process.
         Assert.That(result2.Steps[0].ItemsRead, Is.EqualTo(0));
+        Assert.That(writer2.Written, Is.Empty);
+    }
+
+    #endregion
+
+    #region 7 — Auto-reset, tasklet resume, builder ordering, schema migration
+
+    [Test]
+    public async Task RunEvery_style_repeated_runs_reprocess_each_time()
+    {
+        // Three consecutive successful runs of the same job against the same store:
+        // each run auto-resets and reprocesses the full data set.
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c" };
+        var writer = new CollectingWriter<string>();
+
+        for (int run = 1; run <= 3; run++)
+        {
+            var job = Job.CreateBuilder("repeat-job")
+                .UseJobStore(connStr, DatabaseProvider.Sqlite)
+                .AddStep("step1", step => step
+                    .ReadFrom(new ListReader<string>(data))
+                    .WriteTo(writer)
+                    .WithChunkSize(2))
+                .Build();
+
+            var result = await job.RunAsync();
+            Assert.That(result.Success, Is.True, $"run {run} should succeed");
+            Assert.That(writer.Written, Has.Count.EqualTo(run * data.Length),
+                $"run {run} should have reprocessed all {data.Length} items");
+        }
+    }
+
+    [Test]
+    public async Task Tasklet_completed_step_skipped_on_resume_after_later_failure()
+    {
+        var connStr = UniqueConnectionString;
+        int taskletCalls = 0;
+
+        Job BuildJob(bool chunkStepFails)
+        {
+            var data = new[] { "a", "b" };
+            IReader<string> reader = chunkStepFails
+                ? new FailOnceAtIndexReader<string>(data, failAtIndex: 0)
+                : new ListReader<string>(data);
+
+            return Job.CreateBuilder("tasklet-resume")
+                .UseJobStore(connStr, DatabaseProvider.Sqlite)
+                .AddStep("notify", step => step
+                    .Execute(() => { taskletCalls++; }))
+                .AddStep("import", step => step
+                    .ReadFrom(reader)
+                    .WriteTo(new CollectingWriter<string>())
+                    .WithChunkSize(2))
+                .Build();
+        }
+
+        // Run 1: tasklet succeeds, chunk step fails → job fails.
+        var result1 = await BuildJob(chunkStepFails: true).RunAsync();
+        Assert.That(result1.Success, Is.False);
+        Assert.That(taskletCalls, Is.EqualTo(1));
+
+        // Run 2: resume — the completed tasklet must NOT run again.
+        var result2 = await BuildJob(chunkStepFails: false).RunAsync();
+        Assert.That(result2.Success, Is.True);
+        Assert.That(taskletCalls, Is.EqualTo(1), "completed tasklet must be skipped on resume");
+    }
+
+    [Test]
+    public async Task Tasklet_reruns_after_successful_job_reset()
+    {
+        var connStr = UniqueConnectionString;
+        int taskletCalls = 0;
+
+        Job BuildJob() => Job.CreateBuilder("tasklet-rerun")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("notify", step => step
+                .Execute(() => { taskletCalls++; }))
+            .Build();
+
+        var result1 = await BuildJob().RunAsync();
+        Assert.That(result1.Success, Is.True);
+        Assert.That(taskletCalls, Is.EqualTo(1));
+
+        // The first run completed successfully → auto-reset → the tasklet runs again.
+        var result2 = await BuildJob().RunAsync();
+        Assert.That(result2.Success, Is.True);
+        Assert.That(taskletCalls, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task Builder_order_use_job_store_after_add_step_still_persists()
+    {
+        // Regression guard for the v2 bug where steps registered before UseJobStore
+        // silently kept the in-memory repository (no persistence, no restart).
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c", "d" };
+
+        var failReader = new FailOnceAtIndexReader<string>(data, failAtIndex: 2);
+        var writer1 = new CollectingWriter<string>();
+
+        // AddStep BEFORE UseJobStore — must still bind the SQL-backed store.
+        var job1 = Job.CreateBuilder("order-independent")
+            .AddStep("step1", step => step
+                .ReadFrom(failReader)
+                .WriteTo(writer1)
+                .WithChunkSize(2))
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .Build();
+
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
+        Assert.That(writer1.Written, Is.EqualTo(new[] { "a", "b" }));
+
+        // A new job instance resumes from the persisted index — proving the
+        // first run's progress went to SQLite, not to an in-memory store.
+        var writer2 = new CollectingWriter<string>();
+        var job2 = Job.CreateBuilder("order-independent")
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .WriteTo(writer2)
+                .WithChunkSize(2))
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .Build();
+
+        var result2 = await job2.RunAsync();
+        Assert.That(result2.Success, Is.True);
+        Assert.That(writer2.Written, Is.EqualTo(new[] { "c", "d" }));
+    }
+
+    [Test]
+    public async Task Skip_counts_are_per_item_with_chunk_greater_than_one()
+    {
+        // 6 items, chunk 3, two bad items spread across chunks: only the bad items
+        // are skipped — the good items in the same chunks are still written.
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c", "d", "e", "f" };
+        var writer = new CollectingWriter<string>();
+
+        var job = Job.CreateBuilder("per-item-skip")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .ProcessWith((string s) =>
+                {
+                    if (s is "b" or "e") throw new FormatException($"bad item {s}");
+                    return s;
+                })
+                .WriteTo(writer)
+                .WithSkipPolicy(SkipPolicy.For<FormatException>(maxSkips: 5))
+                .WithChunkSize(3))
+            .Build();
+
+        var result = await job.RunAsync();
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(2));
+        Assert.That(writer.Written, Is.EquivalentTo(new[] { "a", "c", "d", "f" }));
+    }
+
+    [Test]
+    public async Task Cancelled_run_resumes_on_restart_without_losing_the_cancelled_chunk()
+    {
+        // Run 1 is cancelled while processing the second chunk. The aborted chunk is
+        // recorded as an error, so the restart backs up and re-processes it — no items lost.
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c", "d", "e", "f" };
+        var writer1 = new CollectingWriter<string>();
+
+        var job1 = Job.CreateBuilder("cancel-resume")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .ProcessWith((string s) =>
+                {
+                    if (s == "c") throw new OperationCanceledException("cooperative cancel");
+                    return s;
+                })
+                .WriteTo(writer1)
+                .WithChunkSize(2))
+            .Build();
+
+        Assert.ThrowsAsync<OperationCanceledException>(() => job1.RunAsync());
+        Assert.That(writer1.Written, Is.EqualTo(new[] { "a", "b" }));
+
+        // Run 2 resumes from the aborted chunk (no auto-reset after a cancelled run).
+        var writer2 = new CollectingWriter<string>();
+        var job2 = Job.CreateBuilder("cancel-resume")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .WriteTo(writer2)
+                .WithChunkSize(2))
+            .Build();
+
+        var result2 = await job2.RunAsync();
+
+        Assert.That(result2.Success, Is.True);
+        Assert.That(writer2.Written, Is.EqualTo(new[] { "c", "d", "e", "f" }));
+    }
+
+    [Test]
+    public async Task V2_schema_upgrades_automatically_on_sqlite()
+    {
+        // Hand-create a database with the v2 schema (no last_run_success column),
+        // then run a job: the automatic migration must add the column and the run succeed.
+        var connStr = UniqueConnectionString;
+
+        await using (var connection = new SqliteConnection(connStr))
+        {
+            await connection.OpenAsync();
+            var create = connection.CreateCommand();
+            create.CommandText = """
+                CREATE TABLE "jobs" (
+                    "job_name" TEXT NOT NULL CONSTRAINT "PK_jobs" PRIMARY KEY,
+                    "create_date" TEXT NOT NULL,
+                    "last_run" TEXT NOT NULL
+                );
+                CREATE TABLE "steps" (
+                    "id" INTEGER NOT NULL CONSTRAINT "PK_steps" PRIMARY KEY AUTOINCREMENT,
+                    "step_name" TEXT NOT NULL,
+                    "job_name" TEXT NOT NULL,
+                    "step_index" INTEGER NOT NULL,
+                    "number_of_items_processed" INTEGER NOT NULL,
+                    "error" INTEGER NOT NULL DEFAULT 0,
+                    "skipped" INTEGER NOT NULL DEFAULT 0,
+                    "run_date" TEXT NOT NULL,
+                    CONSTRAINT "FK_steps_jobs_job_name" FOREIGN KEY ("job_name") REFERENCES "jobs" ("job_name")
+                );
+                CREATE TABLE "step_exceptions" (
+                    "id" INTEGER NOT NULL CONSTRAINT "PK_step_exceptions" PRIMARY KEY AUTOINCREMENT,
+                    "step_index" INTEGER NOT NULL,
+                    "step_name" TEXT NOT NULL,
+                    "job_name" TEXT NOT NULL,
+                    "execution_id" INTEGER NOT NULL,
+                    "exception_msg" TEXT NULL,
+                    "exception_details" TEXT NULL,
+                    "create_date" TEXT NOT NULL,
+                    CONSTRAINT "FK_step_exceptions_jobs_job_name" FOREIGN KEY ("job_name") REFERENCES "jobs" ("job_name")
+                );
+                """;
+            await create.ExecuteNonQueryAsync();
+        }
+
+        var writer = new CollectingWriter<string>();
+        var job = Job.CreateBuilder("v2-upgrade")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(["a", "b"]))
+                .WriteTo(writer)
+                .WithChunkSize(2))
+            .Build();
+
+        var result = await job.RunAsync();
+        Assert.That(result.Success, Is.True);
+        Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b" }));
+
+        // The migration must have added the column.
+        await using (var connection = new SqliteConnection(connStr))
+        {
+            await connection.OpenAsync();
+            var check = connection.CreateCommand();
+            check.CommandText = "SELECT COUNT(*) FROM pragma_table_info('jobs') WHERE name = 'last_run_success'";
+            var columnCount = (long)(await check.ExecuteScalarAsync())!;
+            Assert.That(columnCount, Is.EqualTo(1), "last_run_success column should have been added");
+        }
     }
 
     #endregion

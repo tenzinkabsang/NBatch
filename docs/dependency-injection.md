@@ -114,6 +114,10 @@ nbatch.AddJob("hourly-sync", (sp, job) => job
 
 The interval is measured from the **completion** of each run, so runs never overlap. If a run fails, the error is logged and the next run starts after the interval.
 
+When combined with [`UseJobStore(...)`](job-store), each successful run auto-resets the job, so the next interval reprocesses from the beginning; a failed run resumes where it left off.
+
+> Job names must be unique — registering the same name twice throws `ArgumentException`.
+
 ### On-Demand Only (No Schedule)
 
 If you don't call `RunOnce()` or `RunEvery()`, the job is registered but **no background worker is created**. Trigger it manually:

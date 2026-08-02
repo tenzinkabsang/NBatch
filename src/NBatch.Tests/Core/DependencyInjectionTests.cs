@@ -33,6 +33,36 @@ internal sealed class DependencyInjectionTests
     #endregion
 
     [Test]
+    public void AddJob_with_duplicate_name_throws_ArgumentException()
+    {
+        var services = new ServiceCollection();
+
+        Assert.Throws<ArgumentException>(() =>
+            services.AddNBatch(nbatch =>
+            {
+                nbatch.AddJob("dup-job", job => job
+                    .AddStep("s1", step => step.Execute(() => { })));
+                nbatch.AddJob("dup-job", job => job
+                    .AddStep("s1", step => step.Execute(() => { })));
+            }));
+    }
+
+    [Test]
+    public void AddJob_with_duplicate_name_throws_for_service_provider_overload()
+    {
+        var services = new ServiceCollection();
+
+        Assert.Throws<ArgumentException>(() =>
+            services.AddNBatch(nbatch =>
+            {
+                nbatch.AddJob("dup-job", job => job
+                    .AddStep("s1", step => step.Execute(() => { })));
+                nbatch.AddJob("dup-job", (sp, job) => job
+                    .AddStep("s1", step => step.Execute(() => { })));
+            }));
+    }
+
+    [Test]
     public void AddNBatch_registers_IJobRunner()
     {
         var services = new ServiceCollection();

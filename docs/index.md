@@ -35,8 +35,8 @@ Wire up **readers**, **processors**, and **writers** &mdash; NBatch handles chun
 | Feature | Description |
 |---------|-------------|
 | **Chunk-oriented processing** | Read, transform, and write data in configurable batches |
-| **Skip policies** | Keep the job running when a record is malformed; skip it and move on |
-| **Restart from failure** | SQL-backed job store tracks progress so a crashed job resumes where it left off |
+| **Item-level skip policies** | Keep the job running when a record is malformed; only the bad record is skipped — the rest of its chunk is still written |
+| **Restart from failure** | SQL-backed job store tracks progress so a crashed job resumes where it left off; completed jobs auto-reset for the next run |
 | **Tasklet steps** | Fire-and-forget units of work (send an email, call an API, run a stored proc) |
 | **Lambda-friendly** | Processors and writers can be plain lambdas; no extra classes required |
 | **DI & hosted service** | First-class `IServiceCollection` integration with `AddNBatch()`, `RunOnce()`, and `RunEvery()` |

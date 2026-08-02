@@ -7,7 +7,7 @@ using NBatch.Readers.FileReader;
 namespace NBatch.ConsoleApp.Demos;
 
 /// <summary>
-/// DEMO 7 — Dependency Injection with IServiceCollection
+/// DEMO 7 â€” Dependency Injection with IServiceCollection
 ///
 /// Registers an NBatch job via AddNBatch + IServiceCollection.
 /// Resolves IProcessor, IWriter, and ILoggerFactory from the DI container
@@ -27,7 +27,7 @@ public static class Demo07_DependencyInjection
         services.AddSingleton<IProcessor<Product, Product>, ProductUppercaseProcessor>();
         services.AddSingleton<IWriter<Product>>(new ConsoleWriter<Product>());
 
-        // Register NBatch with DI — resolve dependencies from the container
+        // Register NBatch with DI â€” resolve dependencies from the container
         services.AddNBatch(nbatch =>
         {
             nbatch.AddJob("demo-07-di", (sp, job) => job
@@ -52,7 +52,7 @@ public static class Demo07_DependencyInjection
         var result = await runner.RunAsync("demo-07-di");
 
         Console.WriteLine();
-        Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success}");
+        Console.WriteLine($"  Job '{result.Name}' â€” Success: {result.Success}");
         foreach (var step in result.Steps)
             Console.WriteLine($"    Step '{step.Name}': Read={step.ItemsRead}, Processed={step.ItemsProcessed}, Skipped={step.ErrorsSkipped}");
     }

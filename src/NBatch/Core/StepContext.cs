@@ -11,6 +11,7 @@ internal sealed class StepContext
     public long StepIndex { get; set; }
     public int NumberOfItemsReceived { get; set; }
     public int NumberOfItemsProcessed { get; set; }
+    public int NumberOfItemsSkipped { get; set; }
     public int ChunkSize { get; set; }
     public bool Skip { get; set; }
 
@@ -45,9 +46,11 @@ internal sealed class StepContext
     }
 
     /// <summary>
-    /// Advances the context to the next chunk after a successful (or skipped) iteration.
+    /// Advances the context to the next chunk after an iteration.
+    /// <paramref name="itemsSkipped"/> is the number of individual items the skip
+    /// policy discarded during the iteration (0 for a fully successful chunk).
     /// </summary>
-    public static StepContext Increment(StepContext current, int itemsReceived, int itemsProcessed, bool skipped)
+    public static StepContext Increment(StepContext current, int itemsReceived, int itemsProcessed, int itemsSkipped)
     {
         return new StepContext
         {
@@ -55,8 +58,9 @@ internal sealed class StepContext
             StepIndex = current.NextStepIndex,
             NumberOfItemsReceived = itemsReceived,
             NumberOfItemsProcessed = itemsProcessed,
+            NumberOfItemsSkipped = itemsSkipped,
             ChunkSize = current.ChunkSize,
-            Skip = skipped
+            Skip = itemsSkipped > 0
         };
     }
 

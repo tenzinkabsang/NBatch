@@ -6,7 +6,7 @@ using NBatch.Writers.FileWriter;
 namespace NBatch.ConsoleApp.Demos;
 
 /// <summary>
-/// DEMO 2 — CSV ? File
+/// DEMO 2 â€” CSV â†’ File
 ///
 /// Reads a CSV, lowercases all fields via a lambda processor,
 /// writes the result to a pipe-delimited flat file.
@@ -40,7 +40,7 @@ public static class Demo02_CsvToFile
 
         var result = await job.RunAsync();
 
-        Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success}");
+        Console.WriteLine($"  Job '{result.Name}' â€” Success: {result.Success}");
         Console.WriteLine($"  Output written to: {destinationPath}");
     }
 }
