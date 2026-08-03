@@ -13,8 +13,9 @@ public static class ServiceCollectionExtensions
     /// Registers NBatch services and configures batch jobs.
     /// <para>
     /// Jobs are built lazily when <see cref="IJobRunner.RunAsync"/> is called.
-    /// Jobs with a schedule (<see cref="JobRegistration.RunOnce"/> or
-    /// <see cref="JobRegistration.RunEvery"/>) are also executed automatically
+    /// Jobs with a schedule (<see cref="JobRegistration.RunOnce"/>,
+    /// <see cref="JobRegistration.RunEvery(TimeSpan, bool)"/>, or
+    /// <see cref="JobRegistration.RunOnCron"/>) are also executed automatically
     /// by a background worker.
     /// </para>
     /// <example>
@@ -54,7 +55,8 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<IJobRunner>(),
                 captured.JobName,
                 captured,
-                sp.GetRequiredService<ILoggerFactory>().CreateLogger($"NBatch.Worker.{captured.JobName}")));
+                sp.GetRequiredService<ILoggerFactory>().CreateLogger($"NBatch.Worker.{captured.JobName}"),
+                sp.GetService<TimeProvider>() ?? TimeProvider.System));
         }
 
         return services;
