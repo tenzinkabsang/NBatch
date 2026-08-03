@@ -7,109 +7,157 @@ internal interface IStepRegistration
     void Register();
 }
 
+// Step builders carry component FACTORIES rather than instances: instance and
+// delegate overloads wrap as `_ => instance`, while the type-based overloads
+// resolve from the per-run service provider. Factories are invoked inside
+// JobBuilder.Build(), which runs per job run within the DI scope — so scoped
+// services (e.g. DbContext) are fresh on every run.
+
 internal sealed class StepBuilderReadFrom(JobBuilder jobBuilder, string stepName) : IStepBuilderReadFrom
 {
     public IStepBuilderProcess<TInput> ReadFrom<TInput>(IReader<TInput> reader)
     {
         ArgumentNullException.ThrowIfNull(reader);
-        return new StepBuilderProcess<TInput>(jobBuilder, stepName, reader);
+        return new StepBuilderProcess<TInput>(jobBuilder, stepName, _ => reader);
+    }
+
+    public IStepBuilderProcess<TItem> ReadFrom<TReader, TItem>() where TReader : class, IReader<TItem>
+    {
+        jobBuilder.RequireServiceProvider("ReadFrom<TReader, TItem>()");
+        return new StepBuilderProcess<TItem>(jobBuilder, stepName, sp => ComponentResolver.Resolve<TReader>(sp!));
     }
 
     public ITaskletStepBuilder Execute(ITasklet tasklet)
     {
         ArgumentNullException.ThrowIfNull(tasklet);
-        return new TaskletStepBuilder(jobBuilder, stepName, tasklet);
+        return new TaskletStepBuilder(jobBuilder, stepName, _ => tasklet);
+    }
+
+    public ITaskletStepBuilder Execute<TTasklet>() where TTasklet : class, ITasklet
+    {
+        jobBuilder.RequireServiceProvider("Execute<TTasklet>()");
+        return new TaskletStepBuilder(jobBuilder, stepName, sp => ComponentResolver.Resolve<TTasklet>(sp!));
     }
 
     public ITaskletStepBuilder Execute(Func<Task> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        return new TaskletStepBuilder(jobBuilder, stepName, new DelegateTasklet(_ => action()));
+        return new TaskletStepBuilder(jobBuilder, stepName, _ => new DelegateTasklet(_ => action()));
     }
 
     public ITaskletStepBuilder Execute(Func<CancellationToken, Task> action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        return new TaskletStepBuilder(jobBuilder, stepName, new DelegateTasklet(action));
+        return new TaskletStepBuilder(jobBuilder, stepName, _ => new DelegateTasklet(action));
     }
 
     public ITaskletStepBuilder Execute(Action action)
     {
         ArgumentNullException.ThrowIfNull(action);
-        return new TaskletStepBuilder(jobBuilder, stepName, new DelegateTasklet(_ => { action(); return Task.CompletedTask; }));
+        return new TaskletStepBuilder(jobBuilder, stepName, _ => new DelegateTasklet(_ => { action(); return Task.CompletedTask; }));
     }
 }
 
-internal sealed class StepBuilderProcess<TInput>(JobBuilder jobBuilder, string stepName, IReader<TInput> reader) : IStepBuilderProcess<TInput>
+internal sealed class StepBuilderProcess<TInput>(
+    JobBuilder jobBuilder,
+    string stepName,
+    Func<IServiceProvider?, IReader<TInput>> readerFactory) : IStepBuilderProcess<TInput>
 {
     public IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(IProcessor<TInput, TOutput> processor)
     {
         ArgumentNullException.ThrowIfNull(processor);
-        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, reader, processor);
+        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, readerFactory, _ => processor);
     }
 
     public IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, TOutput> processor)
     {
         ArgumentNullException.ThrowIfNull(processor);
-        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, reader, new DelegateProcessor<TInput, TOutput>(processor));
+        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, readerFactory,
+            _ => new DelegateProcessor<TInput, TOutput>(processor));
     }
 
     public IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, CancellationToken, Task<TOutput>> processor)
     {
         ArgumentNullException.ThrowIfNull(processor);
-        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, reader, new DelegateProcessor<TInput, TOutput>(processor));
+        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, readerFactory,
+            _ => new DelegateProcessor<TInput, TOutput>(processor));
+    }
+
+    public IStepBuilderWriteTo<TOutput> ProcessWith<TProcessor, TOutput>() where TProcessor : class, IProcessor<TInput, TOutput>
+    {
+        jobBuilder.RequireServiceProvider("ProcessWith<TProcessor, TOutput>()");
+        return new StepBuilderWriteTo<TInput, TOutput>(jobBuilder, stepName, readerFactory,
+            sp => ComponentResolver.Resolve<TProcessor>(sp!));
     }
 
     public IStepBuilderOptions WriteTo(IWriter<TInput> writer)
     {
         ArgumentNullException.ThrowIfNull(writer);
-        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, reader, null, writer);
+        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, readerFactory, null, _ => writer);
     }
 
     public IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, Task> writeAction)
     {
         ArgumentNullException.ThrowIfNull(writeAction);
-        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, reader, null, new DelegateWriter<TInput>(writeAction));
+        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, readerFactory, null,
+            _ => new DelegateWriter<TInput>(writeAction));
     }
 
     public IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, CancellationToken, Task> writeAction)
     {
         ArgumentNullException.ThrowIfNull(writeAction);
-        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, reader, null, new DelegateWriter<TInput>(writeAction));
+        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, readerFactory, null,
+            _ => new DelegateWriter<TInput>(writeAction));
+    }
+
+    public IStepBuilderOptions WriteTo<TWriter>() where TWriter : class, IWriter<TInput>
+    {
+        jobBuilder.RequireServiceProvider("WriteTo<TWriter>()");
+        return new StepBuilderOptions<TInput, TInput>(jobBuilder, stepName, readerFactory, null,
+            sp => ComponentResolver.Resolve<TWriter>(sp!));
     }
 }
 
 internal sealed class StepBuilderWriteTo<TInput, TOutput>(
     JobBuilder jobBuilder,
     string stepName,
-    IReader<TInput> reader,
-    IProcessor<TInput, TOutput> processor) : IStepBuilderWriteTo<TOutput>
+    Func<IServiceProvider?, IReader<TInput>> readerFactory,
+    Func<IServiceProvider?, IProcessor<TInput, TOutput>> processorFactory) : IStepBuilderWriteTo<TOutput>
 {
     public IStepBuilderOptions WriteTo(IWriter<TOutput> writer)
     {
         ArgumentNullException.ThrowIfNull(writer);
-        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, reader, processor, writer);
+        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, readerFactory, processorFactory, _ => writer);
     }
 
     public IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, Task> writeAction)
     {
         ArgumentNullException.ThrowIfNull(writeAction);
-        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, reader, processor, new DelegateWriter<TOutput>(writeAction));
+        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, readerFactory, processorFactory,
+            _ => new DelegateWriter<TOutput>(writeAction));
     }
 
     public IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, CancellationToken, Task> writeAction)
     {
         ArgumentNullException.ThrowIfNull(writeAction);
-        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, reader, processor, new DelegateWriter<TOutput>(writeAction));
+        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, readerFactory, processorFactory,
+            _ => new DelegateWriter<TOutput>(writeAction));
+    }
+
+    public IStepBuilderOptions WriteTo<TWriter>() where TWriter : class, IWriter<TOutput>
+    {
+        jobBuilder.RequireServiceProvider("WriteTo<TWriter>()");
+        return new StepBuilderOptions<TInput, TOutput>(jobBuilder, stepName, readerFactory, processorFactory,
+            sp => ComponentResolver.Resolve<TWriter>(sp!));
     }
 }
 
 internal sealed class StepBuilderOptions<TInput, TOutput>(
     JobBuilder jobBuilder,
     string stepName,
-    IReader<TInput> reader,
-    IProcessor<TInput, TOutput>? processor,
-    IWriter<TOutput> writer) : IStepBuilderOptions, IStepRegistration
+    Func<IServiceProvider?, IReader<TInput>> readerFactory,
+    Func<IServiceProvider?, IProcessor<TInput, TOutput>>? processorFactory,
+    Func<IServiceProvider?, IWriter<TOutput>> writerFactory) : IStepBuilderOptions, IStepRegistration
 {
     private SkipPolicy? _skipPolicy;
     private RetryPolicy? _retryPolicy;
@@ -149,13 +197,16 @@ internal sealed class StepBuilderOptions<TInput, TOutput>(
     {
         if (_registered) return;
         _registered = true;
-        jobBuilder.RegisterStep(stepName, reader, writer, processor, _skipPolicy, _retryPolicy, _chunkSize, _stepListeners);
+        jobBuilder.RegisterStep(stepName, readerFactory, writerFactory, processorFactory, _skipPolicy, _retryPolicy, _chunkSize, _stepListeners);
     }
 
     void IStepRegistration.Register() => RegisterStep();
 }
 
-internal sealed class TaskletStepBuilder(JobBuilder jobBuilder, string stepName, ITasklet tasklet) : ITaskletStepBuilder, IStepRegistration
+internal sealed class TaskletStepBuilder(
+    JobBuilder jobBuilder,
+    string stepName,
+    Func<IServiceProvider?, ITasklet> taskletFactory) : ITaskletStepBuilder, IStepRegistration
 {
     private readonly List<IStepListener> _stepListeners = [];
     private bool _registered;
@@ -171,7 +222,7 @@ internal sealed class TaskletStepBuilder(JobBuilder jobBuilder, string stepName,
     {
         if (_registered) return;
         _registered = true;
-        jobBuilder.RegisterTaskletStep(stepName, tasklet, _stepListeners);
+        jobBuilder.RegisterTaskletStep(stepName, taskletFactory, _stepListeners);
     }
 
     void IStepRegistration.Register() => RegisterStep();

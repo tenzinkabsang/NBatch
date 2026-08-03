@@ -62,6 +62,158 @@ internal sealed class DependencyInjectionTests
             }));
     }
 
+    #region Type-based (DI-resolved) components
+
+    private sealed class FixedReader : IReader<string>
+    {
+        public Task<IEnumerable<string>> ReadAsync(long startIndex, int chunkSize, CancellationToken cancellationToken = default)
+            => Task.FromResult(startIndex == 0 ? new[] { "r1", "r2" }.AsEnumerable() : []);
+    }
+
+    private sealed class UppercaseProcessor : IProcessor<string, string>
+    {
+        public Task<string> ProcessAsync(string input, CancellationToken cancellationToken = default)
+            => Task.FromResult(input.ToUpperInvariant());
+    }
+
+    private sealed class SharedSink
+    {
+        public List<string> Items { get; } = [];
+        public List<Guid> WriterInstances { get; } = [];
+    }
+
+    private sealed class SinkWriter(SharedSink sink) : IWriter<string>
+    {
+        private readonly Guid _instanceId = Guid.NewGuid();
+
+        public Task WriteAsync(IEnumerable<string> items, CancellationToken cancellationToken = default)
+        {
+            sink.Items.AddRange(items);
+            sink.WriterInstances.Add(_instanceId);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class CountingTasklet(SharedSink sink) : ITasklet
+    {
+        public Task ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            sink.Items.Add("tasklet-ran");
+            return Task.CompletedTask;
+        }
+    }
+
+    [Test]
+    public async Task TypeBased_components_resolve_registered_services()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<SharedSink>();
+        services.AddScoped<FixedReader>();
+        services.AddScoped<UppercaseProcessor>();
+        services.AddScoped<SinkWriter>();
+
+        services.AddNBatch(nbatch =>
+        {
+            nbatch.AddJob("typed-job", job => job
+                .AddStep("etl", step => step
+                    .ReadFrom<FixedReader, string>()
+                    .ProcessWith<UppercaseProcessor, string>()
+                    .WriteTo<SinkWriter>()));
+        });
+
+        var sp = services.BuildServiceProvider();
+        var sink = sp.GetRequiredService<SharedSink>();
+
+        var result = await sp.GetRequiredService<IJobRunner>().RunAsync("typed-job");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(sink.Items, Is.EqualTo(new[] { "R1", "R2" }));
+    }
+
+    [Test]
+    public async Task TypeBased_Execute_resolves_tasklet()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<SharedSink>();
+
+        services.AddNBatch(nbatch =>
+        {
+            nbatch.AddJob("tasklet-job", job => job
+                .AddStep("notify", step => step.Execute<CountingTasklet>()));
+        });
+
+        var sp = services.BuildServiceProvider();
+        var result = await sp.GetRequiredService<IJobRunner>().RunAsync("tasklet-job");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(sp.GetRequiredService<SharedSink>().Items, Is.EqualTo(new[] { "tasklet-ran" }));
+    }
+
+    [Test]
+    public async Task Unregistered_component_is_constructed_via_ActivatorUtilities()
+    {
+        // SinkWriter is NOT registered, but its SharedSink dependency is —
+        // ActivatorUtilities must construct it with the dependency supplied by DI.
+        var services = new ServiceCollection();
+        services.AddSingleton<SharedSink>();
+
+        services.AddNBatch(nbatch =>
+        {
+            nbatch.AddJob("activator-job", job => job
+                .AddStep("s1", step => step
+                    .ReadFrom(new ListReader<string>(["a"]))
+                    .WriteTo<SinkWriter>()));
+        });
+
+        var sp = services.BuildServiceProvider();
+        var result = await sp.GetRequiredService<IJobRunner>().RunAsync("activator-job");
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(sp.GetRequiredService<SharedSink>().Items, Is.EqualTo(new[] { "a" }));
+    }
+
+    [Test]
+    public async Task Scoped_component_is_fresh_per_run()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<SharedSink>();
+        services.AddScoped<SinkWriter>();
+
+        services.AddNBatch(nbatch =>
+        {
+            nbatch.AddJob("scoped-job", job => job
+                .AddStep("s1", step => step
+                    .ReadFrom(new ListReader<string>(["a"]))
+                    .WriteTo<SinkWriter>()));
+        });
+
+        var sp = services.BuildServiceProvider();
+        var runner = sp.GetRequiredService<IJobRunner>();
+        var sink = sp.GetRequiredService<SharedSink>();
+
+        await runner.RunAsync("scoped-job");
+        await runner.RunAsync("scoped-job");
+
+        Assert.That(sink.WriterInstances, Has.Count.EqualTo(2));
+        Assert.That(sink.WriterInstances[0], Is.Not.EqualTo(sink.WriterInstances[1]),
+            "each run gets a fresh scoped writer instance");
+    }
+
+    [Test]
+    public void TypeBased_overload_on_standalone_builder_throws_InvalidOperationException()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            Job.CreateBuilder("standalone")
+                .AddStep("s1", step => step
+                    .ReadFrom<FixedReader, string>()
+                    .WriteTo(new CollectingWriter<string>()))
+                .Build());
+
+        Assert.That(ex!.Message, Does.Contain("AddNBatch"));
+    }
+
+    #endregion
+
     [Test]
     public void AddNBatch_registers_IJobRunner()
     {

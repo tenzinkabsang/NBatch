@@ -33,11 +33,23 @@ public sealed class JobBuilder
     /// <summary>Gets the name of the job being built.</summary>
     internal string JobName { get; }
 
+    /// <summary>
+    /// The per-run service provider for jobs registered via <c>AddNBatch</c>.
+    /// Null for standalone <see cref="Job.CreateBuilder"/> jobs, where the
+    /// type-based component overloads are unavailable.
+    /// </summary>
+    internal IServiceProvider? ServiceProvider { get; set; }
+
     internal JobBuilder(string jobName)
     {
         ArgumentNullException.ThrowIfNull(jobName);
         JobName = jobName;
     }
+
+    internal IServiceProvider RequireServiceProvider(string apiName)
+        => ServiceProvider ?? throw new InvalidOperationException(
+            $"{apiName} resolves the component from a service provider, which is only available for jobs " +
+            "registered via services.AddNBatch(...). For standalone Job.CreateBuilder(...) jobs, pass an instance instead.");
 
     /// <summary>
     /// Sets the job repository implementation.
@@ -120,9 +132,9 @@ public sealed class JobBuilder
 
     internal void RegisterStep<TInput, TOutput>(
         string stepName,
-        IReader<TInput> reader,
-        IWriter<TOutput> writer,
-        IProcessor<TInput, TOutput>? processor,
+        Func<IServiceProvider?, IReader<TInput>> readerFactory,
+        Func<IServiceProvider?, IWriter<TOutput>> writerFactory,
+        Func<IServiceProvider?, IProcessor<TInput, TOutput>>? processorFactory,
         SkipPolicy? skipPolicy,
         RetryPolicy? retryPolicy,
         int? chunkSize,
@@ -131,26 +143,31 @@ public sealed class JobBuilder
         if (!_stepNames.Add(stepName))
             throw new DuplicateStepNameException();
 
-        // Job-level defaults are read when the factory runs (inside Build()),
-        // so WithDefault* calls apply regardless of configuration order.
+        // Job-level defaults and component factories are evaluated when the
+        // definition factory runs (inside Build(), per run for DI jobs), so
+        // configuration order doesn't matter and scoped components stay fresh.
         _stepDefinitions.Add(new StepDefinition(
             stepName,
             (repository, logger) => new Step<TInput, TOutput>(
-                stepName, reader, processor, writer, repository, logger,
+                stepName,
+                readerFactory(ServiceProvider),
+                processorFactory?.Invoke(ServiceProvider),
+                writerFactory(ServiceProvider),
+                repository, logger,
                 skipPolicy ?? _defaultSkipPolicy,
                 retryPolicy ?? _defaultRetryPolicy,
                 chunkSize ?? _defaultChunkSize ?? FallbackChunkSize),
             stepListeners));
     }
 
-    internal void RegisterTaskletStep(string stepName, ITasklet tasklet, List<IStepListener> stepListeners)
+    internal void RegisterTaskletStep(string stepName, Func<IServiceProvider?, ITasklet> taskletFactory, List<IStepListener> stepListeners)
     {
         if (!_stepNames.Add(stepName))
             throw new DuplicateStepNameException();
 
         _stepDefinitions.Add(new StepDefinition(
             stepName,
-            (repository, logger) => new TaskletStep(stepName, tasklet, repository, logger),
+            (repository, logger) => new TaskletStep(stepName, taskletFactory(ServiceProvider), repository, logger),
             stepListeners));
     }
 

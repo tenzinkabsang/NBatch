@@ -21,9 +21,9 @@ public sealed class NBatchBuilder
         if (Factories.ContainsKey(jobName))
             throw new ArgumentException($"A job named '{jobName}' is already registered.", nameof(jobName));
 
-        Factories[jobName] = _ =>
+        Factories[jobName] = sp =>
         {
-            var builder = new JobBuilder(jobName);
+            var builder = new JobBuilder(jobName) { ServiceProvider = sp };
             configure(builder);
             return builder.Build();
         };
@@ -49,7 +49,7 @@ public sealed class NBatchBuilder
 
         Factories[jobName] = sp =>
         {
-            var builder = new JobBuilder(jobName);
+            var builder = new JobBuilder(jobName) { ServiceProvider = sp };
             configure(sp, builder);
             return builder.Build();
         };

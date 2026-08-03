@@ -9,8 +9,20 @@ public interface IStepBuilderReadFrom
 {
     /// <summary>Configures a reader for chunk-oriented processing.</summary>
     IStepBuilderProcess<TInput> ReadFrom<TInput>(IReader<TInput> reader);
+    /// <summary>
+    /// Configures a reader resolved from the service provider, fresh for every run.
+    /// Available only for jobs registered via <c>services.AddNBatch(...)</c>.
+    /// </summary>
+    /// <typeparam name="TReader">The reader type to resolve or construct.</typeparam>
+    /// <typeparam name="TItem">The item type the reader produces.</typeparam>
+    IStepBuilderProcess<TItem> ReadFrom<TReader, TItem>() where TReader : class, IReader<TItem>;
     /// <summary>Configures a tasklet for single-unit work.</summary>
     ITaskletStepBuilder Execute(ITasklet tasklet);
+    /// <summary>
+    /// Configures a tasklet resolved from the service provider, fresh for every run.
+    /// Available only for jobs registered via <c>services.AddNBatch(...)</c>.
+    /// </summary>
+    ITaskletStepBuilder Execute<TTasklet>() where TTasklet : class, ITasklet;
     /// <inheritdoc cref="Execute(ITasklet)" />
     ITaskletStepBuilder Execute(Func<Task> action);
     /// <inheritdoc cref="Execute(ITasklet)" />
@@ -30,12 +42,24 @@ public interface IStepBuilderProcess<TInput>
     IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, TOutput> processor);
     /// <inheritdoc cref="ProcessWith{TOutput}(IProcessor{TInput, TOutput})" />
     IStepBuilderWriteTo<TOutput> ProcessWith<TOutput>(Func<TInput, CancellationToken, Task<TOutput>> processor);
+    /// <summary>
+    /// Adds a processor resolved from the service provider, fresh for every run.
+    /// Available only for jobs registered via <c>services.AddNBatch(...)</c>.
+    /// </summary>
+    /// <typeparam name="TProcessor">The processor type to resolve or construct.</typeparam>
+    /// <typeparam name="TOutput">The processor's output item type.</typeparam>
+    IStepBuilderWriteTo<TOutput> ProcessWith<TProcessor, TOutput>() where TProcessor : class, IProcessor<TInput, TOutput>;
     /// <summary>Writes items directly without processing.</summary>
     IStepBuilderOptions WriteTo(IWriter<TInput> writer);
     /// <inheritdoc cref="WriteTo(IWriter{TInput})" />
     IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, Task> writeAction);
     /// <inheritdoc cref="WriteTo(IWriter{TInput})" />
     IStepBuilderOptions WriteTo(Func<IEnumerable<TInput>, CancellationToken, Task> writeAction);
+    /// <summary>
+    /// Configures a writer resolved from the service provider, fresh for every run.
+    /// Available only for jobs registered via <c>services.AddNBatch(...)</c>.
+    /// </summary>
+    IStepBuilderOptions WriteTo<TWriter>() where TWriter : class, IWriter<TInput>;
 }
 
 /// <summary>
@@ -49,6 +73,11 @@ public interface IStepBuilderWriteTo<TOutput>
     IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, Task> writeAction);
     /// <inheritdoc cref="WriteTo(IWriter{TOutput})" />
     IStepBuilderOptions WriteTo(Func<IEnumerable<TOutput>, CancellationToken, Task> writeAction);
+    /// <summary>
+    /// Configures a writer resolved from the service provider, fresh for every run.
+    /// Available only for jobs registered via <c>services.AddNBatch(...)</c>.
+    /// </summary>
+    IStepBuilderOptions WriteTo<TWriter>() where TWriter : class, IWriter<TOutput>;
 }
 
 /// <summary>
