@@ -36,10 +36,12 @@ Wire up **readers**, **processors**, and **writers** &mdash; NBatch handles chun
 |---------|-------------|
 | **Chunk-oriented processing** | Read, transform, and write data in configurable batches |
 | **Item-level skip policies** | Keep the job running when a record is malformed; only the bad record is skipped — the rest of its chunk is still written |
+| **Retry policies** | Transient errors (timeouts, connection blips) are retried with optional backoff before any skipping happens |
 | **Restart from failure** | SQL-backed job store tracks progress so a crashed job resumes where it left off; completed jobs auto-reset for the next run |
 | **Tasklet steps** | Fire-and-forget units of work (send an email, call an API, run a stored proc) |
-| **Lambda-friendly** | Processors and writers can be plain lambdas; no extra classes required |
-| **DI & hosted service** | First-class `IServiceCollection` integration with `AddNBatch()`, `RunOnce()`, and `RunEvery()` |
+| **Lambda-friendly** | Processors and writers can be plain lambdas; CSV rows can auto-map to your classes — often no extra code at all |
+| **DI & hosted service** | First-class `IServiceCollection` integration with `AddNBatch()`, DI-resolved components, `RunOnce()`, `RunEvery()`, and cron schedules via `RunOnCron()` |
+| **Observability** | OpenTelemetry-ready traces and metrics out of the box — just `AddSource("NBatch")` / `AddMeter("NBatch")` |
 | **Multi-target** | Supports **.NET 8**, **.NET 9**, and **.NET 10** |
 | **Provider-agnostic** | SQL Server, PostgreSQL, SQLite, or MySQL for the job store; any EF Core provider for your data |
 
@@ -126,6 +128,7 @@ builder.Services.AddNBatch(nbatch =>
 | [Job Store](job-store) | SQL-backed progress tracking and restart-from-failure |
 | [DI & Hosted Service](dependency-injection) | `AddNBatch()`, `IJobRunner`, `RunOnce()`, `RunEvery()` |
 | [Listeners](listeners) | Job and step lifecycle hooks for logging and monitoring |
+| [Observability](observability) | OpenTelemetry-ready traces, metrics, and durations |
 | [API Reference](api-reference) | Interfaces, builders, and result types |
 | [Examples](examples) | Real-world usage patterns and recipes |
 
@@ -139,7 +142,7 @@ builder.Services.AddNBatch(nbatch =>
 var job = Job.CreateBuilder("db-to-file")
     .AddStep("export", step => step
         .ReadFrom(new DbReader<Product>(dbContext, q => q.OrderBy(p => p.Id)))
-        .WriteTo(new FlatFileItemWriter<Product>("output.csv").WithToken(','))
+        .WriteTo(new FlatFileItemWriter<Product>("output.csv").WithDelimiter(','))
         .WithChunkSize(50))
     .Build();
 

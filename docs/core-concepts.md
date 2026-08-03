@@ -45,7 +45,11 @@ var job = Job.CreateBuilder("my-job")
 await job.RunAsync();
 ```
 
-A `Job` returns a [`JobResult`](api-reference#jobresult) containing the aggregate success status and per-step details.
+A `Job` returns a [`JobResult`](api-reference#jobresult) containing the aggregate success status and per-step details. Call `result.EnsureSuccess()` to throw a `JobFailedException` on failure instead of checking `Success` manually:
+
+```csharp
+(await job.RunAsync()).EnsureSuccess();
+```
 
 ---
 
@@ -67,6 +71,10 @@ Each iteration:
 3. The **Writer** persists the processed chunk to a destination.
 
 This loop repeats until the reader returns no more data.
+
+When something in a chunk fails, the error-handling pipeline kicks in, in this order:
+**[retry](skip-policies#retry-policies)** (transient errors) → **item-level scan**
+(isolate the failing item) → **[skip](skip-policies)** (within budget) → fail the step.
 
 ```csharp
 .AddStep("import", step => step
@@ -176,6 +184,7 @@ Returned by `job.RunAsync()`:
 | `Success` | `bool` | `true` if all steps succeeded and the run was not cancelled |
 | `Steps` | `IReadOnlyList<StepResult>` | Per-step results |
 | `Cancelled` | `bool` | `true` when the run was cancelled |
+| `Duration` | `TimeSpan` | Wall-clock execution time of the run |
 
 ### `StepResult`
 
@@ -184,8 +193,9 @@ Returned by `job.RunAsync()`:
 | `Name` | `string` | The step name |
 | `Success` | `bool` | Whether the step completed successfully |
 | `ItemsRead` | `int` | Total items read by the reader |
-| `ItemsProcessed` | `int` | Total items written successfully |
-| `ErrorsSkipped` | `int` | Individual items skipped via the skip policy |
+| `ItemsWritten` | `int` | Total items written successfully |
+| `ItemsSkipped` | `int` | Individual items skipped via the skip policy |
+| `Duration` | `TimeSpan` | Wall-clock execution time of the step |
 
 ---
 

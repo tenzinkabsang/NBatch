@@ -81,6 +81,39 @@ A thrown exception matches the policy when **any** of the following is a skippab
 
 ---
 
+## Retry Policies
+
+For **transient** errors (timeouts, connection blips), skipping is the wrong tool — the
+record is fine, the infrastructure hiccuped. Retry policies handle these: matching
+failures are retried **before** the skip policy is consulted, so a transient error that
+succeeds on retry consumes no skip budget.
+
+```csharp
+.AddStep("import", step => step
+    .ReadFrom(reader)
+    .WriteTo(writer)
+    .WithRetryPolicy(RetryPolicy.For<TimeoutException>(maxAttempts: 3, TimeSpan.FromSeconds(2)))
+    .WithSkipPolicy(SkipPolicy.For<FormatException>(maxSkips: 5)))
+```
+
+- `maxAttempts` is the total including the first try — `3` means "try, then retry twice".
+- The optional delay waits between attempts; omit it to retry immediately.
+- Exponential backoff: `RetryPolicy.For<TimeoutException>(4, TimeSpan.FromSeconds(1)).WithBackoffMultiplier(2)`
+  waits 1s, 2s, then 4s.
+- Matching follows the same rules as skip policies (subclasses + inner-exception chain).
+- Retries apply to the chunk attempt and to each item during the scan; delays are
+  interrupted by cancellation.
+
+The full error-handling order for a failure is therefore: **retry → item-level scan → skip → fail**.
+A persistent-but-skippable error is retried to exhaustion, then skipped once; a
+persistent non-skippable error is retried to exhaustion, then fails the step. Note that
+retrying a chunk re-invokes the processor for the whole chunk — one more reason
+processors should be idempotent.
+
+A job-wide default can be set with `JobBuilder.WithDefaultRetryPolicy(...)`, overridable per step.
+
+---
+
 ## Monitoring Skips
 
 The `StepResult` reports how many individual items were skipped:
@@ -92,8 +125,8 @@ foreach (var step in result.Steps)
 {
     Console.WriteLine($"Step: {step.Name}");
     Console.WriteLine($"  Read:    {step.ItemsRead}");
-    Console.WriteLine($"  Written: {step.ItemsProcessed}");
-    Console.WriteLine($"  Skipped: {step.ErrorsSkipped}");
+    Console.WriteLine($"  Written: {step.ItemsWritten}");
+    Console.WriteLine($"  Skipped: {step.ItemsSkipped}");
 }
 ```
 

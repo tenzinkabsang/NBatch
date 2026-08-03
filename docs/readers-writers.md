@@ -27,7 +27,8 @@ Reads items from a delimited text file. Automatically parses headers from the fi
 
 Fields may be quoted (RFC 4180): a quoted field can contain the delimiter, and `""`
 inside a quoted field is an escaped literal quote. Embedded newlines inside quoted
-fields are **not** supported — the reader is line-based. Values are trimmed.
+fields are **not** supported — the reader is line-based. Values are trimmed, and all
+parsing uses the invariant culture.
 
 ```csharp
 var reader = new CsvReader<Product>("products.csv", row => new Product
@@ -36,6 +37,25 @@ var reader = new CsvReader<Product>("products.csv", row => new Product
     Price = row.GetDecimal("Price")
 });
 ```
+
+### Automatic mapping
+
+Skip the mapping function entirely and let headers bind to properties:
+
+```csharp
+var reader = new CsvReader<Product>("products.csv");
+```
+
+- Header names match **public settable properties** case-insensitively.
+- Supported types: `string`, `int`, `long`, `decimal`, `double`, `float`, `bool`,
+  `DateTime`, `DateTimeOffset`, `Guid`, enums (case-insensitive), and `Nullable<>`
+  of each — an empty value becomes `null` for nullable properties.
+- Unmatched headers are ignored; unmatched (or unsupported-type) properties keep
+  their defaults.
+- `T` needs a **public parameterless constructor** — positional records don't have
+  one, so use the map-function overload for those (a clear error at construction
+  points this out).
+- Auto-mapping is reflection-based, so it is not trimming/AOT-safe.
 
 ### Options
 
@@ -65,6 +85,12 @@ The mapping function receives a `CsvRow` with typed accessor methods. Each metho
 | `GetDecimal("column")` | `decimal` | `row.GetDecimal("Price")` or `row.GetDecimal(2)` |
 | `GetDouble("column")` | `double` | `row.GetDouble("Weight")` or `row.GetDouble(3)` |
 | `GetBool("column")` | `bool` | `row.GetBool("Active")` or `row.GetBool(4)` |
+| `GetDateTime("column")` | `DateTime` | `row.GetDateTime("CreatedOn")` or `row.GetDateTime(5)` |
+| `GetGuid("column")` | `Guid` | `row.GetGuid("Id")` or `row.GetGuid(6)` |
+
+Every accessor also has a nullable **`*OrNull`** variant (`GetIntOrNull`,
+`GetStringOrNull`, `GetDateTimeOrNull`, …) that returns `null` when the column is
+missing or the value is empty — a non-empty unparseable value still throws.
 
 ### Error behavior
 
@@ -122,7 +148,7 @@ var writer = new FlatFileItemWriter<Product>("output.csv");
 
 ```csharp
 var writer = new FlatFileItemWriter<Product>("output.tsv")
-    .WithToken('\t');
+    .WithDelimiter('\t');
 ```
 
 Default token: `,` (comma)

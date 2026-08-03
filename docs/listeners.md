@@ -87,7 +87,7 @@ public class StepMetricsListener : IStepListener
     {
         Console.WriteLine(
             $"Step '{result.Name}': Read={result.ItemsRead}, " +
-            $"Processed={result.ItemsProcessed}, Skipped={result.ErrorsSkipped}");
+            $"Written={result.ItemsWritten}, Skipped={result.ItemsSkipped}");
         return Task.CompletedTask;
     }
 }
@@ -134,10 +134,10 @@ var job = Job.CreateBuilder("monitored-job")
 |----------|---------------|----------------|
 | Job timing | `IJobListener` | Start/stop a `Stopwatch` |
 | Slack/email alerts | `IJobListener` | Send notification in `AfterJobAsync` on failure |
-| Per-step metrics | `IStepListener` | Log `ItemsRead`, `ItemsProcessed`, `ErrorsSkipped` |
+| Per-step metrics | `IStepListener` | Log `ItemsRead`, `ItemsWritten`, `ItemsSkipped` |
 | Audit logging | Both | Write entries to an audit trail |
 | Health checks | `IJobListener` | Update a health-check endpoint |
 
 ---
 
-**Next:** [API Reference &rarr;](api-reference)
+**Next:** [Observability &rarr;](observability)

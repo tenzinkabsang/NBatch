@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Examples
-nav_order: 9
+nav_order: 10
 ---
 
 # Examples
@@ -34,7 +34,58 @@ var job = Job.CreateBuilder("csv-to-db")
         .WithChunkSize(100))
     .Build();
 
+(await job.RunAsync()).EnsureSuccess();   // throws JobFailedException on failure
+```
+
+---
+
+## CSV with Automatic Mapping
+
+When header names match property names, skip the mapping function entirely:
+
+```csharp
+var job = Job.CreateBuilder("csv-automap")
+    .AddStep("import", step => step
+        .ReadFrom(new CsvReader<Product>("products.csv"))   // headers → properties
+        .WriteTo(new DbWriter<Product>(dbContext))
+        .WithChunkSize(100))
+    .Build();
+
 await job.RunAsync();
+```
+
+---
+
+## Retrying Transient Failures
+
+Retry timeouts before skipping anything — the record is fine, the network hiccuped:
+
+```csharp
+var job = Job.CreateBuilder("resilient-import")
+    .AddStep("import", step => step
+        .ReadFrom(new CsvReader<Product>("products.csv"))
+        .WriteTo(new DbWriter<Product>(dbContext))
+        .WithRetryPolicy(RetryPolicy.For<TimeoutException>(maxAttempts: 3, TimeSpan.FromSeconds(1))
+            .WithBackoffMultiplier(2))
+        .WithSkipPolicy(SkipPolicy.For<FlatFileParseException>(maxSkips: 5))
+        .WithChunkSize(100))
+    .Build();
+```
+
+---
+
+## Nightly Job with Cron
+
+```csharp
+builder.Services.AddNBatch(nbatch =>
+{
+    nbatch.AddJob("nightly-report", (sp, job) => job
+        .AddStep("generate", step => step
+            .ReadFrom(new DbReader<Order>(sp.GetRequiredService<AppDbContext>(), q => q.OrderBy(o => o.Id)))
+            .WriteTo(new FlatFileItemWriter<Order>("report.csv"))
+            .WithChunkSize(500)))
+        .RunOnCron("0 2 * * *");   // 02:00 UTC daily
+});
 ```
 
 ---
@@ -47,7 +98,7 @@ Export database records to a flat file.
 var job = Job.CreateBuilder("db-to-file")
     .AddStep("export", step => step
         .ReadFrom(new DbReader<Product>(dbContext, q => q.OrderBy(p => p.Id)))
-        .WriteTo(new FlatFileItemWriter<Product>("output.csv").WithToken(','))
+        .WriteTo(new FlatFileItemWriter<Product>("output.csv").WithDelimiter(','))
         .WithChunkSize(50))
     .Build();
 
@@ -322,7 +373,7 @@ Console.WriteLine($"Job: {result.Name}, Success: {result.Success}");
 foreach (var step in result.Steps)
 {
     Console.WriteLine($"  {step.Name}: Read={step.ItemsRead}, " +
-        $"Processed={step.ItemsProcessed}, Skipped={step.ErrorsSkipped}");
+        $"Written={step.ItemsWritten}, Skipped={step.ItemsSkipped}");
 }
 ```
 

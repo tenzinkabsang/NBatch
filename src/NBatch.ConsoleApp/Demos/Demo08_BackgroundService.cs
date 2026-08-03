@@ -56,12 +56,14 @@ public static class Demo08_BackgroundService
                             .WithChunkSize(10)))
                         .RunOnce();
 
-                    // Job 2: runs every 3 seconds
+                    // Job 2: runs every 3 seconds.
+                    // For calendar schedules use .RunOnCron("0 2 * * *") — a nightly
+                    // 02:00 UTC run — instead of RunEvery (min cron cadence: 1 minute).
                     nbatch.AddJob("periodic-check", job => job
                         .AddStep("check", step => step
                             .Execute(() =>
                             {
-                                Console.WriteLine($"    [periodic-check] Health check at {DateTime.Now:HH:mm:ss} ?");
+                                Console.WriteLine($"    [periodic-check] Health check at {DateTime.Now:HH:mm:ss} ✓");
                             })))
                         .RunEvery(TimeSpan.FromSeconds(3));
                 });

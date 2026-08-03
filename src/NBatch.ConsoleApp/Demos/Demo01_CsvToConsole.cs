@@ -8,10 +8,12 @@ namespace NBatch.ConsoleApp.Demos;
 /// DEMO 1 — Minimal API
 ///
 /// Shows the simplest possible NBatch job:
-///   CsvReader → lambda processor → lambda writer
+///   CsvReader (auto-mapped) → lambda processor → lambda writer
 ///   No database, no DI, no SQL — just read, transform, print.
+///   The CSV headers (Sku, Name, Description, Price) bind straight to the
+///   Product properties, so no mapping function is needed.
 ///
-/// Features: Job.CreateBuilder, CsvReader, ProcessWith(lambda), WriteTo(lambda)
+/// Features: Job.CreateBuilder, CsvReader auto-mapping, ProcessWith(lambda), WriteTo(lambda)
 /// </summary>
 public static class Demo01_CsvToConsole
 {
@@ -20,13 +22,7 @@ public static class Demo01_CsvToConsole
         var job = Job.CreateBuilder("demo-01-csv-to-console")
             .WithLogger(logger)
             .AddStep("read-and-print", step => step
-                .ReadFrom(new CsvReader<Product>(filePath, row => new Product
-                {
-                    Sku = row.GetString("Sku"),
-                    Name = row.GetString("Name"),
-                    Description = row.GetString("Description"),
-                    Price = row.GetDecimal("Price")
-                }))
+                .ReadFrom(new CsvReader<Product>(filePath))
                 .ProcessWith(p => new Product
                 {
                     Sku = p.Sku.ToUpper(),

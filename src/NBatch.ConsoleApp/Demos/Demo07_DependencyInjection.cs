@@ -49,10 +49,12 @@ public static class Demo07_DependencyInjection
         await using var sp = services.BuildServiceProvider();
         var runner = sp.GetRequiredService<IJobRunner>();
 
-        var result = await runner.RunAsync("demo-07-di");
+        // EnsureSuccess() throws a JobFailedException naming the failed step,
+        // so a script-style caller can't accidentally ignore a failed run.
+        var result = (await runner.RunAsync("demo-07-di")).EnsureSuccess();
 
         Console.WriteLine();
-        Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success}");
+        Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success} in {result.Duration.TotalMilliseconds:F0} ms");
         foreach (var step in result.Steps)
             Console.WriteLine($"    Step '{step.Name}': Read={step.ItemsRead}, Written={step.ItemsWritten}, Skipped={step.ItemsSkipped}");
     }

@@ -17,7 +17,7 @@
   <PackageLicenseExpression>MIT</PackageLicenseExpression>
   <PackageReadmeFile>README.md</PackageReadmeFile>
   <PackageIcon>icon.png</PackageIcon>
-  <PackageReleaseNotes>v3.0.0 — Item-level skip scanning (bad records no longer discard whole chunks), auto-reset after successful runs, RFC 4180 quoted CSV parsing, order-independent job builder. DbReader/DbWriter moved to NBatch.EntityFrameworkCore; the core package no longer depends on EF Core. See CHANGELOG for the migration guide.</PackageReleaseNotes>
+  <PackageReleaseNotes>v3.0.0 — Item-level skip scanning, retry policies with backoff, cron scheduling (RunOnCron), CSV auto-mapping, DI-resolved step components, job-level defaults, EnsureSuccess, OpenTelemetry-ready traces/metrics, auto-reset after successful runs, RFC 4180 quoted CSV parsing, order-independent job builder. Renames: ItemsProcessed→ItemsWritten, ErrorsSkipped→ItemsSkipped, WithToken→WithDelimiter. DbReader/DbWriter moved to NBatch.EntityFrameworkCore; the core package no longer depends on EF Core. See CHANGELOG for the migration guide.</PackageReleaseNotes>
   <Copyright>Copyright (c) Tenzin Kabsang</Copyright>
 
   <!-- Build quality -->

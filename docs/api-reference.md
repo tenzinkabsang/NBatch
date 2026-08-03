@@ -1,7 +1,7 @@
 ---
 layout: default
 title: API Reference
-nav_order: 8
+nav_order: 9
 ---
 
 # API Reference
@@ -31,8 +31,11 @@ Fluent builder for configuring and creating a `Job`.
 |--------|---------|-------------|
 | `WithLogger(ILogger logger)` | `JobBuilder` | Sets the logger for diagnostics |
 | `WithListener(IJobListener listener)` | `JobBuilder` | Registers a job-level listener |
+| `WithDefaultChunkSize(int)` | `JobBuilder` | Chunk size for steps that don't set their own |
+| `WithDefaultSkipPolicy(SkipPolicy)` | `JobBuilder` | Skip policy for steps that don't set their own |
+| `WithDefaultRetryPolicy(RetryPolicy)` | `JobBuilder` | Retry policy for steps that don't set their own |
 | `AddStep(string name, Func<..., IStepBuilderFinal> configure)` | `JobBuilder` | Adds a named step |
-| `Build()` | `Job` | Creates the configured job |
+| `Build()` | `Job` | Creates the configured job (throws `InvalidOperationException` when no steps are registered) |
 
 > **Note:** `UseJobStore()` is an extension method provided by the `NBatch.EntityFrameworkCore` package. See [below](#package-nbatchentityframeworkcore).
 
@@ -47,7 +50,9 @@ The `AddStep` delegate receives a builder that flows through these stages:
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `ReadFrom<T>(IReader<T>)` | `IStepBuilderProcess<T>` | Sets the reader |
+| `ReadFrom<TReader, TItem>()` | `IStepBuilderProcess<TItem>` | Reader resolved from DI (AddNBatch jobs only) |
 | `Execute(ITasklet)` | `ITaskletStepBuilder` | Creates a tasklet step |
+| `Execute<TTasklet>()` | `ITaskletStepBuilder` | Tasklet resolved from DI (AddNBatch jobs only) |
 | `Execute(Func<Task>)` | `ITaskletStepBuilder` | Creates a tasklet from an async lambda |
 | `Execute(Func<CancellationToken, Task>)` | `ITaskletStepBuilder` | Creates a tasklet with cancellation |
 | `Execute(Action)` | `ITaskletStepBuilder` | Creates a tasklet from a synchronous action |
@@ -59,9 +64,11 @@ The `AddStep` delegate receives a builder that flows through these stages:
 | `ProcessWith<TOutput>(IProcessor<TIn, TOut>)` | `IStepBuilderWriteTo<TOutput>` | Sets the processor (interface) |
 | `ProcessWith<TOutput>(Func<TIn, TOut>)` | `IStepBuilderWriteTo<TOutput>` | Synchronous lambda processor |
 | `ProcessWith<TOutput>(Func<TIn, CancellationToken, Task<TOut>>)` | `IStepBuilderWriteTo<TOutput>` | Async lambda processor |
+| `ProcessWith<TProcessor, TOutput>()` | `IStepBuilderWriteTo<TOutput>` | Processor resolved from DI (AddNBatch jobs only) |
 | `WriteTo(IWriter<TInput>)` | `IStepBuilderOptions` | Skips processing, goes to writer |
 | `WriteTo(Func<IEnumerable<TInput>, Task>)` | `IStepBuilderOptions` | Lambda writer, no processor |
 | `WriteTo(Func<IEnumerable<TInput>, CancellationToken, Task>)` | `IStepBuilderOptions` | Lambda writer with cancellation |
+| `WriteTo<TWriter>()` | `IStepBuilderOptions` | Writer resolved from DI (AddNBatch jobs only) |
 
 #### Stage 3: `IStepBuilderWriteTo<TOutput>`
 
@@ -70,12 +77,14 @@ The `AddStep` delegate receives a builder that flows through these stages:
 | `WriteTo(IWriter<TOutput>)` | `IStepBuilderOptions` | Sets the writer (interface) |
 | `WriteTo(Func<IEnumerable<TOutput>, Task>)` | `IStepBuilderOptions` | Lambda writer |
 | `WriteTo(Func<IEnumerable<TOutput>, CancellationToken, Task>)` | `IStepBuilderOptions` | Lambda writer with cancellation |
+| `WriteTo<TWriter>()` | `IStepBuilderOptions` | Writer resolved from DI (AddNBatch jobs only) |
 
 #### Stage 4: `IStepBuilderOptions`
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `WithSkipPolicy(SkipPolicy)` | `IStepBuilderOptions` | Sets the error skip policy |
+| `WithRetryPolicy(RetryPolicy)` | `IStepBuilderOptions` | Sets the transient-failure retry policy |
 | `WithChunkSize(int)` | `IStepBuilderOptions` | Sets the chunk size (default: 10) |
 | `WithListener(IStepListener)` | `IStepBuilderOptions` | Registers a step-level listener |
 
@@ -173,9 +182,10 @@ public interface IStepListener
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `RunOnce()` | `JobRegistration` | Runs the job once at startup, then the worker exits |
-| `RunEvery(TimeSpan interval)` | `JobRegistration` | Runs immediately, then repeats after each interval |
+| `RunEvery(TimeSpan interval, bool runImmediately = true)` | `JobRegistration` | Repeats after each completion; optionally waits one interval before the first run |
+| `RunOnCron(string cronExpression, TimeZoneInfo? timeZone = null)` | `JobRegistration` | Standard 5-field cron schedule (UTC default, skip-if-missed) |
 
-> Jobs without a schedule are on-demand only &mdash; trigger them by injecting `IJobRunner` and calling `RunAsync("job-name")`.
+> Jobs without a schedule are on-demand only &mdash; trigger them by injecting `IJobRunner` and calling `RunAsync("job-name")`. The last schedule call wins.
 
 #### `IJobRunner`
 
@@ -199,11 +209,17 @@ public record JobResult(
     string Name,
     bool Success,
     IReadOnlyList<StepResult> Steps,
-    bool Cancelled = false);
+    bool Cancelled = false,
+    TimeSpan Duration = default)
+{
+    public JobResult EnsureSuccess();   // throws JobFailedException when Success is false
+}
 ```
 
 `Cancelled` is true when the run was cancelled; job listeners still receive the result
-before `RunAsync` rethrows the `OperationCanceledException`.
+before `RunAsync` rethrows the `OperationCanceledException`. `EnsureSuccess()` returns
+the result for chaining, or throws a `JobFailedException` (carrying the result and
+naming the first failed step).
 
 #### `StepResult`
 
@@ -212,11 +228,12 @@ public record StepResult(
     string Name,
     bool Success,
     int ItemsRead = 0,
-    int ItemsProcessed = 0,
-    int ErrorsSkipped = 0);
+    int ItemsWritten = 0,
+    int ItemsSkipped = 0,
+    TimeSpan Duration = default);
 ```
 
-`ErrorsSkipped` counts individual skipped **items**.
+`ItemsSkipped` counts individual skipped **items**.
 
 ---
 
@@ -235,11 +252,35 @@ item-level scan behavior.
 
 ---
 
+### `RetryPolicy`
+
+| Method | Description |
+|--------|-------------|
+| `RetryPolicy.None` | Never retry (default) |
+| `RetryPolicy.For<TEx>(int maxAttempts, TimeSpan? delay = null)` | Retry one exception type; `maxAttempts` includes the first try |
+| `RetryPolicy.For<T1, T2>(...)` / `For<T1, T2, T3>(...)` | Retry for two/three exception types |
+| `WithBackoffMultiplier(double multiplier)` | Returns a copy with exponential backoff |
+
+Same matching rules as `SkipPolicy`. Retries run **before** the skip policy is
+consulted. See [Retry Policies](skip-policies#retry-policies).
+
+---
+
+### `NBatchDiagnostics`
+
+| Member | Description |
+|--------|-------------|
+| `SourceName` (`"NBatch"`) | Name of the `ActivitySource` and `Meter` — use with `AddSource(...)` / `AddMeter(...)` |
+
+See [Observability](observability) for the emitted activities, tags, and metrics.
+
+---
+
 ### Built-in Components
 
 | Class | Type | Package | Description |
 |-------|------|---------|-------------|
-| `CsvReader<T>` | Reader | `NBatch` | Delimited file reader with header parsing and RFC 4180 quoting |
+| `CsvReader<T>` | Reader | `NBatch` | Delimited file reader with header parsing, RFC 4180 quoting, and header-to-property auto-mapping (`new CsvReader<T>(path)`) |
 | `DbReader<T>` | Reader | `NBatch.EntityFrameworkCore` | EF Core paginated reader |
 | `DbWriter<T>` | Writer | `NBatch.EntityFrameworkCore` | EF Core bulk writer (detaches entities after save) |
 | `FlatFileItemWriter<T>` | Writer | `NBatch` | Delimited file writer |

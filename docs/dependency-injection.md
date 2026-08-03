@@ -114,9 +114,92 @@ nbatch.AddJob("hourly-sync", (sp, job) => job
 
 The interval is measured from the **completion** of each run, so runs never overlap. If a run fails, the error is logged and the next run starts after the interval.
 
+By default the first run starts immediately at startup; pass `runImmediately: false` to wait one interval first:
+
+```csharp
+.RunEvery(TimeSpan.FromHours(1), runImmediately: false)
+```
+
 When combined with [`UseJobStore(...)`](job-store), each successful run auto-resets the job, so the next interval reprocesses from the beginning; a failed run resumes where it left off.
 
 > Job names must be unique — registering the same name twice throws `ArgumentException`.
+
+### `RunOnCron()` — Cron Schedules
+
+For calendar-based schedules (nightly at 02:00, weekdays at 06:30), use a standard
+5-field cron expression:
+
+```csharp
+nbatch.AddJob("nightly-import", (sp, job) => job
+    .AddStep("import", step => step
+        .ReadFrom(new CsvReader<Product>("data.csv"))
+        .WriteTo<ProductWriter>()))
+    .RunOnCron("0 2 * * *");                          // 02:00 every day, UTC
+
+// Evaluate the schedule in a specific time zone:
+    .RunOnCron("30 6 * * 1-5", TimeZoneInfo.FindSystemTimeZoneById("America/Chicago"));
+```
+
+- Standard 5-field format (minute granularity), parsed and validated at registration
+  by [Cronos](https://github.com/HangfireIO/Cronos) — an invalid expression throws
+  `ArgumentException` immediately.
+- The schedule is evaluated in **UTC** unless a `TimeZoneInfo` is provided.
+- **Skip-if-missed**: occurrences that pass while a run is still in progress are
+  skipped; the next run is always computed from the current time.
+- The last schedule call wins: `RunOnce()`, `RunEvery(...)`, and `RunOnCron(...)`
+  each replace any previously configured schedule.
+
+---
+
+## Resolving Components from DI
+
+Instead of constructing readers, processors, and writers inline, resolve them from
+the container with the type-based builder overloads:
+
+```csharp
+services.AddScoped<OrderReader>();       // registration is optional — see below
+services.AddScoped<OrderEnricher>();
+services.AddScoped<OrderWriter>();
+
+services.AddNBatch(nbatch =>
+{
+    nbatch.AddJob("orders", job => job
+        .AddStep("etl", step => step
+            .ReadFrom<OrderReader, Order>()
+            .ProcessWith<OrderEnricher, EnrichedOrder>()
+            .WriteTo<OrderWriter>()));
+
+    nbatch.AddJob("cleanup", job => job
+        .AddStep("purge", step => step.Execute<PurgeTempFilesTasklet>()));
+});
+```
+
+- A **registered** service is resolved from the container; an **unregistered** type is
+  constructed via `ActivatorUtilities` with its constructor dependencies supplied by DI.
+- Components are resolved **fresh for every run**, inside the run's DI scope — scoped
+  services like a `DbContext` behave exactly as they would in a scoped request.
+- These overloads are only available for jobs registered via `AddNBatch(...)`;
+  standalone `Job.CreateBuilder(...)` jobs get a clear `InvalidOperationException`.
+
+---
+
+## Job-Level Defaults
+
+Set chunk size, skip policy, or retry policy once per job instead of per step:
+
+```csharp
+nbatch.AddJob("etl", job => job
+    .WithDefaultChunkSize(500)
+    .WithDefaultSkipPolicy(SkipPolicy.For<FormatException>(maxSkips: 10))
+    .WithDefaultRetryPolicy(RetryPolicy.For<TimeoutException>(maxAttempts: 3))
+    .AddStep("extract", step => step.ReadFrom(r1).WriteTo(w1))
+    .AddStep("load", step => step
+        .ReadFrom(r2)
+        .WriteTo(w2)
+        .WithChunkSize(50)));   // per-step settings override the defaults
+```
+
+Declaration order doesn't matter — defaults declared after `AddStep` still apply.
 
 ### On-Demand Only (No Schedule)
 
@@ -262,7 +345,7 @@ builder.Services.AddNBatch(nbatch =>
             .ReadFrom(new DbReader<Product>(
                 sp.GetRequiredService<AppDbContext>(),
                 q => q.OrderBy(p => p.Id)))
-            .WriteTo(new FlatFileItemWriter<Product>("products-export.csv").WithToken(','))
+            .WriteTo(new FlatFileItemWriter<Product>("products-export.csv").WithDelimiter(','))
             .WithChunkSize(200)));
 });
 

@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
   - `StepResult.ErrorsSkipped` → `StepResult.ItemsSkipped`
   - `FlatFileItemWriter.WithToken(char)` → `WithDelimiter(char)` (matches `CsvReader`)
   - `StepResult` and `JobResult` gain a trailing `Duration` positional parameter (affects exhaustive positional deconstruction only).
+- **`CsvRow` accessors now parse with `CultureInfo.InvariantCulture`.** Previously values were parsed with the server's current culture, so the same file could parse differently per machine locale. Files written with culture-specific formats (e.g. `19,99` decimals) need a custom mapping function.
+- **`JobBuilder.Build()` throws `InvalidOperationException` when no steps are registered.** For jobs registered via `AddNBatch`, this surfaces on the first run (builds are lazy per run).
 - **Skip policies now skip individual items, not whole chunks.**
   When a chunk fails to read, process, or write, NBatch falls back to handling that chunk one item at a time: good items are still written and only the genuinely failing items are skipped. Consequences:
   - `StepResult.ItemsSkipped` counts skipped **items** (previously: skipped chunks).
@@ -31,6 +33,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **The in-memory repository now resumes after a failed run** when the same `Job` instance is re-run, matching the persistent job-store contract (previously every rerun started from scratch).
 
 ### Added
+- **Retry policies** — `RetryPolicy.For<TException>(maxAttempts, delay)` with optional exponential backoff (`WithBackoffMultiplier`), configured per step via `.WithRetryPolicy(...)` or per job via `WithDefaultRetryPolicy(...)`. Transient failures are retried **before** the skip policy is consulted, so a retry that succeeds consumes no skip budget. Matching follows the same inheritance + inner-exception rules as skip policies.
+- **Cron scheduling** — `JobRegistration.RunOnCron("0 2 * * *", timeZone?)` (standard 5-field expressions via Cronos, UTC default, validated at registration, skip-if-missed). `RunEvery(interval, runImmediately: false)` defers the first run by one interval.
+- **DI-resolved step components** — `ReadFrom<TReader, TItem>()`, `ProcessWith<TProcessor, TOutput>()`, `WriteTo<TWriter>()`, and `Execute<TTasklet>()` resolve from the container (registered service, or `ActivatorUtilities` construction), fresh per run inside the run's DI scope.
+- **CSV auto-mapping** — `new CsvReader<T>(path)` binds headers to public settable properties case-insensitively (all common primitives + `DateTime`/`DateTimeOffset`/`Guid`/enums and their nullable forms). `CsvRow` gains `GetDateTime`/`GetGuid` and `*OrNull` accessors.
+- **`JobResult.EnsureSuccess()`** — throws `JobFailedException` (naming the failed step, carrying the result) instead of relying on callers to check `Success`.
+- **Job-level defaults** — `WithDefaultChunkSize`, `WithDefaultSkipPolicy`, `WithDefaultRetryPolicy` on `JobBuilder`, overridable per step, order-independent.
+- **OpenTelemetry-ready observability** — `nbatch.job`/`nbatch.step` activities, `nbatch.items.read/written/skipped` counters, and an `nbatch.step.duration` histogram under source/meter `NBatchDiagnostics.SourceName` ("NBatch"); `Duration` on both result records. Zero new dependencies.
 - **Item-level scan mode** — the item-at-a-time fallback described above; single bad records no longer discard up to `ChunkSize − 1` good records.
 - **Skip policy matching honors inheritance and inner exceptions** — `SkipPolicy.For<IOException>` matches `FileNotFoundException`; a policy for `FormatException` matches a `FlatFileParseException` wrapping one (inner-exception chain walked up to depth 10).
 - **RFC 4180 quoted CSV fields** — `CsvReader` handles quoted fields containing the delimiter and `""` escape sequences (embedded newlines are not supported). Duplicate header names are rejected with a clear error.
@@ -62,6 +71,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 3. **First v3 run against a v2 database resumes** (the new column is `NULL`, treated as "resume"). Auto-reset takes effect from the run after the first completed v3 run. If you relied on "run once, then never reprocess", guard the rerun externally — that behavior is no longer the default.
 4. **Review processors for idempotency**: items in a failed chunk are re-processed during the item-level scan, and restarts after mid-chunk failures may re-write already-written items.
 5. **Skip counts are per item** — if you alert on the skip count (now `StepResult.ItemsSkipped`), expect item counts now.
+6. **Renames are a mechanical find/replace**:
+
+   | v2 | v3 |
+   |----|----|
+   | `StepResult.ItemsProcessed` | `StepResult.ItemsWritten` |
+   | `StepResult.ErrorsSkipped` | `StepResult.ItemsSkipped` |
+   | `FlatFileItemWriter.WithToken(...)` | `FlatFileItemWriter.WithDelimiter(...)` |
+
+7. **CSV parsing is invariant-culture** — if your files use culture-specific number/date formats, parse them explicitly in a mapping function.
+8. **Retry runs before skip** — existing skip-only configurations behave identically; add `.WithRetryPolicy(...)` only where transient failures occur.
 
 ---
 

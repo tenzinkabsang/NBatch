@@ -71,10 +71,12 @@ builder.Services.AddNBatch(nbatch =>
 
 - **Chunk-oriented processing** — read, transform, and write in configurable batches
 - **Item-level skip policies** — skip malformed records instead of aborting the job; the rest of the chunk is still written
+- **Retry policies** — transient errors are retried (with optional backoff) before any skipping happens
 - **Restart from failure** — SQL-backed job store resumes where a crashed job left off; completed jobs auto-reset for the next run
 - **Tasklet steps** — fire-and-forget work (send an email, call an API, run a stored proc)
-- **Lambda-friendly** — processors and writers can be plain lambdas; no extra classes needed
-- **DI & hosted service** — `AddNBatch()`, `RunOnce()`, `RunEvery()` for background jobs
+- **Lambda-friendly** — processors and writers can be plain lambdas; CSV rows auto-map to your classes
+- **DI & hosted service** — `AddNBatch()`, DI-resolved components, `RunOnce()`, `RunEvery()`, and cron schedules via `RunOnCron()`
+- **Observability** — OpenTelemetry-ready traces and metrics out of the box
 - **Multi-target** — .NET 8, .NET 9, and .NET 10
 - **Provider-agnostic** — SQL Server, PostgreSQL, SQLite, or MySQL for the job store; any EF Core provider for your data
 
