@@ -113,7 +113,7 @@ internal sealed class StepBuilderOptions<TInput, TOutput>(
 {
     private SkipPolicy? _skipPolicy;
     private readonly List<IStepListener> _stepListeners = [];
-    private int _chunkSize = 10;
+    private int? _chunkSize;
     private bool _registered;
 
     public IStepBuilderOptions WithSkipPolicy(SkipPolicy skipPolicy)

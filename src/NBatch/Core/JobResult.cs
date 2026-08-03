@@ -1,3 +1,4 @@
+using NBatch.Core.Exceptions;
 using NBatch.Core.Interfaces;
 
 namespace NBatch.Core;
@@ -13,4 +14,13 @@ public record JobResult(
     bool Success,
     IReadOnlyList<StepResult> Steps,
     bool Cancelled = false,
-    TimeSpan Duration = default);
+    TimeSpan Duration = default)
+{
+    /// <summary>
+    /// Throws a <see cref="JobFailedException"/> if the job did not succeed;
+    /// otherwise returns this result for chaining.
+    /// </summary>
+    /// <exception cref="JobFailedException">The run failed or was cancelled.</exception>
+    public JobResult EnsureSuccess()
+        => Success ? this : throw new JobFailedException(this);
+}

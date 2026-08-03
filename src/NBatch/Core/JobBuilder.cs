@@ -19,11 +19,15 @@ public sealed class JobBuilder
         Func<IJobRepository, ILogger, IStep> Factory,
         List<IStepListener> Listeners);
 
+    private const int FallbackChunkSize = 10;
+
     private readonly List<StepDefinition> _stepDefinitions = [];
     private readonly HashSet<string> _stepNames = [];
     private readonly List<IJobListener> _jobListeners = [];
     private IJobRepository? _jobRepository;
     private ILogger _logger = NullLogger.Instance;
+    private int? _defaultChunkSize;
+    private SkipPolicy? _defaultSkipPolicy;
 
     /// <summary>Gets the name of the job being built.</summary>
     internal string JobName { get; }
@@ -63,6 +67,30 @@ public sealed class JobBuilder
         return this;
     }
 
+    /// <summary>
+    /// Sets the chunk size used by steps that don't call
+    /// <see cref="IStepBuilderOptions.WithChunkSize"/> themselves. Defaults to 10.
+    /// </summary>
+    /// <param name="chunkSize">The default number of items per chunk.</param>
+    public JobBuilder WithDefaultChunkSize(int chunkSize)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(chunkSize, 1);
+        _defaultChunkSize = chunkSize;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the skip policy used by steps that don't call
+    /// <see cref="IStepBuilderOptions.WithSkipPolicy"/> themselves.
+    /// </summary>
+    /// <param name="skipPolicy">The default skip policy.</param>
+    public JobBuilder WithDefaultSkipPolicy(SkipPolicy skipPolicy)
+    {
+        ArgumentNullException.ThrowIfNull(skipPolicy);
+        _defaultSkipPolicy = skipPolicy;
+        return this;
+    }
+
     /// <summary>Adds a named step to the job. Steps execute in registration order.</summary>
     /// <param name="stepName">A unique name for this step.</param>
     /// <param name="configure">A delegate that configures the step pipeline.</param>
@@ -83,16 +111,20 @@ public sealed class JobBuilder
         IWriter<TOutput> writer,
         IProcessor<TInput, TOutput>? processor,
         SkipPolicy? skipPolicy,
-        int chunkSize,
+        int? chunkSize,
         List<IStepListener> stepListeners)
     {
         if (!_stepNames.Add(stepName))
             throw new DuplicateStepNameException();
 
+        // Job-level defaults are read when the factory runs (inside Build()),
+        // so WithDefault* calls apply regardless of configuration order.
         _stepDefinitions.Add(new StepDefinition(
             stepName,
             (repository, logger) => new Step<TInput, TOutput>(
-                stepName, reader, processor, writer, repository, logger, skipPolicy, chunkSize),
+                stepName, reader, processor, writer, repository, logger,
+                skipPolicy ?? _defaultSkipPolicy,
+                chunkSize ?? _defaultChunkSize ?? FallbackChunkSize),
             stepListeners));
     }
 
@@ -108,8 +140,13 @@ public sealed class JobBuilder
     }
 
     /// <summary>Creates the configured <see cref="Job"/> instance.</summary>
+    /// <exception cref="InvalidOperationException">No steps have been registered.</exception>
     public Job Build()
     {
+        if (_stepDefinitions.Count == 0)
+            throw new InvalidOperationException(
+                $"Job '{JobName}' has no steps. Add at least one step with AddStep(...) before calling Build().");
+
         var repository = _jobRepository ?? new InMemoryJobRepository(JobName);
         var steps = new List<IStep>(_stepDefinitions.Count);
         var stepListeners = new Dictionary<string, List<IStepListener>>();
