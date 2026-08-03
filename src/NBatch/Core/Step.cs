@@ -24,6 +24,7 @@ internal class Step<TInput, TOutput> : IStep
     private readonly IStepRepository _stepRepository;
     private readonly ILogger _logger;
     private readonly SkipPolicy _skipPolicy;
+    private readonly RetryPolicy _retryPolicy;
 
     public string Name { get; }
     public int ChunkSize { get; }
@@ -36,6 +37,7 @@ internal class Step<TInput, TOutput> : IStep
         IStepRepository stepRepository,
         ILogger logger,
         SkipPolicy? skipPolicy = null,
+        RetryPolicy? retryPolicy = null,
         int chunkSize = 10)
     {
         Name = stepName;
@@ -45,6 +47,7 @@ internal class Step<TInput, TOutput> : IStep
         _stepRepository = stepRepository;
         _logger = logger;
         _skipPolicy = skipPolicy ?? SkipPolicy.None;
+        _retryPolicy = retryPolicy ?? RetryPolicy.None;
         ChunkSize = chunkSize;
     }
 
@@ -109,6 +112,34 @@ internal class Step<TInput, TOutput> : IStep
     }
 
     /// <summary>
+    /// Runs an operation, retrying transient failures per the retry policy.
+    /// Retry exhaustion (or a non-retryable exception) rethrows the original
+    /// exception so the caller's existing skip/fatal handling applies.
+    /// </summary>
+    private async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> operation, long index, CancellationToken cancellationToken)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await operation();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException
+                                       && attempt < _retryPolicy.MaxAttempts
+                                       && _retryPolicy.Matches(ex))
+            {
+                var delay = _retryPolicy.GetDelay(attempt);
+                _logger.LogWarning(ex,
+                    "Step '{StepName}' index {Index} — attempt {Attempt}/{MaxAttempts} failed ({ExceptionType}), retrying in {Delay}",
+                    Name, index, attempt, _retryPolicy.MaxAttempts, ex.GetType().Name, delay);
+
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay, cancellationToken);
+            }
+        }
+    }
+
+    /// <summary>
     /// Reads the next chunk from the reader. On failure, if the skip policy could
     /// apply, the chunk range is re-read one item at a time so only the failing
     /// positions are skipped; otherwise the error is recorded and rethrown.
@@ -118,7 +149,9 @@ internal class Step<TInput, TOutput> : IStep
         List<TInput> items;
         try
         {
-            items = (await _reader.ReadAsync(ctx.StepIndex, ChunkSize, cancellationToken)).ToList();
+            items = await ExecuteWithRetryAsync(
+                async () => (await _reader.ReadAsync(ctx.StepIndex, ChunkSize, cancellationToken)).ToList(),
+                ctx.StepIndex, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -152,17 +185,20 @@ internal class Step<TInput, TOutput> : IStep
 
         try
         {
-            List<TOutput> processedItems = [];
-            foreach (var item in items)
+            int itemsWritten = await ExecuteWithRetryAsync(async () =>
             {
-                var result = await _processor.ProcessAsync(item, cancellationToken);
-                processedItems.Add(result);
-            }
+                List<TOutput> processedItems = [];
+                foreach (var item in items)
+                {
+                    var result = await _processor.ProcessAsync(item, cancellationToken);
+                    processedItems.Add(result);
+                }
 
-            if (processedItems.Count > 0)
-                await _writer.WriteAsync(processedItems, cancellationToken);
+                if (processedItems.Count > 0)
+                    await _writer.WriteAsync(processedItems, cancellationToken);
 
-            int itemsWritten = processedItems.Count;
+                return processedItems.Count;
+            }, ctx.StepIndex, cancellationToken);
 
             // Commit progress with a non-cancellable token: the writer has already
             // persisted the data, so we must record the advance to prevent duplicate
@@ -215,7 +251,9 @@ internal class Step<TInput, TOutput> : IStep
                 List<TInput> single;
                 try
                 {
-                    single = (await _reader.ReadAsync(itemIndex, 1, cancellationToken)).ToList();
+                    single = await ExecuteWithRetryAsync(
+                        async () => (await _reader.ReadAsync(itemIndex, 1, cancellationToken)).ToList(),
+                        itemIndex, cancellationToken);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
@@ -287,9 +325,12 @@ internal class Step<TInput, TOutput> : IStep
     {
         try
         {
-            var output = await _processor.ProcessAsync(item, cancellationToken);
-            await _writer.WriteAsync([output], cancellationToken);
-            return true;
+            return await ExecuteWithRetryAsync(async () =>
+            {
+                var output = await _processor.ProcessAsync(item, cancellationToken);
+                await _writer.WriteAsync([output], cancellationToken);
+                return true;
+            }, itemIndex, cancellationToken);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

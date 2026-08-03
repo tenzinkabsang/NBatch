@@ -20,15 +20,16 @@ internal class FakeStep<T, U> : Step<T, U>
         IStepRepository stepRepository,
         ILogger logger,
         SkipPolicy? skipPolicy = null,
+        RetryPolicy? retryPolicy = null,
         int chunkSize = 10)
-        : base(stepName, reader.Object, processor.Object, writer.Object, stepRepository, logger, skipPolicy, chunkSize)
+        : base(stepName, reader.Object, processor.Object, writer.Object, stepRepository, logger, skipPolicy, retryPolicy, chunkSize)
     {
         MockReader = reader;
         MockProcessor = processor;
         MockWriter = writer;
     }
 
-    public static FakeStep<T, U> Create(string name, IStepRepository stepRepository, int chunkSize = 1, SkipPolicy? skipPolicy = null)
+    public static FakeStep<T, U> Create(string name, IStepRepository stepRepository, int chunkSize = 1, SkipPolicy? skipPolicy = null, RetryPolicy? retryPolicy = null)
     {
         return new FakeStep<T, U>(name,
             new Mock<IReader<T>>(),
@@ -37,6 +38,7 @@ internal class FakeStep<T, U> : Step<T, U>
             stepRepository,
             NullLogger.Instance,
             skipPolicy,
+            retryPolicy,
             chunkSize: chunkSize);
     }
 }

@@ -112,6 +112,7 @@ internal sealed class StepBuilderOptions<TInput, TOutput>(
     IWriter<TOutput> writer) : IStepBuilderOptions, IStepRegistration
 {
     private SkipPolicy? _skipPolicy;
+    private RetryPolicy? _retryPolicy;
     private readonly List<IStepListener> _stepListeners = [];
     private int? _chunkSize;
     private bool _registered;
@@ -120,6 +121,13 @@ internal sealed class StepBuilderOptions<TInput, TOutput>(
     {
         ArgumentNullException.ThrowIfNull(skipPolicy);
         _skipPolicy = skipPolicy;
+        return this;
+    }
+
+    public IStepBuilderOptions WithRetryPolicy(RetryPolicy retryPolicy)
+    {
+        ArgumentNullException.ThrowIfNull(retryPolicy);
+        _retryPolicy = retryPolicy;
         return this;
     }
 
@@ -141,7 +149,7 @@ internal sealed class StepBuilderOptions<TInput, TOutput>(
     {
         if (_registered) return;
         _registered = true;
-        jobBuilder.RegisterStep(stepName, reader, writer, processor, _skipPolicy, _chunkSize, _stepListeners);
+        jobBuilder.RegisterStep(stepName, reader, writer, processor, _skipPolicy, _retryPolicy, _chunkSize, _stepListeners);
     }
 
     void IStepRegistration.Register() => RegisterStep();

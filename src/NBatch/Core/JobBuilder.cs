@@ -28,6 +28,7 @@ public sealed class JobBuilder
     private ILogger _logger = NullLogger.Instance;
     private int? _defaultChunkSize;
     private SkipPolicy? _defaultSkipPolicy;
+    private RetryPolicy? _defaultRetryPolicy;
 
     /// <summary>Gets the name of the job being built.</summary>
     internal string JobName { get; }
@@ -91,6 +92,18 @@ public sealed class JobBuilder
         return this;
     }
 
+    /// <summary>
+    /// Sets the retry policy used by steps that don't call
+    /// <see cref="IStepBuilderOptions.WithRetryPolicy"/> themselves.
+    /// </summary>
+    /// <param name="retryPolicy">The default retry policy.</param>
+    public JobBuilder WithDefaultRetryPolicy(RetryPolicy retryPolicy)
+    {
+        ArgumentNullException.ThrowIfNull(retryPolicy);
+        _defaultRetryPolicy = retryPolicy;
+        return this;
+    }
+
     /// <summary>Adds a named step to the job. Steps execute in registration order.</summary>
     /// <param name="stepName">A unique name for this step.</param>
     /// <param name="configure">A delegate that configures the step pipeline.</param>
@@ -111,6 +124,7 @@ public sealed class JobBuilder
         IWriter<TOutput> writer,
         IProcessor<TInput, TOutput>? processor,
         SkipPolicy? skipPolicy,
+        RetryPolicy? retryPolicy,
         int? chunkSize,
         List<IStepListener> stepListeners)
     {
@@ -124,6 +138,7 @@ public sealed class JobBuilder
             (repository, logger) => new Step<TInput, TOutput>(
                 stepName, reader, processor, writer, repository, logger,
                 skipPolicy ?? _defaultSkipPolicy,
+                retryPolicy ?? _defaultRetryPolicy,
                 chunkSize ?? _defaultChunkSize ?? FallbackChunkSize),
             stepListeners));
     }

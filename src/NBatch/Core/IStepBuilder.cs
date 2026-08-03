@@ -58,12 +58,17 @@ public interface IStepBuilderWriteTo<TOutput>
 public interface IStepBuilderFinal;
 
 /// <summary>
-/// Final stage: configure optional settings (skip policy, chunk size, listeners).
+/// Final stage: configure optional settings (skip policy, retry policy, chunk size, listeners).
 /// </summary>
 public interface IStepBuilderOptions : IStepBuilderFinal
 {
     /// <summary>Sets the skip policy for this step.</summary>
     IStepBuilderOptions WithSkipPolicy(SkipPolicy skipPolicy);
+    /// <summary>
+    /// Sets the retry policy for transient failures. Retries happen before the
+    /// skip policy is consulted.
+    /// </summary>
+    IStepBuilderOptions WithRetryPolicy(RetryPolicy retryPolicy);
     /// <summary>Registers a step-level listener.</summary>
     IStepBuilderOptions WithListener(IStepListener listener);
     /// <summary>Sets the number of items to read per chunk. Default is 10.</summary>
