@@ -479,7 +479,7 @@ internal sealed class RestartFromFailureTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(1));
+        Assert.That(result.Steps[0].ItemsSkipped, Is.EqualTo(1));
     }
 
     #endregion
@@ -509,7 +509,7 @@ internal sealed class RestartFromFailureTests
         var result1 = await job1.RunAsync();
 
         Assert.That(result1.Success, Is.True);
-        Assert.That(result1.Steps[0].ErrorsSkipped, Is.EqualTo(3));
+        Assert.That(result1.Steps[0].ItemsSkipped, Is.EqualTo(3));
 
         // Run 2: fresh job name, same DB → proves budget is per-execution, not shared across the DB.
         var job2 = Job.CreateBuilder("skip-reset-run2")
@@ -526,7 +526,7 @@ internal sealed class RestartFromFailureTests
 
         // Skip budget should be independent — all 3 skipped again.
         Assert.That(result2.Success, Is.True);
-        Assert.That(result2.Steps[0].ErrorsSkipped, Is.EqualTo(3));
+        Assert.That(result2.Steps[0].ItemsSkipped, Is.EqualTo(3));
     }
 
     [Test]
@@ -609,7 +609,7 @@ internal sealed class RestartFromFailureTests
         var result1 = await job1.RunAsync();
         Assert.That(result1.Success, Is.False);
         Assert.That(result1.Steps[0].Success, Is.True);
-        Assert.That(result1.Steps[0].ErrorsSkipped, Is.EqualTo(1));
+        Assert.That(result1.Steps[0].ItemsSkipped, Is.EqualTo(1));
 
         // Run 2: resume. step1 starts past all previously processed data (skip is not retried).
         var writer2 = new CollectingWriter<string>();
@@ -785,7 +785,7 @@ internal sealed class RestartFromFailureTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(2));
+        Assert.That(result.Steps[0].ItemsSkipped, Is.EqualTo(2));
         Assert.That(writer.Written, Is.EquivalentTo(new[] { "a", "c", "d", "f" }));
     }
 

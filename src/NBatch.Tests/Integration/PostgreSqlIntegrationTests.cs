@@ -145,7 +145,7 @@ internal sealed class PostgreSqlIntegrationTests
         Assert.That(result.Success, Is.True);
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b", "c", "d", "e" }));
         Assert.That(result.Steps[0].ItemsRead, Is.EqualTo(5));
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(5));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(5));
     }
 
     #endregion
@@ -212,7 +212,7 @@ internal sealed class PostgreSqlIntegrationTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(1));
+        Assert.That(result.Steps[0].ItemsSkipped, Is.EqualTo(1));
         Assert.That(writer.Written, Is.EqualTo(new[] { "b" }));
     }
 
@@ -473,7 +473,7 @@ internal sealed class PostgreSqlIntegrationTests
 
         var result = await job.RunAsync();
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(50_000));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(50_000));
 
         await using var verifyCtx = new TestDbContext(PgOptions);
         var etlCount = await verifyCtx.TestRecordEtls.CountAsync();

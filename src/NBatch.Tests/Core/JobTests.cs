@@ -478,8 +478,8 @@ internal sealed class JobTests
         var result = await job.RunAsync();
 
         Assert.That(result.Steps[0].ItemsRead, Is.EqualTo(5));
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(5));
-        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(0));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(5));
+        Assert.That(result.Steps[0].ItemsSkipped, Is.EqualTo(0));
     }
 
     [Test]
@@ -503,7 +503,7 @@ internal sealed class JobTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(1));
+        Assert.That(result.Steps[0].ItemsSkipped, Is.EqualTo(1));
     }
 
     #endregion

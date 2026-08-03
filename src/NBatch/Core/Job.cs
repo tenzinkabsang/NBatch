@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 using Microsoft.Extensions.Logging;
 using NBatch.Core.Interfaces;
@@ -49,6 +50,7 @@ public sealed class Job
     {
         _logger.LogInformation("Job '{JobName}' starting with {StepCount} step(s)", _jobName, _steps.Count);
 
+        var jobStopwatch = Stopwatch.StartNew();
         await NotifyJobListenersBeforeAsync(cancellationToken);
         _ = await _jobRepository.CreateJobRecordAsync(_steps.Select(s => s.Name).ToList(), cancellationToken);
 
@@ -76,7 +78,7 @@ public sealed class Job
 
         bool cancelled = cancellation is not null;
         bool success = !cancelled && stepResults.TrueForAll(r => r.Success);
-        var jobResult = new JobResult(_jobName, success, stepResults, cancelled);
+        var jobResult = new JobResult(_jobName, success, stepResults, cancelled, jobStopwatch.Elapsed);
 
         // Bookkeeping must survive a cancelled token: the outcome drives
         // reset-vs-resume on the next run.
@@ -111,6 +113,7 @@ public sealed class Job
         await ExecuteStepListenersAsync(stepName,
             l => l.BeforeStepAsync(stepName, cancellationToken));
 
+        var stepStopwatch = Stopwatch.StartNew();
         StepResult result;
         try
         {
@@ -122,12 +125,14 @@ public sealed class Job
             result = new StepResult(stepName, false);
         }
 
+        result = result with { Duration = stepStopwatch.Elapsed };
+
         await ExecuteStepListenersAsync(stepName,
             l => l.AfterStepAsync(result, cancellationToken));
 
         _logger.LogInformation(
-            "Step '{StepName}' completed — read {ItemsRead}, processed {ItemsProcessed}, skipped {ErrorsSkipped}",
-            stepName, result.ItemsRead, result.ItemsProcessed, result.ErrorsSkipped);
+            "Step '{StepName}' completed — read {ItemsRead}, wrote {ItemsWritten}, skipped {ItemsSkipped}",
+            stepName, result.ItemsRead, result.ItemsWritten, result.ItemsSkipped);
 
         return result;
     }

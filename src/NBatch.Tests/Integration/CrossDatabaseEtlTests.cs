@@ -110,7 +110,7 @@ internal sealed class CrossDatabaseEtlTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(50_000));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(50_000));
 
         // Verify in PostgreSQL
         await using var verifyCtx = new TestDbContext(PostgreSqlOptions);
@@ -152,7 +152,7 @@ internal sealed class CrossDatabaseEtlTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(50_000));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(50_000));
 
         // Verify in SQL Server
         await using var verifyCtx = new TestDbContext(SqlServerOptions);
@@ -192,7 +192,7 @@ internal sealed class CrossDatabaseEtlTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(10_000));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(10_000));
 
         await using var verifyCtx = new TestDbContext(PostgreSqlOptions);
         var count = await verifyCtx.TestRecordEtls.CountAsync();
@@ -415,7 +415,7 @@ internal sealed class CrossDatabaseEtlTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(10_000));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(10_000));
 
         await using var verifyCtx = new TestDbContext(PostgreSqlOptions);
         var count = await verifyCtx.TestRecordEtls.CountAsync();

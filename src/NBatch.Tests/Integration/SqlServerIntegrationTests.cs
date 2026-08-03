@@ -151,7 +151,7 @@ internal sealed class SqlServerIntegrationTests
         Assert.That(result.Success, Is.True);
         Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b", "c", "d", "e" }));
         Assert.That(result.Steps[0].ItemsRead, Is.EqualTo(5));
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(5));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(5));
     }
 
     #endregion
@@ -249,7 +249,7 @@ internal sealed class SqlServerIntegrationTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(1));
+        Assert.That(result.Steps[0].ItemsSkipped, Is.EqualTo(1));
         Assert.That(writer.Written, Is.EqualTo(new[] { "b" }));
     }
 
@@ -274,7 +274,7 @@ internal sealed class SqlServerIntegrationTests
 
         var result1 = await job1.RunAsync();
         Assert.That(result1.Success, Is.True);
-        Assert.That(result1.Steps[0].ErrorsSkipped, Is.EqualTo(2));
+        Assert.That(result1.Steps[0].ItemsSkipped, Is.EqualTo(2));
 
         // Run 2: the successful run auto-reset the job, and the skip budget is
         // per-execution. Both items fail again — if the budget carried over from
@@ -291,7 +291,7 @@ internal sealed class SqlServerIntegrationTests
 
         var result2 = await job2.RunAsync();
         Assert.That(result2.Success, Is.True);
-        Assert.That(result2.Steps[0].ErrorsSkipped, Is.EqualTo(2));
+        Assert.That(result2.Steps[0].ItemsSkipped, Is.EqualTo(2));
     }
 
     [Test]
@@ -337,7 +337,7 @@ internal sealed class SqlServerIntegrationTests
 
         var result2 = await job2.RunAsync();
         Assert.That(result2.Success, Is.True);
-        Assert.That(result2.Steps[0].ErrorsSkipped, Is.EqualTo(1));
+        Assert.That(result2.Steps[0].ItemsSkipped, Is.EqualTo(1));
         Assert.That(writer2.Written, Is.EqualTo(new[] { "c", "d" }));
     }
 
@@ -441,7 +441,7 @@ internal sealed class SqlServerIntegrationTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.Steps[0].ItemsRead, Is.EqualTo(50_000));
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(50_000));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(50_000));
         Assert.That(writer.Written, Has.Count.EqualTo(50_000));
         Assert.That(writer.Written[0].Code, Is.EqualTo("REC-00001"));
         Assert.That(writer.Written[^1].Code, Is.EqualTo("REC-50000"));
@@ -678,7 +678,7 @@ internal sealed class SqlServerIntegrationTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ErrorsSkipped, Is.EqualTo(3));
+        Assert.That(result.Steps[0].ItemsSkipped, Is.EqualTo(3));
         Assert.That(writer.Written, Has.Count.EqualTo(7));
     }
 
@@ -712,7 +712,7 @@ internal sealed class SqlServerIntegrationTests
 
         var result = await job.RunAsync();
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(50_000));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(50_000));
 
         // Verify data in the ETL table
         await using var verifyCtx = new TestDbContext(SqlServerOptions);
@@ -749,7 +749,7 @@ internal sealed class SqlServerIntegrationTests
         var result = await job.RunAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.Steps[0].ItemsProcessed, Is.EqualTo(100));
+        Assert.That(result.Steps[0].ItemsWritten, Is.EqualTo(100));
         Assert.That(writeCtx.ChangeTracker.Entries().Count(), Is.EqualTo(0),
             "DbWriter must detach written entities so the tracker does not grow");
     }

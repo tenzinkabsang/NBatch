@@ -98,8 +98,8 @@ internal class StepTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.ItemsRead, Is.EqualTo(3));
-        Assert.That(result.ItemsProcessed, Is.EqualTo(2));
-        Assert.That(result.ErrorsSkipped, Is.EqualTo(1));
+        Assert.That(result.ItemsWritten, Is.EqualTo(2));
+        Assert.That(result.ItemsSkipped, Is.EqualTo(1));
 
         // The failed batch write never happened; the good items were written as single-item batches.
         step.MockWriter.Verify(w => w.WriteAsync(It.Is<IEnumerable<string>>(items => items.Count() == 1), It.IsAny<CancellationToken>()), Times.Exactly(2));
@@ -123,8 +123,8 @@ internal class StepTests
         var result = await step.ProcessAsync();
 
         Assert.That(result.Success, Is.True);
-        Assert.That(result.ItemsProcessed, Is.EqualTo(3));
-        Assert.That(result.ErrorsSkipped, Is.EqualTo(0));
+        Assert.That(result.ItemsWritten, Is.EqualTo(3));
+        Assert.That(result.ItemsSkipped, Is.EqualTo(0));
         step.MockWriter.Verify(w => w.WriteAsync(It.Is<IEnumerable<string>>(items => items.Count() == 1), It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
@@ -148,8 +148,8 @@ internal class StepTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.ItemsRead, Is.EqualTo(2));
-        Assert.That(result.ItemsProcessed, Is.EqualTo(2));
-        Assert.That(result.ErrorsSkipped, Is.EqualTo(1));
+        Assert.That(result.ItemsWritten, Is.EqualTo(2));
+        Assert.That(result.ItemsSkipped, Is.EqualTo(1));
 
         step.MockReader.Verify(r => r.ReadAsync(0, 1, It.IsAny<CancellationToken>()), Times.Once());
         step.MockReader.Verify(r => r.ReadAsync(1, 1, It.IsAny<CancellationToken>()), Times.Once());
@@ -174,8 +174,8 @@ internal class StepTests
 
         Assert.That(result.Success, Is.True);
         Assert.That(result.ItemsRead, Is.EqualTo(1));
-        Assert.That(result.ItemsProcessed, Is.EqualTo(1));
-        Assert.That(result.ErrorsSkipped, Is.EqualTo(0));
+        Assert.That(result.ItemsWritten, Is.EqualTo(1));
+        Assert.That(result.ItemsSkipped, Is.EqualTo(0));
         // The scan stopped at position 1 (end of data) and never probed position 2.
         step.MockReader.Verify(r => r.ReadAsync(2, 1, It.IsAny<CancellationToken>()), Times.Never());
     }

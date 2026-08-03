@@ -54,6 +54,6 @@ public static class Demo07_DependencyInjection
         Console.WriteLine();
         Console.WriteLine($"  Job '{result.Name}' — Success: {result.Success}");
         foreach (var step in result.Steps)
-            Console.WriteLine($"    Step '{step.Name}': Read={step.ItemsRead}, Processed={step.ItemsProcessed}, Skipped={step.ErrorsSkipped}");
+            Console.WriteLine($"    Step '{step.Name}': Read={step.ItemsRead}, Written={step.ItemsWritten}, Skipped={step.ItemsSkipped}");
     }
 }

@@ -9,9 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ## [3.0.0] — Unreleased
 
 ### Breaking Changes
+- **Renamed result properties** (clean rename, no aliases — mechanical find/replace):
+  - `StepResult.ItemsProcessed` → `StepResult.ItemsWritten`
+  - `StepResult.ErrorsSkipped` → `StepResult.ItemsSkipped`
+  - `FlatFileItemWriter.WithToken(char)` → `WithDelimiter(char)` (matches `CsvReader`)
+  - `StepResult` and `JobResult` gain a trailing `Duration` positional parameter (affects exhaustive positional deconstruction only).
 - **Skip policies now skip individual items, not whole chunks.**
   When a chunk fails to read, process, or write, NBatch falls back to handling that chunk one item at a time: good items are still written and only the genuinely failing items are skipped. Consequences:
-  - `StepResult.ErrorsSkipped` counts skipped **items** (previously: skipped chunks).
+  - `StepResult.ItemsSkipped` counts skipped **items** (previously: skipped chunks).
   - The skip budget (`maxSkips`) is consumed per item.
   - **Processors are re-invoked** for the items of a failed chunk and must be idempotent. Deterministic, item-keyed logic is safe; call-counting or externally side-effecting processors may observe extra invocations.
   - If the skip limit is exhausted mid-chunk, items already written in that chunk stay written; the restart re-processes the chunk (**at-least-once** semantics).
@@ -56,7 +61,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
    - MySQL: `ALTER TABLE jobs ADD COLUMN last_run_success tinyint(1) NULL;`
 3. **First v3 run against a v2 database resumes** (the new column is `NULL`, treated as "resume"). Auto-reset takes effect from the run after the first completed v3 run. If you relied on "run once, then never reprocess", guard the rerun externally — that behavior is no longer the default.
 4. **Review processors for idempotency**: items in a failed chunk are re-processed during the item-level scan, and restarts after mid-chunk failures may re-write already-written items.
-5. **Skip counts are per item** — if you alert on `StepResult.ErrorsSkipped`, expect item counts now.
+5. **Skip counts are per item** — if you alert on the skip count (now `StepResult.ItemsSkipped`), expect item counts now.
 
 ---
 

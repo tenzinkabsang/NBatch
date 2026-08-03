@@ -11,7 +11,7 @@ namespace NBatch.ConsoleApp.Demos;
 /// Reads a CSV, lowercases all fields via a lambda processor,
 /// writes the result to a pipe-delimited flat file.
 ///
-/// Features: CsvReader, FlatFileItemWriter, WithToken, ProcessWith(lambda)
+/// Features: CsvReader, FlatFileItemWriter, WithDelimiter, ProcessWith(lambda)
 /// </summary>
 public static class Demo02_CsvToFile
 {
@@ -34,7 +34,7 @@ public static class Demo02_CsvToFile
                     Description = p.Description.ToLower(),
                     Price = p.Price
                 })
-                .WriteTo(new FlatFileItemWriter<ProductLowercase>(destinationPath).WithToken('|'))
+                .WriteTo(new FlatFileItemWriter<ProductLowercase>(destinationPath).WithDelimiter('|'))
                 .WithChunkSize(5))
             .Build();
 

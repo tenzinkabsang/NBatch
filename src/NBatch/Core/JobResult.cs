@@ -7,4 +7,10 @@ namespace NBatch.Core;
 /// <param name="Success">Whether every executed step succeeded and the run was not cancelled.</param>
 /// <param name="Steps">Results for each step in execution order.</param>
 /// <param name="Cancelled">Whether the run was cancelled before completing.</param>
-public record JobResult(string Name, bool Success, IReadOnlyList<StepResult> Steps, bool Cancelled = false);
+/// <param name="Duration">Wall-clock execution time of the run.</param>
+public record JobResult(
+    string Name,
+    bool Success,
+    IReadOnlyList<StepResult> Steps,
+    bool Cancelled = false,
+    TimeSpan Duration = default);

@@ -25,11 +25,11 @@ public sealed class FlatFileItemWriter<TItem> : IWriter<TItem> where TItem : cla
     }
 
     /// <summary>
-    /// Provide the separator token. If no token is provided, uses a comma as the default token.
+    /// Override the default comma delimiter.
     /// </summary>
-    public FlatFileItemWriter<TItem> WithToken(char token)
+    public FlatFileItemWriter<TItem> WithDelimiter(char delimiter)
     {
-        _serializer.Token = token;
+        _serializer.Token = delimiter;
         return this;
     }
 
