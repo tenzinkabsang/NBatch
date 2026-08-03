@@ -34,11 +34,25 @@ public sealed class CsvReader<T> : IReader<T>, IDisposable
     private bool _headersResolved;
     private bool _headersFromFile;
 
+    /// <summary>
+    /// Creates a reader that automatically maps header names to public settable
+    /// properties of <typeparamref name="T"/> (case-insensitive, invariant culture).
+    /// Requires a public parameterless constructor; positional records need the
+    /// map-function overload.
+    /// </summary>
+    /// <param name="filePath">Path to the delimited file.</param>
+    /// <exception cref="InvalidOperationException"><typeparamref name="T"/> cannot be auto-mapped.</exception>
+    public CsvReader(string filePath)
+        : this(filePath, CsvAutoMapper<T>.CreateMap(), new FileService(filePath)) { }
+
     /// <summary>Creates a reader for the specified file with a row-mapping function.</summary>
     /// <param name="filePath">Path to the delimited file.</param>
     /// <param name="map">A function that maps each <see cref="CsvRow"/> to <typeparamref name="T"/>.</param>
     public CsvReader(string filePath, Func<CsvRow, T> map)
         : this(filePath, map, new FileService(filePath)) { }
+
+    internal CsvReader(string filePath, IFileService fileService)
+        : this(filePath, CsvAutoMapper<T>.CreateMap(), fileService) { }
 
     internal CsvReader(string filePath, Func<CsvRow, T> map, IFileService fileService)
     {
