@@ -50,6 +50,9 @@ public sealed class Job
     {
         _logger.LogInformation("Job '{JobName}' starting with {StepCount} step(s)", _jobName, _steps.Count);
 
+        using var activity = NBatchDiagnostics.ActivitySource.StartActivity("nbatch.job");
+        activity?.SetTag("nbatch.job.name", _jobName);
+
         var jobStopwatch = Stopwatch.StartNew();
         await NotifyJobListenersBeforeAsync(cancellationToken);
         _ = await _jobRepository.CreateJobRecordAsync(_steps.Select(s => s.Name).ToList(), cancellationToken);
@@ -79,6 +82,11 @@ public sealed class Job
         bool cancelled = cancellation is not null;
         bool success = !cancelled && stepResults.TrueForAll(r => r.Success);
         var jobResult = new JobResult(_jobName, success, stepResults, cancelled, jobStopwatch.Elapsed);
+
+        activity?.SetTag("nbatch.job.success", success);
+        activity?.SetTag("nbatch.job.cancelled", cancelled);
+        if (!success)
+            activity?.SetStatus(ActivityStatusCode.Error, cancelled ? "cancelled" : "step failed");
 
         // Bookkeeping must survive a cancelled token: the outcome drives
         // reset-vs-resume on the next run.
@@ -110,6 +118,10 @@ public sealed class Job
     {
         _logger.LogInformation("Step '{StepName}' starting", stepName);
 
+        using var activity = NBatchDiagnostics.ActivitySource.StartActivity("nbatch.step");
+        activity?.SetTag("nbatch.job.name", _jobName);
+        activity?.SetTag("nbatch.step.name", stepName);
+
         await ExecuteStepListenersAsync(stepName,
             l => l.BeforeStepAsync(stepName, cancellationToken));
 
@@ -127,6 +139,8 @@ public sealed class Job
 
         result = result with { Duration = stepStopwatch.Elapsed };
 
+        RecordStepTelemetry(activity, result);
+
         await ExecuteStepListenersAsync(stepName,
             l => l.AfterStepAsync(result, cancellationToken));
 
@@ -135,6 +149,26 @@ public sealed class Job
             stepName, result.ItemsRead, result.ItemsWritten, result.ItemsSkipped);
 
         return result;
+    }
+
+    private void RecordStepTelemetry(Activity? activity, StepResult result)
+    {
+        activity?.SetTag("nbatch.step.success", result.Success);
+        activity?.SetTag("nbatch.step.items_read", result.ItemsRead);
+        activity?.SetTag("nbatch.step.items_written", result.ItemsWritten);
+        activity?.SetTag("nbatch.step.items_skipped", result.ItemsSkipped);
+        if (!result.Success)
+            activity?.SetStatus(ActivityStatusCode.Error);
+
+        var tags = new TagList
+        {
+            { "nbatch.job.name", _jobName },
+            { "nbatch.step.name", result.Name }
+        };
+        NBatchDiagnostics.ItemsRead.Add(result.ItemsRead, tags);
+        NBatchDiagnostics.ItemsWritten.Add(result.ItemsWritten, tags);
+        NBatchDiagnostics.ItemsSkipped.Add(result.ItemsSkipped, tags);
+        NBatchDiagnostics.StepDuration.Record(result.Duration.TotalSeconds, tags);
     }
 
     private async Task NotifyJobListenersBeforeAsync(CancellationToken cancellationToken)
