@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ---
 
-## [3.0.0] — Unreleased
+## [3.0.0] — 2026-08-02
 
 ### Breaking Changes
 - **Renamed result properties** (clean rename, no aliases — mechanical find/replace):
