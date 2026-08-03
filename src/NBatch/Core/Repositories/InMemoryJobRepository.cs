@@ -40,17 +40,26 @@ internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
 
     public Task<StepContext> GetStartIndexAsync(string stepName, CancellationToken cancellationToken = default)
     {
-        var latest = _steps
+        var rows = _steps
             .Where(s => s.Value.StepName == stepName)
             .OrderByDescending(s => s.Key)
             .Select(s => s.Value)
-            .FirstOrDefault();
+            .ToList();
+
+        var latest = rows.FirstOrDefault();
+        long resumeIndex = latest?.StepIndex ?? 0;
+
+        // A failed (or crashed mid-chunk) latest row was not committed — resume
+        // from the most recent non-error row's index, which is exact regardless of
+        // the chunk size the failed run used.
+        if (latest is { Error: true })
+            resumeIndex = rows.FirstOrDefault(r => !r.Error)?.StepIndex ?? 0;
 
         return Task.FromResult(new StepContext
         {
             StepName = stepName,
             JobName = jobName,
-            StepIndex = latest?.StepIndex ?? 0,
+            StepIndex = resumeIndex,
             NumberOfItemsProcessed = latest?.NumberOfItemsProcessed ?? 0,
             Error = latest?.Error ?? false
         });
@@ -59,7 +68,9 @@ internal sealed class InMemoryJobRepository(string jobName) : IJobRepository
     public Task<long> InsertStepAsync(string stepName, long stepIndex, CancellationToken cancellationToken = default)
     {
         long id = Interlocked.Increment(ref _nextId);
-        _steps[id] = new StepEntry(stepName, stepIndex, NumberOfItemsProcessed: 0);
+        // Presumed failed until UpdateStepAsync records the outcome — matches the
+        // persistent store, so an interrupted chunk is re-processed on restart.
+        _steps[id] = new StepEntry(stepName, stepIndex, NumberOfItemsProcessed: 0, Error: true);
         return Task.FromResult(id);
     }
 

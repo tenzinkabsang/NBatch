@@ -5,6 +5,12 @@ namespace NBatch.Core.Repositories;
 
 internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options) : DbContext(options)
 {
+    /// <summary>Column size for <c>exception_msg</c>; longer values are truncated before insert.</summary>
+    internal const int MaxExceptionMsgLength = 500;
+
+    /// <summary>Column size for <c>exception_details</c>; longer values are truncated before insert.</summary>
+    internal const int MaxExceptionDetailLength = 5000;
+
     public DbSet<JobEntity> BatchJobs => Set<JobEntity>();
     public DbSet<StepEntity> BatchSteps => Set<StepEntity>();
     public DbSet<StepExceptionEntity> BatchStepExceptions => Set<StepExceptionEntity>();
@@ -69,7 +75,8 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             entity.HasOne<JobEntity>()
                 .WithMany()
                 .HasForeignKey(e => e.JobName);
-            entity.HasIndex(e => e.StepName);
+            // Serves GetStartIndexAsync: filter by (job, step), newest row first.
+            entity.HasIndex(e => new { e.JobName, e.StepName, e.Id });
         });
 
         modelBuilder.Entity<StepExceptionEntity>(entity =>
@@ -97,11 +104,11 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             
             entity.Property(e => e.ExceptionMsg)
             .HasColumnName("exception_msg")
-            .HasMaxLength(500);
-            
+            .HasMaxLength(MaxExceptionMsgLength);
+
             entity.Property(e => e.ExceptionDetails)
             .HasColumnName("exception_details")
-            .HasMaxLength(5000);
+            .HasMaxLength(MaxExceptionDetailLength);
             
             entity.Property(e => e.CreateDate)
             .HasColumnName("create_date");
@@ -109,8 +116,9 @@ internal sealed class NBatchDbContext(DbContextOptions<NBatchDbContext> options)
             entity.HasOne<JobEntity>()
                 .WithMany()
                 .HasForeignKey(e => e.JobName);
-            
-            entity.HasIndex(e => e.StepName);
+
+            // Serves GetExceptionCountAsync: filter by (job, step, execution).
+            entity.HasIndex(e => new { e.JobName, e.StepName, e.ExecutionId });
         });
     }
 

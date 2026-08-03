@@ -94,8 +94,12 @@ public sealed class CsvReader<T> : IReader<T>, IDisposable
     {
         if (!_headersResolved)
         {
-            var headerLine = await _fileService.ReadLinesAsync(0, 1, cancellationToken)
-                .FirstOrDefaultAsync(cancellationToken);
+            CsvLine? headerLine = null;
+            await foreach (var line in _fileService.ReadLinesAsync(0, 1, cancellationToken))
+            {
+                headerLine = line;
+                break;
+            }
             ResolveHeaders(headerLine);
         }
 
@@ -108,45 +112,41 @@ public sealed class CsvReader<T> : IReader<T>, IDisposable
         // Materialize eagerly so parse and mapping errors surface here, wrapped with
         // their line number — never lazily inside the step's enumeration.
         var results = new List<T>(lines.Count);
-        for (int i = 0; i < lines.Count; i++)
+        foreach (var line in lines)
         {
-            var line = lines[i];
-            if (string.IsNullOrWhiteSpace(line))
-                continue;
-
-            long physicalLine = adjustedIndex + i + 1; // 1-based line number in the file
             try
             {
-                var columns = CsvLineParser.Parse(line, _delimiter);
+                var columns = CsvLineParser.Parse(line.Text, _delimiter);
                 var row = CsvRow.Create(_headers!, columns);
                 results.Add(_map(row));
             }
             catch (Exception ex)
             {
-                throw new FlatFileParseException(physicalLine, ex);
+                throw new FlatFileParseException(line.PhysicalLineNumber, ex);
             }
         }
 
         return results;
     }
 
-    private void ResolveHeaders(string? headerLine)
+    private void ResolveHeaders(CsvLine? headerLine)
     {
         string[] headers;
+        long lineNumber = headerLine?.PhysicalLineNumber ?? 1;
         try
         {
             headers = headerLine is null
                 ? []
-                : CsvLineParser.Parse(headerLine, _delimiter).Select(h => h.Trim()).ToArray();
+                : CsvLineParser.Parse(headerLine.Value.Text, _delimiter).Select(h => h.Trim()).ToArray();
         }
         catch (Exception ex)
         {
-            throw new FlatFileParseException(1, ex);
+            throw new FlatFileParseException(lineNumber, ex);
         }
 
         var duplicate = headers.Where(h => h.Length > 0).GroupBy(h => h).FirstOrDefault(g => g.Count() > 1);
         if (duplicate is not null)
-            throw new FlatFileParseException(1,
+            throw new FlatFileParseException(lineNumber,
                 new ArgumentException($"Duplicate column header '{duplicate.Key}' in '{_filePath}'."));
 
         _headers = headers;

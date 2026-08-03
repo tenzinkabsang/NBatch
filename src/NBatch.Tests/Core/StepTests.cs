@@ -249,4 +249,47 @@ internal class StepTests
     }
 
     #endregion
+
+    #region Reader positional contract
+
+    [Test]
+    public void Reader_returning_items_after_a_partial_chunk_fails_the_step()
+    {
+        // The engine advances by ChunkSize per chunk. A reader that returns a short
+        // chunk mid-stream leaves a positional gap that would be silently skipped —
+        // the step must fail loudly instead.
+        var step = FakeStep<string, string>.Create("step1", _jobRepo.Object, chunkSize: 2);
+
+        step.MockReader.Setup(r => r.ReadAsync(0, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["only-one"]);
+        step.MockReader.Setup(r => r.ReadAsync(2, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["late-item", "late-item-2"]);
+        step.MockProcessor.Setup(p => p.ProcessAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string s, CancellationToken _) => s);
+
+        var ex = Assert.ThrowsAsync<InvalidOperationException>(() => step.ProcessAsync());
+
+        Assert.That(ex!.Message, Does.Contain("partial chunk"));
+    }
+
+    [Test]
+    public async Task Partial_final_chunk_completes_normally()
+    {
+        var step = FakeStep<string, string>.Create("step1", _jobRepo.Object, chunkSize: 2);
+
+        step.MockReader.Setup(r => r.ReadAsync(0, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["a", "b"]);
+        step.MockReader.Setup(r => r.ReadAsync(2, 2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(["c"]);
+        step.MockProcessor.Setup(p => p.ProcessAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string s, CancellationToken _) => s);
+
+        var result = await step.ProcessAsync();
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.ItemsRead, Is.EqualTo(3));
+        Assert.That(result.ItemsWritten, Is.EqualTo(3));
+    }
+
+    #endregion
 }

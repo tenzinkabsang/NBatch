@@ -30,28 +30,31 @@ internal sealed class CsvReaderAutoMapTests
 
     private sealed record PositionalRecord(string Name, int Age);
 
+    private static IAsyncEnumerable<CsvLine> Lines(long firstPhysicalLine, params string[] lines)
+        => lines.Select((text, i) => new CsvLine(firstPhysicalLine + i, text)).ToAsyncEnumerable();
+
     private static Mock<IFileService> FileServiceWith(string header, params string[] dataLines)
     {
         var fileService = new Mock<IFileService>();
 
         // Catch-all first (later, more specific setups win): any read → empty.
         fileService.Setup(f => f.ReadLinesAsync(It.IsAny<long>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .Returns(AsyncEnumerable.Empty<string>());
+            .Returns(AsyncEnumerable.Empty<CsvLine>());
 
         // Header line.
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { header }.ToAsyncEnumerable());
+            .Returns(Lines(1, header));
 
         // Chunk reads starting at the first data line.
         fileService.Setup(f => f.ReadLinesAsync(1, It.Is<int>(n => n > 1), It.IsAny<CancellationToken>()))
-            .Returns(dataLines.ToAsyncEnumerable());
+            .Returns(Lines(2, dataLines));
 
         // Single-line reads at each data position (used by scan-mode re-reads).
         for (int i = 0; i < dataLines.Length; i++)
         {
             var line = dataLines[i];
             fileService.Setup(f => f.ReadLinesAsync(1 + i, 1, It.IsAny<CancellationToken>()))
-                .Returns(new[] { line }.ToAsyncEnumerable());
+                .Returns(Lines(2 + i, line));
         }
 
         return fileService;

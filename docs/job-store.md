@@ -64,16 +64,16 @@ The `DatabaseProvider` enum:
 ## How It Works
 
 1. When a job starts, NBatch creates or updates a **job record** in the tracking database and marks the run as in-flight.
-2. Before each chunk is processed, NBatch inserts a **step record** with the current chunk index.
-3. After each chunk completes, the step record is updated with success/failure status.
+2. Before each chunk is processed, NBatch inserts a **step record** for the chunk, marked **in-flight (presumed failed)**.
+3. After each chunk completes, the step record is updated with the real outcome. A chunk whose record was never updated — a process kill or power loss mid-chunk — therefore reads as *failed*, never as *complete*: an interrupted chunk is always re-processed, and records can't be silently lost.
 4. When the run finishes, the outcome is recorded on the job record.
-5. On the next run, that outcome decides between **reset** and **resume**:
+5. On the next run, that outcome decides between **reset** and **resume**. The resume position is always the **last committed chunk boundary**, independent of the chunk size the failed run used — you can safely restart with a different `ChunkSize`.
 
 | Previous run | Next run |
 |--------------|----------|
 | Completed successfully | **Starts fresh** — step progress resets to the beginning, tasklets run again |
-| Failed | Resumes; the failed chunk backs up one chunk and retries; tasklets that already completed are skipped |
-| Crashed mid-run | Resumes from the last recorded chunk |
+| Failed | Resumes at the failed chunk's start and retries it; tasklets that already completed are skipped |
+| Crashed mid-run | Resumes at the interrupted chunk's start — the in-flight record reads as failed |
 | Cancelled | Resumes; the chunk that was aborted is retried |
 
 ### Restart Flow

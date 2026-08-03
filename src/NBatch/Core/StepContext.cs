@@ -29,16 +29,17 @@ internal sealed class StepContext
     public StepContext() { }
 
     /// <summary>
-    /// Creates the initial context for a step run. If the previous run failed,
-    /// backs up one chunk to retry.
+    /// Creates the initial context for a step run. The repository has already
+    /// resolved <see cref="StepIndex"/> to the last committed position (a failed
+    /// or interrupted chunk resumes at its own start index), so no back-up
+    /// arithmetic happens here.
     /// </summary>
     public static StepContext InitialRun(StepContext previous, int chunkSize)
     {
-        long index = BackUpIfPreviousFailed(previous, chunkSize);
         return new StepContext
         {
             StepName = previous.StepName,
-            StepIndex = index,
+            StepIndex = previous.StepIndex,
             NumberOfItemsProcessed = previous.NumberOfItemsProcessed,
             ChunkSize = chunkSize,
             FirstIteration = true
@@ -64,11 +65,4 @@ internal sealed class StepContext
         };
     }
 
-    private static long BackUpIfPreviousFailed(StepContext ctx, int chunkSize)
-    {
-        if (ctx.Error && ctx.StepIndex - chunkSize >= 0)
-            return ctx.StepIndex - chunkSize;
-
-        return ctx.StepIndex;
-    }
 }

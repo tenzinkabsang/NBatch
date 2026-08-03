@@ -99,6 +99,27 @@ internal sealed class RestartFromFailureTests
         }
     }
 
+    /// <summary>
+    /// A reader that throws the first <paramref name="failCount"/> times a specific
+    /// chunk index is requested, then succeeds.
+    /// </summary>
+    private sealed class FailNTimesAtIndexReader<T>(IReadOnlyList<T> items, long failAtIndex, int failCount) : IReader<T>
+    {
+        private int _failures;
+
+        public Task<IEnumerable<T>> ReadAsync(long startIndex, int chunkSize, CancellationToken cancellationToken = default)
+        {
+            if (startIndex == failAtIndex && _failures < failCount)
+            {
+                _failures++;
+                throw new InvalidOperationException($"Simulated failure #{_failures} at index {failAtIndex}");
+            }
+
+            var chunk = items.Skip((int)startIndex).Take(chunkSize);
+            return Task.FromResult(chunk);
+        }
+    }
+
     #endregion
 
     #region 1 — Job restart from a failed chunk
@@ -895,6 +916,147 @@ internal sealed class RestartFromFailureTests
             var columnCount = (long)(await check.ExecuteScalarAsync())!;
             Assert.That(columnCount, Is.EqualTo(1), "last_run_success column should have been added");
         }
+    }
+
+    #endregion
+
+    #region 8 — Crash safety and exact resume positions
+
+    [Test]
+    public async Task Hard_crash_mid_chunk_does_not_lose_the_chunk_on_restart()
+    {
+        // Simulate a process kill between InsertStepAsync (chunk started) and
+        // UpdateStepAsync (chunk committed): the dangling row must be treated as
+        // failed, so the restart re-processes the chunk instead of skipping it.
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c", "d" };
+
+        var crashedRepo = new EfJobRepository("crash-job", connStr, DatabaseProvider.Sqlite);
+        await crashedRepo.CreateJobRecordAsync(["step1"]);
+        // Chunk [0, 2) started: the engine pre-inserts the row with the next index…
+        await crashedRepo.InsertStepAsync("step1", 2);
+        // …and the process dies before UpdateStepAsync. No items were written.
+
+        var writer = new CollectingWriter<string>();
+        var job = Job.CreateBuilder("crash-job")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .WriteTo(writer)
+                .WithChunkSize(2))
+            .Build();
+
+        var result = await job.RunAsync();
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b", "c", "d" }),
+            "the interrupted chunk must be re-processed — no records may be lost");
+    }
+
+    [Test]
+    public async Task Restart_with_smaller_chunk_size_does_not_lose_records()
+    {
+        // Run 1 fails on the chunk starting at index 4 (chunk size 4).
+        // Run 2 restarts with chunk size 2: it must resume at index 4 — the failed
+        // chunk's start — not at (recorded index 8 − new chunk size 2) = 6.
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c", "d", "e", "f", "g", "h" };
+
+        var failReader = new FailOnceAtIndexReader<string>(data, failAtIndex: 4);
+        var writer1 = new CollectingWriter<string>();
+
+        var job1 = Job.CreateBuilder("chunk-resize")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(failReader)
+                .WriteTo(writer1)
+                .WithChunkSize(4))
+            .Build();
+
+        var result1 = await job1.RunAsync();
+        Assert.That(result1.Success, Is.False);
+        Assert.That(writer1.Written, Is.EqualTo(new[] { "a", "b", "c", "d" }));
+
+        var writer2 = new CollectingWriter<string>();
+        var job2 = Job.CreateBuilder("chunk-resize")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(data))
+                .WriteTo(writer2)
+                .WithChunkSize(2))
+            .Build();
+
+        var result2 = await job2.RunAsync();
+
+        Assert.That(result2.Success, Is.True);
+        Assert.That(writer2.Written, Is.EqualTo(new[] { "e", "f", "g", "h" }),
+            "resume must start at the failed chunk's start index regardless of the new chunk size");
+    }
+
+    [Test]
+    public async Task Repeated_failures_at_the_same_chunk_resume_exactly()
+    {
+        // Two consecutive failed runs pile up error rows at the same recorded index;
+        // the third run must still resume at the failed chunk's start.
+        var connStr = UniqueConnectionString;
+        var data = new[] { "a", "b", "c", "d", "e", "f" };
+
+        var reader = new FailNTimesAtIndexReader<string>(data, failAtIndex: 2, failCount: 2);
+        var writer = new CollectingWriter<string>();
+
+        Job BuildJob() => Job.CreateBuilder("repeat-fail")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(reader)
+                .WriteTo(writer)
+                .WithChunkSize(2))
+            .Build();
+
+        Assert.That((await BuildJob().RunAsync()).Success, Is.False);
+        Assert.That((await BuildJob().RunAsync()).Success, Is.False);
+
+        var result = await BuildJob().RunAsync();
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(writer.Written, Is.EqualTo(new[] { "a", "b", "c", "d", "e", "f" }));
+    }
+
+    [Test]
+    public async Task Oversized_exception_text_is_truncated_not_fatal()
+    {
+        // Skip bookkeeping persists the exception message/detail into bounded
+        // columns. An oversized message must be truncated — never allowed to fail
+        // the very skip that was supposed to protect the run.
+        var connStr = UniqueConnectionString;
+        var hugeMessage = new string('x', 20_000);
+
+        var writer = new CollectingWriter<string>();
+        var job = Job.CreateBuilder("huge-exception")
+            .UseJobStore(connStr, DatabaseProvider.Sqlite)
+            .AddStep("step1", step => step
+                .ReadFrom(new ListReader<string>(["a", "b"]))
+                .ProcessWith((string s) =>
+                {
+                    if (s == "a") throw new FormatException(hugeMessage);
+                    return s;
+                })
+                .WriteTo(writer)
+                .WithSkipPolicy(SkipPolicy.For<FormatException>(maxSkips: 1))
+                .WithChunkSize(1))
+            .Build();
+
+        var result = await job.RunAsync();
+
+        Assert.That(result.Success, Is.True);
+        Assert.That(result.Steps[0].ItemsSkipped, Is.EqualTo(1));
+        Assert.That(writer.Written, Is.EqualTo(new[] { "b" }));
+
+        await using var connection = new SqliteConnection(connStr);
+        await connection.OpenAsync();
+        var check = connection.CreateCommand();
+        check.CommandText = "SELECT MAX(LENGTH(exception_msg)) FROM step_exceptions";
+        var storedLength = (long)(await check.ExecuteScalarAsync())!;
+        Assert.That(storedLength, Is.LessThanOrEqualTo(500), "message must be truncated to the column size");
     }
 
     #endregion

@@ -48,9 +48,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - **Tasklet completion tracking** — a tasklet that completed successfully is skipped when the job resumes after a later step's failure, and runs again after a successful run resets the job.
 - **Order-independent job builder** — `.AddStep(...)` before `.UseJobStore(...)` / `.WithLogger(...)` now works; the repository and logger are bound at `Build()`.
 - **Cancelled chunks are recorded** — a chunk aborted by cancellation is marked as an error so the restart backs up and re-processes it (previously its items could be silently lost).
+- **Crash-safe chunk tracking** — step records are written as *in-flight (presumed failed)* when a chunk starts and only marked complete when it commits. A process kill or power loss mid-chunk now always re-processes the interrupted chunk on restart; previously the pre-inserted record could read as complete and the chunk's items were silently lost.
+- **Exact resume positions** — a restart resumes at the last *committed* chunk boundary, computed from the job store rather than by subtracting the current chunk size. Restarting a failed job with a different `ChunkSize` is now safe (previously a smaller chunk size could permanently skip records).
+- **`DbReader` enforces deterministic ordering** — the first read throws `InvalidOperationException` if the query has no `OrderBy`: unordered `Skip`/`Take` pagination returns rows in arbitrary order and silently corrupts both chunking and restarts.
+- **Reader positional-contract guard** — the step engine fails loudly if a reader returns a partial chunk and then produces more items (the gap positions would otherwise be silently skipped). `IReader` now documents the full contract.
+- **RFC 4180 output escaping** — `FlatFileItemWriter` quotes fields containing the delimiter, a quote, or a line break (embedded quotes doubled) and formats values with the invariant culture, so its output round-trips through `CsvReader` on any machine locale.
+- **Composite job-store indexes** — new databases index `steps (job_name, step_name, id)` and `step_exceptions (job_name, step_name, execution_id)` for fast resume lookups on large run histories.
 - **Package icon** embedded in both NuGet packages.
 
 ### Fixed
+- Skip bookkeeping could fail the step it was protecting: exception messages/stack traces longer than the store's column sizes (500/5000 chars) made the insert throw on SQL Server and PostgreSQL. Text is now truncated to fit.
+- `CsvReader` treated a run of blank lines longer than the chunk size as end-of-data, silently dropping the rest of the file. Blank lines no longer occupy chunk positions; `FlatFileParseException.LineNumber` still reports the exact physical line.
 - `.AddStep(...).UseJobStore(...)` silently binding steps to the in-memory repository and `NullLogger` (steps registered before configuration never persisted progress).
 - Step execution order is now guaranteed by an ordered list instead of relying on dictionary insertion-order behavior.
 - CSV parse and mapping errors escaping the reader's exception wrapper due to deferred enumeration — the documented `SkipPolicy.For<FlatFileParseException>` pattern now actually matches them.

@@ -64,6 +64,7 @@ internal class Step<TInput, TOutput> : IStep
         var savedState = await _stepRepository.GetStartIndexAsync(Name, cancellationToken);
         var ctx = StepContext.InitialRun(savedState, ChunkSize);
         int totalRead = 0, totalProcessed = 0, totalSkipped = 0;
+        bool sawShortChunk = false;
 
         if (ctx.StepIndex > 0)
             _logger.LogInformation("Step '{StepName}' resuming from index {StepIndex}", Name, ctx.StepIndex);
@@ -85,6 +86,19 @@ internal class Step<TInput, TOutput> : IStep
                 }
                 else
                 {
+                    // The engine advances by ChunkSize positions per chunk, so a
+                    // partial chunk is only valid at the end of the data. A reader
+                    // that returns a short chunk and then more data would silently
+                    // lose the positions in between — fail loudly instead.
+                    if (sawShortChunk)
+                        throw new InvalidOperationException(
+                            $"Step '{Name}': the reader returned a partial chunk at index {ctx.StepIndex - ChunkSize} " +
+                            $"but produced more items at index {ctx.StepIndex}. IReader.ReadAsync must return exactly " +
+                            "chunkSize items for every range before the end of the data — returning fewer is only " +
+                            "valid for the final chunk. The positions after the partial chunk were never read, " +
+                            "so continuing would silently skip records.");
+                    sawShortChunk = readResult.Items.Count < ChunkSize;
+
                     long stepId = await _stepRepository.InsertStepAsync(ctx.StepName, ctx.NextStepIndex, cancellationToken);
                     ctx = await ProcessChunkAsync(ctx, stepId, readResult.Items, cancellationToken);
                 }

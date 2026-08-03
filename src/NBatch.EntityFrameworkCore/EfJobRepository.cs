@@ -203,7 +203,11 @@ internal sealed class EfJobRepository : IJobRepository
             StepName = stepName,
             JobName = _jobName,
             StepIndex = stepIndex,
-            NumberOfItemsProcessed = 0
+            NumberOfItemsProcessed = 0,
+            // Presumed failed until UpdateStepAsync records the outcome: a hard crash
+            // between insert and update must make the restart re-process this chunk,
+            // not resume past items that were never written.
+            Error = true
         };
         ctx.BatchSteps.Add(step);
         await ctx.SaveChangesAsync(cancellationToken);
@@ -235,18 +239,33 @@ internal sealed class EfJobRepository : IJobRepository
     public async Task<StepContext> GetStartIndexAsync(string stepName, CancellationToken cancellationToken = default)
     {
         await using var ctx = CreateContext();
-        var step = await ctx.BatchSteps
+        var latest = await ctx.BatchSteps
             .Where(s => s.StepName == stepName && s.JobName == _jobName)
             .OrderByDescending(s => s.Id)
             .FirstOrDefaultAsync(cancellationToken);
+
+        long resumeIndex = latest?.StepIndex ?? 0;
+
+        // A failed (or crashed mid-chunk) latest row means its range was not
+        // committed. Resume from the latest committed position instead — the most
+        // recent non-error row's index. This is exact regardless of the chunk size
+        // the failed run used, so restarts with a different ChunkSize are safe.
+        if (latest is { Error: true })
+        {
+            resumeIndex = await ctx.BatchSteps
+                .Where(s => s.StepName == stepName && s.JobName == _jobName && !s.Error)
+                .OrderByDescending(s => s.Id)
+                .Select(s => (long?)s.StepIndex)
+                .FirstOrDefaultAsync(cancellationToken) ?? 0;
+        }
 
         return new StepContext
         {
             StepName = stepName,
             JobName = _jobName,
-            StepIndex = step?.StepIndex ?? 0,
-            NumberOfItemsProcessed = step?.NumberOfItemsProcessed ?? 0,
-            Error = step?.Error ?? false
+            StepIndex = resumeIndex,
+            NumberOfItemsProcessed = latest?.NumberOfItemsProcessed ?? 0,
+            Error = latest?.Error ?? false
         };
     }
 
@@ -259,9 +278,14 @@ internal sealed class EfJobRepository : IJobRepository
             StepName = skipContext.StepName,
             JobName = _jobName,
             ExecutionId = _executionId,
-            ExceptionMsg = skipContext.ExceptionMessage,
-            ExceptionDetails = skipContext.ExceptionDetail
+            // Truncate to the mapped column sizes: skip bookkeeping must never fail
+            // (and thereby fail the step) because an exception message is long.
+            ExceptionMsg = Truncate(skipContext.ExceptionMessage, NBatchDbContext.MaxExceptionMsgLength),
+            ExceptionDetails = Truncate(skipContext.ExceptionDetail, NBatchDbContext.MaxExceptionDetailLength)
         });
         await ctx.SaveChangesAsync(cancellationToken);
     }
+
+    private static string Truncate(string value, int maxLength)
+        => value.Length <= maxLength ? value : value[..maxLength];
 }

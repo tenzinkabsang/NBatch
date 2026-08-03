@@ -95,8 +95,10 @@ missing or the value is empty — a non-empty unparseable value still throws.
 ### Error behavior
 
 - A line that fails to parse or map throws a `FlatFileParseException` whose **`LineNumber`**
-  is the 1-based line in the file, with the original error as `InnerException`. Skip
+  is the 1-based physical line in the file, with the original error as `InnerException`. Skip
   policies for either the wrapper or the inner type (e.g. `FormatException`) match it.
+- **Blank (whitespace-only) lines are ignored** wherever they appear — including runs of
+  blank lines longer than the chunk size — and never count toward chunk positions.
 - Duplicate header names are rejected with a clear error.
 - A **missing file** throws `FileNotFoundException` — file I/O errors are never wrapped
   as parse errors, so they are not accidentally skippable.
@@ -113,7 +115,7 @@ Reads entities from any EF Core `DbContext` in paginated chunks. Provider-agnost
 var reader = new DbReader<Product>(dbContext, q => q.OrderBy(p => p.Id));
 ```
 
-The `queryBuilder` parameter applies ordering (and optional filtering) to the queryable. **A deterministic `OrderBy` clause is required**: pagination — and the item-level re-reads performed when a chunk fails under a [skip policy](skip-policies) — rely on stable row positions.
+The `queryBuilder` parameter applies ordering (and optional filtering) to the queryable. **A deterministic `OrderBy` clause is required and enforced**: pagination — and the item-level re-reads performed when a chunk fails under a [skip policy](skip-policies) — rely on stable row positions. An unordered SQL query may return rows in any order, which would silently corrupt chunking and restarts, so the first read throws `InvalidOperationException` if no ordering was applied.
 
 ```csharp
 // With filtering
@@ -153,6 +155,12 @@ var writer = new FlatFileItemWriter<Product>("output.tsv")
 
 Default token: `,` (comma)
 
+### Output format
+
+- Values are formatted with the **invariant culture**, matching `CsvReader`'s parsing — the same file round-trips on any machine locale.
+- Fields containing the delimiter, a quote, or a line break are **quoted RFC 4180-style** (embedded quotes doubled), so the output stays parseable.
+- The writer **appends** to the destination file. That keeps restart-from-failure safe (previously written output survives a resume), but it also means re-running a completed job appends a second copy — use a per-run file name (e.g. timestamped) for jobs that run repeatedly.
+
 ---
 
 ## Custom Readers & Writers
@@ -175,6 +183,17 @@ Implement this to read from any source -- REST APIs, message queues, cloud stora
 > under a skip policy, NBatch re-reads the chunk range one item at a time
 > (`ReadAsync(index, 1)`) to isolate the failing positions — a forward-only reader that
 > ignores `startIndex` will misbehave there and on restarts.
+>
+> Two more rules follow from position-based tracking:
+>
+> - **Stable positions** — the same `startIndex` must map to the same item on every
+>   call, including across process restarts. For databases this means a deterministic
+>   `ORDER BY`; for growing sources it means restarts assume the already-processed
+>   prefix hasn't shifted.
+> - **Full chunks** — return exactly `chunkSize` items for every range before the end
+>   of the data; a shorter result is only valid for the final chunk, and an empty
+>   result means end of data. The engine advances by `chunkSize` positions per chunk
+>   and fails the step if a reader produces more items after a partial chunk.
 
 ```csharp
 public class ApiReader<T> : IReader<T>

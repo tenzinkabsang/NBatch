@@ -14,9 +14,9 @@ internal sealed class CsvRowTests
         CsvRow? captured = null;
         var fileService = new Mock<IFileService>();
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { header }.ToAsyncEnumerable());
+            .Returns(new[] { new CsvLine(1, header) }.ToAsyncEnumerable());
         fileService.Setup(f => f.ReadLinesAsync(1, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { dataLine }.ToAsyncEnumerable());
+            .Returns(new[] { new CsvLine(2, dataLine) }.ToAsyncEnumerable());
 
         var reader = new CsvReader<int>("fake.csv", row => { captured = row; return 0; }, fileService.Object);
         _ = (await reader.ReadAsync(0, 1)).ToList();

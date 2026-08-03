@@ -7,13 +7,15 @@ namespace NBatch.Tests.Core;
 internal class StepContextTests
 {
     [Test]
-    public void IfPreviousAttemptFailedThenItShouldRetryDuringRestart()
+    public void InitialRun_preserves_repository_resolved_resume_index()
     {
+        // The repository resolves the resume index (last committed position);
+        // InitialRun must use it verbatim — no back-up arithmetic.
         var previous = new StepContext { NumberOfItemsProcessed = 0, StepIndex = 4, Error = true };
 
         var current = StepContext.InitialRun(previous, chunkSize: 2);
 
-        Assert.That(current.StepIndex, Is.EqualTo(2));
+        Assert.That(current.StepIndex, Is.EqualTo(4));
         Assert.That(current.FirstIteration, Is.True);
     }
 
@@ -59,50 +61,20 @@ internal class StepContextTests
         Assert.That(ctx.HasNext, Is.EqualTo(hasNext));
     }
 
-    #region BackUpIfPreviousFailed — Error vs Skip distinction
+    #region InitialRun uses the repository-resolved index verbatim
 
-    [Test]
-    public void Skipped_chunk_does_not_trigger_backup()
+    [TestCase(4, false)]
+    [TestCase(4, true)]
+    [TestCase(0, true)]
+    public void InitialRun_never_alters_the_resume_index(long resumeIndex, bool error)
     {
-        // A skipped chunk has NumberOfItemsProcessed=0 but Error=false.
-        // BackUpIfPreviousFailed should NOT back up — the skip was intentional.
-        var previous = new StepContext { StepIndex = 4, NumberOfItemsProcessed = 0, Error = false };
+        // Resume-position resolution lives in the repositories (latest committed
+        // row); InitialRun uses the resolved index for every outcome.
+        var previous = new StepContext { StepIndex = resumeIndex, NumberOfItemsProcessed = 0, Error = error };
 
         var current = StepContext.InitialRun(previous, chunkSize: 2);
 
-        Assert.That(current.StepIndex, Is.EqualTo(4));
-    }
-
-    [Test]
-    public void Failed_chunk_with_error_flag_backs_up()
-    {
-        // A truly failed chunk has Error=true.
-        var previous = new StepContext { StepIndex = 6, NumberOfItemsProcessed = 0, Error = true };
-
-        var current = StepContext.InitialRun(previous, chunkSize: 2);
-
-        Assert.That(current.StepIndex, Is.EqualTo(4));
-    }
-
-    [Test]
-    public void Successful_chunk_does_not_back_up()
-    {
-        var previous = new StepContext { StepIndex = 4, NumberOfItemsProcessed = 5, Error = false };
-
-        var current = StepContext.InitialRun(previous, chunkSize: 2);
-
-        Assert.That(current.StepIndex, Is.EqualTo(4));
-    }
-
-    [Test]
-    public void Failed_at_index_zero_stays_at_zero()
-    {
-        // Can't back up below 0 even when Error=true.
-        var previous = new StepContext { StepIndex = 0, NumberOfItemsProcessed = 0, Error = true };
-
-        var current = StepContext.InitialRun(previous, chunkSize: 2);
-
-        Assert.That(current.StepIndex, Is.EqualTo(0));
+        Assert.That(current.StepIndex, Is.EqualTo(resumeIndex));
     }
 
     #endregion

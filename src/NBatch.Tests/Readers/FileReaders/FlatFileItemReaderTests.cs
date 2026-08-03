@@ -1,4 +1,4 @@
-﻿using Moq;
+using Moq;
 using NBatch.Readers.FileReader;
 using NBatch.Readers.FileReader.Services;
 using NUnit.Framework;
@@ -16,6 +16,10 @@ internal class CsvReaderTests
             fileService);
     }
 
+    /// <summary>Builds CsvLines numbering physically from <paramref name="firstPhysicalLine"/>.</summary>
+    private static IAsyncEnumerable<CsvLine> Lines(long firstPhysicalLine, params string[] lines)
+        => lines.Select((text, i) => new CsvLine(firstPhysicalLine + i, text)).ToAsyncEnumerable();
+
     [TestCase(1, 1)]
     [TestCase(10, 10)]
     public async Task ReadAsync_maps_correct_number_of_items(int chunkSize, int expected)
@@ -24,11 +28,11 @@ internal class CsvReaderTests
 
         // Header read
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { HeaderLine }.ToAsyncEnumerable());
+            .Returns(Lines(1, HeaderLine));
 
         // Data read — offset by 1 for the header row
         fileService.Setup(f => f.ReadLinesAsync(1, chunkSize, It.IsAny<CancellationToken>()))
-            .Returns(Enumerable.Range(0, chunkSize).Select(_ => "Alice,30,100").ToAsyncEnumerable());
+            .Returns(Lines(2, Enumerable.Range(0, chunkSize).Select(_ => "Alice,30,100").ToArray()));
 
         var reader = CreateReader(fileService.Object);
         var results = (await reader.ReadAsync(0, chunkSize)).ToList();
@@ -39,32 +43,15 @@ internal class CsvReaderTests
     }
 
     [Test]
-    public async Task ReadAsync_skips_blank_lines()
-    {
-        var fileService = new Mock<IFileService>();
-
-        fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { HeaderLine }.ToAsyncEnumerable());
-
-        fileService.Setup(f => f.ReadLinesAsync(1, 3, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Alice,30,100", "  ", "Bob,25,90" }.ToAsyncEnumerable());
-
-        var reader = CreateReader(fileService.Object);
-        var results = (await reader.ReadAsync(0, 3)).ToList();
-
-        Assert.That(results, Has.Count.EqualTo(2));
-    }
-
-    [Test]
     public async Task ReadAsync_returns_empty_when_no_data_lines()
     {
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { HeaderLine }.ToAsyncEnumerable());
+            .Returns(Lines(1, HeaderLine));
 
         fileService.Setup(f => f.ReadLinesAsync(1, 1, It.IsAny<CancellationToken>()))
-            .Returns(Enumerable.Empty<string>().ToAsyncEnumerable());
+            .Returns(Lines(2));
 
         var reader = CreateReader(fileService.Object);
         var results = (await reader.ReadAsync(0, 1)).ToList();
@@ -78,10 +65,10 @@ internal class CsvReaderTests
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Name,Age,Score" }.ToAsyncEnumerable());
+            .Returns(Lines(1, "Name,Age,Score"));
 
         fileService.Setup(f => f.ReadLinesAsync(1, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Charlie,40,95" }.ToAsyncEnumerable());
+            .Returns(Lines(2, "Charlie,40,95"));
 
         var reader = CreateReader(fileService.Object);
         var results = (await reader.ReadAsync(0, 1)).ToList();
@@ -96,10 +83,10 @@ internal class CsvReaderTests
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Name|Age|Score" }.ToAsyncEnumerable());
+            .Returns(Lines(1, "Name|Age|Score"));
 
         fileService.Setup(f => f.ReadLinesAsync(1, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Dana|28|88" }.ToAsyncEnumerable());
+            .Returns(Lines(2, "Dana|28|88"));
 
         var reader = new CsvReader<(string Name, int Age)>("fake.csv",
             row => (row.GetString("Name"), row.GetInt("Age")),
@@ -120,9 +107,9 @@ internal class CsvReaderTests
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { HeaderLine }.ToAsyncEnumerable());
+            .Returns(Lines(1, HeaderLine));
         fileService.Setup(f => f.ReadLinesAsync(1, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "\"Smith, John\",30,100" }.ToAsyncEnumerable());
+            .Returns(Lines(2, "\"Smith, John\",30,100"));
 
         var reader = CreateReader(fileService.Object);
         var results = (await reader.ReadAsync(0, 1)).ToList();
@@ -137,9 +124,9 @@ internal class CsvReaderTests
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { HeaderLine }.ToAsyncEnumerable());
+            .Returns(Lines(1, HeaderLine));
         fileService.Setup(f => f.ReadLinesAsync(1, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "\"Anna \"\"Ace\"\" Lee\",22,80" }.ToAsyncEnumerable());
+            .Returns(Lines(2, "\"Anna \"\"Ace\"\" Lee\",22,80"));
 
         var reader = CreateReader(fileService.Object);
         var results = (await reader.ReadAsync(0, 1)).ToList();
@@ -153,9 +140,9 @@ internal class CsvReaderTests
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "\"Name\",\"Age\",\"Score\"" }.ToAsyncEnumerable());
+            .Returns(Lines(1, "\"Name\",\"Age\",\"Score\""));
         fileService.Setup(f => f.ReadLinesAsync(1, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Eve,33,70" }.ToAsyncEnumerable());
+            .Returns(Lines(2, "Eve,33,70"));
 
         var reader = CreateReader(fileService.Object);
         var results = (await reader.ReadAsync(0, 1)).ToList();
@@ -170,9 +157,9 @@ internal class CsvReaderTests
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { HeaderLine }.ToAsyncEnumerable());
+            .Returns(Lines(1, HeaderLine));
         fileService.Setup(f => f.ReadLinesAsync(1, 2, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Alice,30,100", "\"broken,25,90" }.ToAsyncEnumerable());
+            .Returns(Lines(2, "Alice,30,100", "\"broken,25,90"));
 
         var reader = CreateReader(fileService.Object);
         var ex = Assert.ThrowsAsync<FlatFileParseException>(() => reader.ReadAsync(0, 2));
@@ -191,9 +178,9 @@ internal class CsvReaderTests
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { HeaderLine }.ToAsyncEnumerable());
+            .Returns(Lines(1, HeaderLine));
         fileService.Setup(f => f.ReadLinesAsync(1, 3, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Alice,30,100", "Bob,not-a-number,90", "Carol,25,80" }.ToAsyncEnumerable());
+            .Returns(Lines(2, "Alice,30,100", "Bob,not-a-number,90", "Carol,25,80"));
 
         var reader = CreateReader(fileService.Object);
         var ex = Assert.ThrowsAsync<FlatFileParseException>(() => reader.ReadAsync(0, 3));
@@ -208,7 +195,7 @@ internal class CsvReaderTests
         var fileService = new Mock<IFileService>();
 
         fileService.Setup(f => f.ReadLinesAsync(0, 1, It.IsAny<CancellationToken>()))
-            .Returns(new[] { "Name,Age,Name" }.ToAsyncEnumerable());
+            .Returns(Lines(1, "Name,Age,Name"));
 
         var reader = CreateReader(fileService.Object);
         var ex = Assert.ThrowsAsync<FlatFileParseException>(() => reader.ReadAsync(0, 1));
