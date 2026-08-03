@@ -90,6 +90,7 @@ See the **[full documentation](https://tenzinkabsang.github.io/NBatch/)** for gu
 - [Job store](https://tenzinkabsang.github.io/NBatch/job-store) — persistent tracking and restart-from-failure
 - [DI & hosted service](https://tenzinkabsang.github.io/NBatch/dependency-injection) — `AddNBatch()`, `IJobRunner`, `RunOnce()`, `RunEvery()`
 - [Listeners](https://tenzinkabsang.github.io/NBatch/listeners) — job and step lifecycle hooks
+- [Observability](https://tenzinkabsang.github.io/NBatch/observability) — OpenTelemetry traces and metrics
 - [API reference](https://tenzinkabsang.github.io/NBatch/api-reference) — all public types and methods
 - [Examples](https://tenzinkabsang.github.io/NBatch/examples) — CSV-to-DB, DB-to-file, multi-step, DI, hosted service
 
